@@ -1,6 +1,8 @@
 // This file contains shared authentication helpers that can be reused
-// across protected pages, especially for logout behaviour.
+// across protected pages. The goal is to keep login, logout, and access
+// control behaviour consistent throughout the Sprint 1 flow.
 
+// This signs the user out and returns them to the login page.
 async function logoutUser() {
   if (!window.supabaseClient) {
     console.error("Supabase client is not available.");
@@ -17,7 +19,6 @@ async function logoutUser() {
       return;
     }
 
-    // After signing out, the user should be sent back to the login page.
     window.location.href = "/login";
   } catch (error) {
     console.error("Unexpected logout error:", error);
@@ -25,8 +26,7 @@ async function logoutUser() {
   }
 }
 
-// This helper attaches the shared logout behaviour to a button or link.
-// It can be reused in the navbar, dashboard, or other protected pages.
+// This attaches the shared logout behaviour to a specific button or link.
 function initialiseLogoutButton(buttonId) {
   const logoutButton = document.getElementById(buttonId);
 
@@ -38,4 +38,39 @@ function initialiseLogoutButton(buttonId) {
     event.preventDefault();
     await logoutUser();
   });
+}
+
+// This checks the current session and returns it to the caller.
+// It is useful when a page needs user details after access is confirmed.
+async function getCurrentSession() {
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available.");
+  }
+
+  const { data, error } = await window.supabaseClient.auth.getSession();
+
+  if (error) {
+    throw error;
+  }
+
+  return data.session;
+}
+
+// This helper should be called on protected pages.
+// If there is no active session, the user is redirected to /login.
+async function requireAuthenticatedUser() {
+  try {
+    const session = await getCurrentSession();
+
+    if (!session) {
+      window.location.href = "/login";
+      return null;
+    }
+
+    return session;
+  } catch (error) {
+    console.error("Protected page session check failed:", error);
+    window.location.href = "/login";
+    return null;
+  }
 }

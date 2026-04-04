@@ -1,6 +1,6 @@
 // This file handles the client-side behaviour for the login page.
-// It covers validation, smaller UI interactions, and the actual
-// Supabase email/password sign-in flow for Sprint 1.
+// It includes validation, password visibility toggling, and the
+// main outcome handling for Supabase email/password sign-in.
 
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
@@ -22,7 +22,7 @@ function showError(message) {
 }
 
 // This helper updates the button state while a submission is being processed.
-// It improves the user experience and prevents repeated clicks.
+// It prevents repeated clicks and makes the UI feel more responsive.
 function setLoadingState(isLoading) {
   loginButton.disabled = isLoading;
 
@@ -47,7 +47,7 @@ function validateLoginForm(email, password) {
     };
   }
 
-  // A basic email pattern is sufficient for Sprint 1 validation.
+  // A basic email pattern is enough for Sprint 1.
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailPattern.test(trimmedEmail)) {
@@ -90,10 +90,32 @@ function initialisePasswordToggle() {
   });
 }
 
-// This sends the validated login details to Supabase Auth.
-// On success, the patient is redirected to the dashboard.
+// If the user already has an active session, there is no reason to keep
+// them on the login page. We redirect them straight to the dashboard.
+async function redirectAuthenticatedUser() {
+  if (!window.supabaseClient) {
+    return;
+  }
+
+  try {
+    const { data, error } = await window.supabaseClient.auth.getSession();
+
+    if (error) {
+      console.error("Session check error:", error);
+      return;
+    }
+
+    if (data.session) {
+      window.location.href = "/dashboard";
+    }
+  } catch (error) {
+    console.error("Unexpected session check error:", error);
+  }
+}
+
+// This sends the validated credentials to Supabase Auth and handles
+// the different outcomes in a user-friendly way.
 async function handleValidatedLogin(email, password) {
-  // Guard against the client not being available.
   if (!window.supabaseClient) {
     throw new Error("Supabase client is not available on the page.");
   }
@@ -106,28 +128,52 @@ async function handleValidatedLogin(email, password) {
   if (error) {
     console.error("Supabase login error:", error);
 
-    // Keep the message clear and user-friendly.
-    if (error.message.toLowerCase().includes("email not confirmed")) {
+    const normalisedMessage = error.message.toLowerCase();
+
+    // Handle the case where a user has registered but not yet confirmed
+    // their email address.
+    if (normalisedMessage.includes("email not confirmed")) {
       showError("Please confirm your email address before logging in.");
       return;
     }
 
-    showError("Invalid email or password. Please try again.");
+    // Handle general invalid credential errors without exposing too much detail.
+    if (
+      normalisedMessage.includes("invalid login credentials") ||
+      normalisedMessage.includes("invalid credentials") ||
+      normalisedMessage.includes("invalid email or password")
+    ) {
+      showError("Invalid email or password. Please try again.");
+      return;
+    }
+
+    // Handle connectivity-related problems more gracefully.
+    if (!navigator.onLine) {
+      showError("You appear to be offline. Please check your internet connection and try again.");
+      return;
+    }
+
+    // Fallback for any other login-related issue.
+    showError("Login could not be completed right now. Please try again.");
     return;
   }
 
-  // If a session is returned successfully, move the user into the protected area.
+  // If sign-in succeeds and a session is returned, move the patient into
+  // the protected area of the system.
   if (data.session) {
     window.location.href = "/dashboard";
     return;
   }
 
-  // Fallback in the rare case no error is thrown but no session is available.
-  showError("Login could not be completed. Please try again.");
+  // Fallback in the unlikely case that no error is thrown but no session exists.
+  showError("Login could not be completed right now. Please try again.");
 }
 
 // Initialise smaller page interactions first.
 initialisePasswordToggle();
+
+// Check whether the user is already logged in.
+redirectAuthenticatedUser();
 
 // Main submit handler for the login form.
 if (loginForm) {
@@ -151,7 +197,12 @@ if (loginForm) {
       await handleValidatedLogin(email, password);
     } catch (error) {
       console.error("Unexpected login handling error:", error);
-      showError("Something went wrong while processing your login. Please try again.");
+
+      if (!navigator.onLine) {
+        showError("You appear to be offline. Please check your internet connection and try again.");
+      } else {
+        showError("Something went wrong while processing your login. Please try again.");
+      }
     } finally {
       setLoadingState(false);
     }

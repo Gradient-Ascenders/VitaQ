@@ -1,0 +1,30 @@
+name: Test and Coverage
+
+on:
+  push:
+    branches: [main, setup/jest]
+  pull_request:
+
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: getsentry/codecov-action@v1
+        with:
+          files: ./coverage/lcov.info

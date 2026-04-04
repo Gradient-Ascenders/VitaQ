@@ -1,6 +1,6 @@
 // This file handles the client-side behaviour for the login page.
-// At this stage, the focus is on validation, UI feedback, and smaller
-// front-end interactions needed for the login form.
+// It covers validation, smaller UI interactions, and the actual
+// Supabase email/password sign-in flow for Sprint 1.
 
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
@@ -22,7 +22,7 @@ function showError(message) {
 }
 
 // This helper updates the button state while a submission is being processed.
-// It improves the overall feel of the page and prevents repeated clicks.
+// It improves the user experience and prevents repeated clicks.
 function setLoadingState(isLoading) {
   loginButton.disabled = isLoading;
 
@@ -36,7 +36,6 @@ function setLoadingState(isLoading) {
 }
 
 // This function performs the client-side checks before we try to sign in.
-// Returning an object keeps the submit handler cleaner and easier to read.
 function validateLoginForm(email, password) {
   const trimmedEmail = email.trim();
 
@@ -73,7 +72,6 @@ function validateLoginForm(email, password) {
 }
 
 // This handles the password visibility toggle on the login page.
-// Keeping it here avoids extra inline JavaScript in the HTML file.
 function initialisePasswordToggle() {
   if (!togglePasswordButton || !passwordInput) {
     return;
@@ -92,41 +90,70 @@ function initialisePasswordToggle() {
   });
 }
 
-// This is still a placeholder for the real login request.
-// In the next step, this function will call Supabase Auth properly.
+// This sends the validated login details to Supabase Auth.
+// On success, the patient is redirected to the dashboard.
 async function handleValidatedLogin(email, password) {
-  console.log("Validation passed. Ready to send login request for:", email);
+  // Guard against the client not being available.
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available on the page.");
+  }
 
-  // Placeholder only for now.
-  // The actual Supabase sign-in will be added next.
-}
+  const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+    email: email.trim(),
+    password: password
+  });
 
-// Initialise the smaller page interactions first.
-initialisePasswordToggle();
+  if (error) {
+    console.error("Supabase login error:", error);
 
-// Main submit handler for the login form.
-loginForm.addEventListener("submit", async function (event) {
-  event.preventDefault();
+    // Keep the message clear and user-friendly.
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      showError("Please confirm your email address before logging in.");
+      return;
+    }
 
-  clearError();
-
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  const validationResult = validateLoginForm(email, password);
-
-  if (!validationResult.isValid) {
-    showError(validationResult.message);
+    showError("Invalid email or password. Please try again.");
     return;
   }
 
-  try {
-    setLoadingState(true);
-    await handleValidatedLogin(email, password);
-  } catch (error) {
-    console.error("Unexpected login handling error:", error);
-    showError("Something went wrong while processing your login. Please try again.");
-  } finally {
-    setLoadingState(false);
+  // If a session is returned successfully, move the user into the protected area.
+  if (data.session) {
+    window.location.href = "/dashboard";
+    return;
   }
-});
+
+  // Fallback in the rare case no error is thrown but no session is available.
+  showError("Login could not be completed. Please try again.");
+}
+
+// Initialise smaller page interactions first.
+initialisePasswordToggle();
+
+// Main submit handler for the login form.
+if (loginForm) {
+  loginForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    clearError();
+
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    const validationResult = validateLoginForm(email, password);
+
+    if (!validationResult.isValid) {
+      showError(validationResult.message);
+      return;
+    }
+
+    try {
+      setLoadingState(true);
+      await handleValidatedLogin(email, password);
+    } catch (error) {
+      console.error("Unexpected login handling error:", error);
+      showError("Something went wrong while processing your login. Please try again.");
+    } finally {
+      setLoadingState(false);
+    }
+  });
+}

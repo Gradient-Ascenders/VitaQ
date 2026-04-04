@@ -49,7 +49,7 @@
   <main class="flex-1 flex items-center justify-center px-6 py-12">
     <section class="w-full max-w-md" aria-labelledby="login-heading">
 
-      <!-- Small introduction above the login card -->
+      <!-- Introductory text above the login card -->
       <header class="text-center mb-8">
         <img
           src="/assets/images/vitaq-logo.png"
@@ -73,7 +73,7 @@
           </p>
         </header>
 
-        <!-- Error message area; this stays hidden until JS needs it -->
+        <!-- Error message area; this remains hidden until JavaScript needs it -->
         <p
           id="errorMessage"
           class="hidden mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -115,7 +115,7 @@
               <button
                 type="button"
                 id="togglePassword"
-                class="absolute inset-y-0 right-4 text-sm font-medium text-slate-500 hover:text-slate-700 transition"
+                class="absolute inset-y-0 right-4 flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 transition"
               >
                 Show
               </button>
@@ -150,21 +150,9 @@
     </p>
   </footer>
 
-  <!-- Scripts are loaded in dependency order -->
+  <!-- External scripts are loaded in dependency order -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/lib/supabaseClient.js"></script>
   <script src="/assets/js/login.js"></script>
-
-  <!-- This small script only controls password visibility on the UI -->
-  <script>
-    const togglePasswordButton = document.getElementById("togglePassword");
-    const passwordInput = document.getElementById("password");
-
-    togglePasswordButton.addEventListener("click", () => {
-      const passwordIsHidden = passwordInput.type === "password";
-      passwordInput.type = passwordIsHidden ? "text" : "password";
-      togglePasswordButton.textContent = passwordIsHidden ? "Hide" : "Show";
-    });
-  </script>
 </body>
 </html>

@@ -6,5 +6,6 @@ module.exports = {
         "!backend/src/server.js"
     ],
     coverageDirectory: "coverage",
+    coverageReporters: ["text", "lcov"],
     clearMocks: true,
 };

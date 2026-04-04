@@ -5,9 +5,9 @@ on:
     branches: [main, setup/jest]
   pull_request:
 
-    jobs:
-      test:
-        runs-on: ubuntu-latest
+jobs:
+  test:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository

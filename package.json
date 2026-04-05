@@ -9,7 +9,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css",
-    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css --watch"
+    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css --watch",
+    "build:css": "tailwindcss -i ./src/input.css -o ./frontend/assets/css/output.css",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./frontend/assets/css/output.css --watch"
   },
   "repository": {
     "type": "git",

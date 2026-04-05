@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Basic metadata for the login page -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register | VitaQ</title>
+  <title>Login | VitaQ</title>
 
+  <!-- Compiled Tailwind stylesheet -->
   <link rel="stylesheet" href="../../assets/css/output.css" />
 </head>
 <body class="min-h-screen flex flex-col bg-gradient-to-br from-[#031126] via-[#071b34] to-[#0a2547] text-slate-100">
 
+  <!-- Shared top navigation for public pages -->
   <header class="border-b border-cyan-400/10 bg-[#031126]/80 backdrop-blur-md">
     <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between" aria-label="Main navigation">
-      <a href="/" class="flex items-center gap-4 no-underline" aria-label="Go to home page">
+      <a href="/" class="flex items-center gap-4 no-underline">
+        <!-- Team logo -->
         <img
-          src="../../assets/images/vitaq-logo.png"
+          src="../../assets/images/vitaq-logo.png" alt="VitaQ logo"
           alt="VitaQ logo"
           class="h-22 md:h-30 w-auto object-contain"
         />
       </a>
 
+      <!-- Public navigation links -->
       <ul class="flex items-center gap-3 list-none m-0 p-0">
         <li>
           <a
             href="/login"
-            class="px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-300/20 bg-white/5 text-slate-100 hover:bg-white/10 transition"
+            class="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition"
           >
             Login
           </a>
@@ -31,7 +36,7 @@
         <li>
           <a
             href="/register"
-            class="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition"
+            class="px-4 py-2 rounded-xl text-sm font-semibold border border-cyan-300/20 bg-white/5 text-slate-100 hover:bg-white/10 transition"
           >
             Register
           </a>
@@ -40,38 +45,44 @@
     </nav>
   </header>
 
+  <!-- Main login content -->
   <main class="flex-1 flex items-center justify-center px-6 py-12">
-    <section class="w-full max-w-md" aria-labelledby="register-heading">
+    <section class="w-full max-w-md" aria-labelledby="login-heading">
+
+      <!-- Introductory text above the login card -->
       <header class="text-center mb-8">
         <img
-          src="../../assets/images/vitaq-logo.png"
+          src="../../assets/images/vitaq-logo.png" alt="VitaQ logo"
           alt="VitaQ brand mark"
           class="h-42 md:h-50 w-auto mx-auto mb-4 object-contain"
         />
-        <h1 id="register-heading" class="text-3xl font-bold tracking-tight text-white">
-          Create Account
+        <h1 id="login-heading" class="text-3xl font-bold tracking-tight text-white">
+          Welcome Back
         </h1>
         <p class="mt-2 text-sm md:text-base text-slate-300">
-          Register to manage your clinic appointments and healthcare visits.
+          Sign in to manage your clinic appointments and healthcare visits.
         </p>
       </header>
 
+      <!-- Main authentication card -->
       <section class="rounded-3xl border border-white/10 bg-white/95 text-slate-800 shadow-2xl shadow-black/30 backdrop-blur-sm p-8">
         <header class="mb-6">
-          <h2 class="text-2xl font-semibold text-slate-900">Patient Registration</h2>
+          <h2 class="text-2xl font-semibold text-slate-900">Patient Login</h2>
           <p class="mt-1 text-sm text-slate-500">
-            Enter your email and password to create your account.
+            Enter your email and password to access your account.
           </p>
         </header>
 
+        <!-- Error message area; this remains hidden until JavaScript needs it -->
         <p
-          id="messageBox"
-          class="hidden mb-4 rounded-xl px-4 py-3 text-sm"
-          role="alert"
+          id="errorMessage"
+          class="hidden mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           aria-live="polite"
         ></p>
 
-        <form id="registerForm" class="space-y-5" novalidate>
+        <!-- Login form -->
+        <form id="loginForm" class="space-y-5">
+          <!-- Email field -->
           <section>
             <label for="email" class="block text-sm font-medium text-slate-700 mb-2">
               Email Address
@@ -81,157 +92,67 @@
               id="email"
               name="email"
               placeholder="Enter your email"
-              autocomplete="email"
+              required
               class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
-              aria-describedby="emailError"
             />
-            <p id="emailError" class="hidden mt-2 text-sm text-red-600"></p>
           </section>
 
+          <!-- Password field -->
           <section>
             <label for="password" class="block text-sm font-medium text-slate-700 mb-2">
               Password
             </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="Enter your password"
-              autocomplete="new-password"
-              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
-              aria-describedby="passwordError"
-            />
-            <p id="passwordError" class="hidden mt-2 text-sm text-red-600"></p>
+
+            <section class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                required
+                class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-16 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
+              />
+              <button
+                type="button"
+                id="togglePassword"
+                class="absolute inset-y-0 right-4 flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 transition"
+              >
+                Show
+              </button>
+            </section>
           </section>
 
-          <section>
-            <label for="confirmPassword" class="block text-sm font-medium text-slate-700 mb-2">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              placeholder="Confirm your password"
-              autocomplete="new-password"
-              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
-              aria-describedby="confirmPasswordError"
-            />
-            <p id="confirmPasswordError" class="hidden mt-2 text-sm text-red-600"></p>
-          </section>
-
+          <!-- Submit button -->
           <button
             type="submit"
-            id="registerButton"
+            id="loginButton"
             class="w-full rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-semibold py-3 shadow-lg shadow-cyan-500/20 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 transition"
           >
-            Register
+            Login
           </button>
         </form>
 
+        <!-- Register page link -->
         <p class="mt-6 text-center text-sm text-slate-600">
-          Already have an account?
-          <a href="/login" class="font-semibold text-blue-600 hover:text-cyan-500 hover:underline">
-            Login
+          Don’t have an account?
+          <a href="/register" class="font-semibold text-blue-600 hover:text-cyan-500 hover:underline">
+            Register
           </a>
         </p>
       </section>
     </section>
   </main>
 
+  <!-- Shared footer -->
   <footer class="border-t border-cyan-400/10 bg-[#031126]/70">
     <p class="max-w-7xl mx-auto px-6 py-4 text-center text-sm text-slate-400">
       Community Clinic Appointment &amp; Queue System
     </p>
   </footer>
 
-  <script>
-    const registerForm = document.getElementById("registerForm");
-    const messageBox = document.getElementById("messageBox");
-
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const confirmPasswordInput = document.getElementById("confirmPassword");
-
-    const emailError = document.getElementById("emailError");
-    const passwordError = document.getElementById("passwordError");
-    const confirmPasswordError = document.getElementById("confirmPasswordError");
-
-    function showMessage(message, type = "error") {
-      messageBox.textContent = message;
-      messageBox.className = "mb-4 rounded-xl px-4 py-3 text-sm";
-
-      if (type === "success") {
-        messageBox.classList.add("border", "border-green-200", "bg-green-50", "text-green-700");
-      } else {
-        messageBox.classList.add("border", "border-red-200", "bg-red-50", "text-red-700");
-      }
-    }
-
-    function hideMessage() {
-      messageBox.textContent = "";
-      messageBox.className = "hidden mb-4 rounded-xl px-4 py-3 text-sm";
-    }
-
-    function showFieldError(element, message) {
-      element.textContent = message;
-      element.classList.remove("hidden");
-    }
-
-    function hideFieldError(element) {
-      element.textContent = "";
-      element.classList.add("hidden");
-    }
-
-    function validateEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    registerForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      hideMessage();
-      hideFieldError(emailError);
-      hideFieldError(passwordError);
-      hideFieldError(confirmPasswordError);
-
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
-      const confirmPassword = confirmPasswordInput.value;
-
-      let isValid = true;
-
-      if (!email) {
-        showFieldError(emailError, "Email is required.");
-        isValid = false;
-      } else if (!validateEmail(email)) {
-        showFieldError(emailError, "Please enter a valid email address.");
-        isValid = false;
-      }
-
-      if (!password) {
-        showFieldError(passwordError, "Password is required.");
-        isValid = false;
-      } else if (password.length < 6) {
-        showFieldError(passwordError, "Password must be at least 6 characters long.");
-        isValid = false;
-      }
-
-      if (!confirmPassword) {
-        showFieldError(confirmPasswordError, "Please confirm your password.");
-        isValid = false;
-      } else if (password !== confirmPassword) {
-        showFieldError(confirmPasswordError, "Passwords do not match.");
-        isValid = false;
-      }
-
-      if (!isValid) {
-        showMessage("Please fix the errors in the form.");
-        return;
-      }
-
-      showMessage("Validation passed. Ready to connect to Supabase.", "success");
-    });
-  </script>
+  <!-- External scripts are loaded in dependency order -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../../lib/supabaseClient.js"></script>
+  <script src="../../js/features/login.js"></script>
 </body>
 </html>

@@ -4,6 +4,8 @@ async function fetchClinics(filters = {}) {
   try {
     const search = filters.search?.trim() || '';
     const province = filters.province?.trim() || '';
+    const district = filters.district?.trim() || '';
+    const area = filters.area?.trim() || '';
 
     let query = supabase
       .from('clinics')
@@ -27,7 +29,15 @@ async function fetchClinics(filters = {}) {
     }
 
     if (province) {
-      query = query.eq('province', province);
+      query = query.ilike('province', province);
+    }
+
+    if (district) {
+      query = query.ilike('district', district);
+    }
+
+    if (area) {
+      query = query.ilike('area', area);
     }
 
     const { data, error } = await query;

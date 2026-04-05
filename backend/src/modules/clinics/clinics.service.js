@@ -3,6 +3,7 @@ const supabase = require('../../lib/supabaseClient');
 async function fetchClinics(filters = {}) {
   try {
     const search = filters.search?.trim() || '';
+    const province = filters.province?.trim() || '';
 
     let query = supabase
       .from('clinics')
@@ -23,6 +24,10 @@ async function fetchClinics(filters = {}) {
 
     if (search) {
       query = query.ilike('name', `%${search}%`);
+    }
+
+    if (province) {
+      query = query.eq('province', province);
     }
 
     const { data, error } = await query;

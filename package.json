@@ -1,0 +1,11 @@
+{
+  "name": "vitaq",
+  "version": "1.0.0",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "node backend/src/server.js"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

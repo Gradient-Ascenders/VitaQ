@@ -10,6 +10,9 @@ const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
 
+// Existing shared Supabase client
+const supabase = window.supabaseClient;
+
 // Show a top-level message
 function showMessage(message, type = "error") {
   messageBox.textContent = message;
@@ -46,7 +49,7 @@ function validateEmail(email) {
 }
 
 // Handle form submission
-registerForm.addEventListener("submit", function (e) {
+registerForm.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   hideMessage();
@@ -89,6 +92,34 @@ registerForm.addEventListener("submit", function (e) {
     return;
   }
 
-  // Placeholder success until Supabase is connected
-  showMessage("Validation passed. Ready to connect to Supabase.", "success");
+  const registerButton = document.getElementById("registerButton");
+  registerButton.disabled = true;
+  registerButton.textContent = "Creating account...";
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  registerButton.disabled = false;
+  registerButton.textContent = "Continue";
+
+  if (error) {
+    showMessage(error.message);
+    return;
+  }
+
+  registerForm.reset();
+
+  if (data.session) {
+    showMessage("Account created successfully. Redirecting...", "success");
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 1200);
+  } else {
+    showMessage(
+      "Account created. Check your email to confirm your account.",
+      "success"
+    );
+  }
 });

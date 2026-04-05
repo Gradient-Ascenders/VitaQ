@@ -56,7 +56,18 @@ async function fetchClinics(filters = {}) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map((clinic) => ({
+      id: clinic.id,
+      name: clinic.name || '',
+      province: clinic.province || '',
+      district: clinic.district || '',
+      area: clinic.area || '',
+      facility_type: clinic.facility_type || '',
+      address: clinic.address || '',
+      services_offered: clinic.services_offered || '',
+      latitude: clinic.latitude ?? null,
+      longitude: clinic.longitude ?? null
+    }));
   } catch (error) {
     throw new Error(`Clinic search failed: ${error.message}`);
   }

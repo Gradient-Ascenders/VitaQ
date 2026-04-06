@@ -6,31 +6,36 @@
   <title>Login | VitaQ</title>
   <link rel="stylesheet" href="../../assets/css/output.css" />
 </head>
-<body class="min-h-screen bg-[#1a1b26] text-[#c0caf5]">
+<body class="min-h-screen overflow-hidden bg-[#1a1b26] text-[#c0caf5]">
   <main class="relative flex min-h-screen items-center justify-center px-6 py-12">
+    <!-- Static background -->
+    <section
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(122,162,247,0.10),transparent_32%),radial-gradient(circle_at_bottom,rgba(187,154,247,0.12),transparent_30%)]"></div>
+
+      <div class="absolute left-[12%] top-[18%] h-40 w-40 animate-pulse rounded-full bg-[#7aa2f7]/10 blur-3xl"></div>
+      <div class="absolute bottom-[14%] right-[16%] h-52 w-52 animate-pulse rounded-full bg-[#bb9af7]/10 blur-3xl [animation-delay:1200ms]"></div>
+      <div class="absolute left-[45%] bottom-[8%] h-44 w-44 animate-pulse rounded-full bg-[#7dcfff]/8 blur-3xl [animation-delay:700ms]"></div>
+    </section>
+
     <!-- Top-left logo -->
     <a
       href="/"
       aria-label="Go to home page"
-      class="absolute left-8 top-8"
+      class="absolute left-8 top-8 z-20"
     >
       <img
         src="../../assets/images/vitaq-logo.png"
         alt="VitaQ logo"
-        class="h-14 w-auto object-contain md:h-16"
+        class="h-16 w-auto object-contain md:h-20 lg:h-24"
       />
     </a>
-
-    <!-- Soft background glow -->
-    <section
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(122,162,247,0.12),transparent_30%),radial-gradient(circle_at_bottom,rgba(187,154,247,0.14),transparent_30%)]"
-      aria-hidden="true"
-    ></section>
 
     <!-- Centered auth content -->
     <section class="relative z-10 w-full max-w-sm" aria-labelledby="login-heading">
       <header class="mb-8 text-center">
-
         <h1
           id="login-heading"
           class="text-4xl font-bold tracking-tight text-[#e0e5ff]"
@@ -43,14 +48,12 @@
         </p>
       </header>
 
-      <!-- Error message -->
       <p
         id="errorMessage"
         class="hidden mb-4 rounded-2xl border border-[#f7768e]/30 bg-[#3b1f2b] px-4 py-3 text-sm text-[#f7768e]"
         aria-live="polite"
       ></p>
 
-      <!-- Login form -->
       <form id="loginForm" class="space-y-4">
         <section>
           <label
@@ -65,7 +68,7 @@
             name="email"
             placeholder="Enter your email address..."
             required
-            class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+            class="w-full rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
           />
         </section>
 
@@ -86,7 +89,7 @@
               name="password"
               placeholder="Enter your password..."
               required
-              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 pr-16 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+              class="w-full rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-3 pr-16 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
             />
             <button
               type="button"
@@ -101,42 +104,39 @@
         <button
           type="submit"
           id="loginButton"
-          class="mt-2 w-full rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-4 py-3 text-base font-semibold text-[#1a1b26] transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#7aa2f7]/40"
+          class="mt-2 w-full rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-4 py-3 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.01] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#7aa2f7]/40"
         >
           Continue
         </button>
       </form>
 
-      <!-- Divider -->
       <section class="my-8 flex items-center gap-4" aria-hidden="true">
         <span class="h-px flex-1 bg-[#414868]"></span>
         <span class="text-sm text-[#7f85a3]">or continue with</span>
         <span class="h-px flex-1 bg-[#414868]"></span>
       </section>
 
-      <!-- Optional social-style buttons for layout only -->
       <section class="grid grid-cols-3 gap-3">
         <button
           type="button"
-          class="rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
         >
           Google
         </button>
         <button
           type="button"
-          class="rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
         >
           Apple
         </button>
         <button
           type="button"
-          class="rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
         >
           Microsoft
         </button>
       </section>
 
-      <!-- Register link -->
       <p class="mt-8 text-center text-sm text-[#8b93b8]">
         New user?
         <a

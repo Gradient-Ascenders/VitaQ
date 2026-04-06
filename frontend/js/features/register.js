@@ -11,7 +11,7 @@ const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
 
 // Existing shared Supabase client
-const supabase = window.supabaseClient;
+const supabaseClient = window.supabaseClient;
 
 // Show a top-level message
 function showMessage(message, type = "error") {
@@ -96,7 +96,7 @@ registerForm.addEventListener("submit", async function (e) {
   registerButton.disabled = true;
   registerButton.textContent = "Creating account...";
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
   });

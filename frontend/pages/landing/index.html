@@ -67,10 +67,12 @@
           />
         </a>
 
-        <nav class="hidden items-center gap-8 text-sm font-medium text-[#a9b1d6] md:flex">
-          <a href="#features" class="transition hover:text-[#7aa2f7]">Features</a>
-          <a href="#how-it-works" class="transition hover:text-[#7aa2f7]">How it works</a>
-          <a href="#why-vitaq" class="transition hover:text-[#7aa2f7]">Why VitaQ</a>
+        <nav aria-label="Primary" class="hidden md:flex">
+          <ul class="flex items-center gap-8 text-sm font-medium text-[#a9b1d6]">
+            <li><a href="#features" class="transition hover:text-[#7aa2f7]">Features</a></li>
+            <li><a href="#how-it-works" class="transition hover:text-[#7aa2f7]">How it works</a></li>
+            <li><a href="#why-vitaq" class="transition hover:text-[#7aa2f7]">Why VitaQ</a></li>
+          </ul>
         </nav>
 
         <div class="flex items-center gap-3">
@@ -126,33 +128,33 @@
             </a>
           </div>
 
-          <div class="mt-10 grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-3">
-            <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+          <ul class="mt-10 grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-3">
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
               <p class="text-2xl font-bold text-[#e0e5ff]">24/7</p>
               <p class="mt-1 text-sm text-[#8b93b8]">Appointment access</p>
-            </div>
+            </li>
 
-            <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
               <p class="text-2xl font-bold text-[#e0e5ff]">Live</p>
               <p class="mt-1 text-sm text-[#8b93b8]">Queue visibility</p>
-            </div>
+            </li>
 
-            <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
               <p class="text-2xl font-bold text-[#e0e5ff]">Fast</p>
               <p class="mt-1 text-sm text-[#8b93b8]">Clinic search</p>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
 
         <!-- Right visual -->
         <div class="relative flex min-h-[560px] items-center justify-center lg:min-h-[680px]">
           <div class="relative h-[520px] w-full max-w-[620px] lg:h-[640px]">
             <!-- Glow -->
-            <div class="absolute bottom-[8%] right-[10%] h-56 w-56 rounded-full bg-[#e0af68]/18 blur-3xl"></div>
-            <div class="absolute bottom-[18%] right-[24%] h-44 w-44 rounded-full bg-[#7aa2f7]/12 blur-3xl"></div>
+            <div class="absolute bottom-[8%] right-[10%] h-56 w-56 rounded-full bg-[#e0af68]/18 blur-3xl" aria-hidden="true"></div>
+            <div class="absolute bottom-[18%] right-[24%] h-44 w-44 rounded-full bg-[#7aa2f7]/12 blur-3xl" aria-hidden="true"></div>
 
             <!-- Layered geometric panels -->
-            <div class="absolute inset-0 flex items-end justify-end">
+            <div class="absolute inset-0 flex items-end justify-end" aria-hidden="true">
               <div class="relative h-full w-full">
                 <div class="absolute bottom-0 right-0 h-[78%] w-[62%] rounded-tl-[2.75rem] bg-[#e0af68]/8 animate-float-slow"></div>
                 <div class="absolute bottom-[3%] right-[6%] h-[72%] w-[58%] rounded-tl-[2.5rem] bg-[#e0af68]/10 animate-float-slow" style="animation-delay: 200ms;"></div>
@@ -166,43 +168,43 @@
             </div>
 
             <!-- Floating info cards -->
-            <div class="absolute left-[3%] top-[12%] w-64 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+            <aside class="absolute left-[3%] top-[12%] w-64 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
               <p class="text-sm font-medium text-[#7dcfff]">Nearest clinics</p>
-              <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Find care near you</h3>
+              <h2 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Find care near you</h2>
               <p class="mt-2 text-sm leading-6 text-[#a9b1d6]">
                 Search by province, district, and facility type to quickly locate the right clinic.
               </p>
-            </div>
+            </aside>
 
-            <div class="absolute bottom-[9%] left-[12%] w-72 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+            <aside class="absolute bottom-[9%] left-[12%] w-72 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
               <p class="text-sm font-medium text-[#bb9af7]">Live status</p>
-              <div class="mt-3 space-y-3">
-                <div class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+              <ul class="mt-3 space-y-3">
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
                   <span class="text-sm text-[#c0caf5]">Queue position</span>
                   <span class="text-sm font-semibold text-[#e0e5ff]">#04</span>
-                </div>
-                <div class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+                </li>
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
                   <span class="text-sm text-[#c0caf5]">Estimated wait</span>
                   <span class="text-sm font-semibold text-[#e0e5ff]">18 mins</span>
-                </div>
-                <div class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+                </li>
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
                   <span class="text-sm text-[#c0caf5]">Booking status</span>
                   <span class="text-sm font-semibold text-[#9ece6a]">Confirmed</span>
-                </div>
-              </div>
-            </div>
+                </li>
+              </ul>
+            </aside>
           </div>
         </div>
       </section>
 
       <!-- Features -->
-      <section id="features" class="relative z-10 border-t border-[#2a2f45]">
+      <section id="features" class="relative z-10 border-t border-[#2a2f45]" aria-labelledby="features-heading">
         <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
           <div class="max-w-2xl">
             <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
               Core features
             </p>
-            <h2 class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+            <h2 id="features-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
               Everything patients need in one clear flow
             </h2>
           </div>
@@ -252,64 +254,64 @@
       </section>
 
       <!-- How it works -->
-      <section id="how-it-works" class="relative z-10">
+      <section id="how-it-works" class="relative z-10" aria-labelledby="how-it-works-heading">
         <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
           <div class="grid gap-8 lg:grid-cols-2">
             <div>
               <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
                 How it works
               </p>
-              <h2 class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+              <h2 id="how-it-works-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
                 From search to confirmation in a few simple steps
               </h2>
             </div>
 
-            <div class="grid gap-4">
-              <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+            <ol class="grid gap-4">
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
                 <p class="text-sm font-semibold text-[#7aa2f7]">Step 1</p>
                 <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Create your account</h3>
                 <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
                   Register securely and access your dashboard in seconds.
                 </p>
-              </div>
+              </li>
 
-              <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
                 <p class="text-sm font-semibold text-[#7dcfff]">Step 2</p>
                 <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Find a clinic</h3>
                 <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
                   Search by province, district, and facility type to find suitable care.
                 </p>
-              </div>
+              </li>
 
-              <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
                 <p class="text-sm font-semibold text-[#bb9af7]">Step 3</p>
                 <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Book a time slot</h3>
                 <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
                   Select an available appointment and confirm instantly.
                 </p>
-              </div>
+              </li>
 
-              <div class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
                 <p class="text-sm font-semibold text-[#9ece6a]">Step 4</p>
                 <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Track your visit</h3>
                 <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
                   View status updates and estimated wait times before your turn arrives.
                 </p>
-              </div>
-            </div>
+              </li>
+            </ol>
           </div>
         </div>
       </section>
 
       <!-- CTA -->
-      <section id="why-vitaq" class="relative z-10 border-t border-[#2a2f45]">
+      <section id="why-vitaq" class="relative z-10 border-t border-[#2a2f45]" aria-labelledby="why-vitaq-heading">
         <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
           <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.14),rgba(187,154,247,0.10),rgba(36,40,59,0.92))] p-8 shadow-2xl shadow-black/10 md:p-12">
             <div class="max-w-3xl">
               <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
                 Ready to begin?
               </p>
-              <h2 class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+              <h2 id="why-vitaq-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
                 A calmer, clearer clinic experience starts here.
               </h2>
               <p class="mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">

@@ -5,10 +5,10 @@
   "main": "backend/src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css",
-    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css --watch",
-    "start:backend": "node backend/server.js"
-    "start": "node backend/src/server.js",
+    "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css",
+    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css --watch",
+    "start:backend": "node backend/server.js",
+    "start": "node backend/src/server.js"
   },
   "repository": {
     "type": "git",

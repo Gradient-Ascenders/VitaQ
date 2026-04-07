@@ -1,14 +1,15 @@
 {
   "name": "vitaq",
   "version": "1.0.0",
-  "description": "VitaQ is a web-based Community Clinic Appointment & Queue System designed to improve patient flow in public health clinics.",
-  "main": "backend/src/server.js",
+  "description": "**VitaQ** is a web-based **Community Clinic Appointment & Queue System** designed to improve patient flow in public health clinics. It helps patients book appointments, join virtual queues remotely, and receive real-time updates, while giving clinic staff tools to manage queues and appointments more efficiently.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css",
-    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./assets/css/output.css --watch",
-    "start:backend": "node backend/server.js"
-    "start": "node backend/src/server.js",
+    "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css",
+    "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css --watch"
   },
   "repository": {
     "type": "git",
@@ -22,17 +23,8 @@
     "url": "https://github.com/Gradient-Ascenders/VitaQ/issues"
   },
   "homepage": "https://github.com/Gradient-Ascenders/VitaQ#readme",
-  "engines": {
-    "node": "24.x"
-  },
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.2",
     "tailwindcss": "^4.2.2"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.101.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.1",
-    "express": "^5.2.1"
   }
 }

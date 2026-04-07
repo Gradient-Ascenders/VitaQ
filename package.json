@@ -9,7 +9,6 @@
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "build": "npm run tw:build",
     "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css",
     "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css --watch"
   },

@@ -1,4 +1,4 @@
-const { supabase } = require('../lib/supabaseClient');
+const supabase = require('../lib/supabaseClient');
 
 /**
  * Middleware that protects backend routes.

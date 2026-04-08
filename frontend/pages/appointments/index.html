@@ -3,19 +3,107 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Appointments</title>
+  <title>My Appointments | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
 </head>
-<body>
-  <header>
-    <h1>Clinic Queue System</h1>
+<body class="min-h-screen bg-slate-950 text-white">
+  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
+      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+
+      <ul class="flex items-center gap-3 text-sm font-medium">
+        <li>
+          <a
+            href="/dashboard"
+            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
+          >
+            Dashboard
+          </a>
+        </li>
+        <li>
+          <a
+            href="/clinics"
+            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+          >
+            Find Clinics
+          </a>
+        </li>
+        <li>
+          <button
+            id="logoutButton"
+            type="button"
+            class="rounded-full border border-red-300/30 bg-red-400/15 px-4 py-2 text-red-200 transition hover:bg-red-400/25"
+          >
+            Logout
+          </button>
+        </li>
+      </ul>
+    </nav>
   </header>
 
-  <main>
-    <h2>Appointments</h2>
-    <p>This is the appointments page.</p>
-    <p><a href="/login">Login</a></p>
-    <p><a href="/register">Register</a></p>
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-blue-300">
+        Appointment Tracker
+      </p>
+
+      <h1 class="text-4xl font-bold tracking-tight text-white">
+        My Appointments
+      </h1>
+
+      <p class="mt-3 max-w-3xl text-slate-300">
+        View your booked clinic appointments, check their date and time, and keep track of the current status of each visit.
+      </p>
+    </section>
+
+    <section class="mt-8 flex items-center justify-between">
+      <h2 class="text-2xl font-semibold text-white">Appointment History</h2>
+      <p id="appointmentsCount" class="text-sm text-slate-400">Loading appointments...</p>
+    </section>
+
+    <section
+      id="loadingState"
+      class="mt-6 rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/10 px-6 py-5 text-cyan-200"
+      aria-live="polite"
+    >
+      Loading your appointments...
+    </section>
+
+    <section
+      id="errorState"
+      class="mt-6 hidden rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-6 py-5 text-red-200"
+      aria-live="polite"
+    ></section>
+
+    <section
+      id="emptyState"
+      class="mt-6 hidden rounded-[1.75rem] border border-white/10 bg-white/5 px-6 py-8 text-center"
+      aria-live="polite"
+    >
+      <h3 class="text-xl font-semibold text-white">No appointments yet</h3>
+      <p class="mt-2 text-slate-400">
+        You have not booked any appointments yet. Search for a clinic to get started.
+      </p>
+      <a
+        href="/clinics"
+        class="mt-6 inline-flex rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+      >
+        Find a Clinic
+      </a>
+    </section>
+
+    <section id="appointmentsList" class="mt-6 grid gap-5" aria-label="Patient appointments"></section>
   </main>
+
+  <footer class="border-t border-white/10 bg-slate-950/90">
+    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
+      Community Clinic Appointment &amp; Queue System
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/appointments.js"></script>
 </body>
 </html>

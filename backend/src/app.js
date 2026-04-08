@@ -2,8 +2,10 @@
 const express = require('express');
 const cors = require('cors');
 
-// Import the clinics route module
+// Import route modules
 const clinicsRoutes = require('./modules/clinics/clinics.routes');
+const slotRoutes = require('./modules/slots/slot.routes');
+const appointmentsRoutes = require('./modules/appointments/appointments.routes');
 
 // Create the Express application
 const app = express();
@@ -22,9 +24,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount the clinics route module at /api/clinics
+// Mount the clinics route module
 // Example: GET /api/clinics
 app.use('/api/clinics', clinicsRoutes);
+
+// Mount the slot route module
+// Example: GET /api/clinics/:clinicId/slots
+app.use('/api/clinics', slotRoutes);
+
+// Mount the appointments route module
+// Example: POST /api/appointments
+app.use('/api/appointments', appointmentsRoutes);
 
 // Export the app so server.js can run it
 module.exports = app;

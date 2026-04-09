@@ -3,19 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clinic</title>
+  <title>Clinic Details | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/clinic-details.js"></script>
 </head>
-<body>
-  <header>
-    <h1>Clinic Queue System</h1>
+<body class="min-h-screen bg-slate-950 text-white">
+  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
+      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+
+      <ul class="flex items-center gap-3 text-sm font-medium">
+        <li>
+          <a
+            href="/dashboard"
+            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
+          >
+            Dashboard
+          </a>
+        </li>
+        <li>
+          <a
+            href="/clinics"
+            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+          >
+            Back to Clinics
+          </a>
+        </li>
+        <li>
+          <a
+            href="/login"
+            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+          >
+            Logout
+          </a>
+        </li>
+      </ul>
+    </nav>
   </header>
 
-  <main>
-    <h2>Clinic Page</h2>
-    <p>This is the clinic page.</p>
-    <p><a href="/login">Login</a></p>
-    <p><a href="/register">Register</a></p>
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
+        Clinic Details
+      </p>
+
+      <h1 class="text-4xl font-bold tracking-tight text-white">
+        View Clinic and Slots
+      </h1>
+
+      <p class="mt-3 max-w-3xl text-slate-300">
+        Review clinic information and choose an available appointment slot.
+      </p>
+    </section>
+
+    <section
+      id="loadingState"
+      class="mt-8 rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/10 px-6 py-5 text-cyan-200"
+      aria-live="polite"
+    >
+      Loading clinic details...
+    </section>
+
+    <section
+      id="errorState"
+      class="mt-8 hidden rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-6 py-5 text-red-200"
+      aria-live="polite"
+    >
+      We could not load this clinic right now. Please try again.
+    </section>
+
+    <section
+      id="clinicContent"
+      class="hidden"
+    >
+      <section class="mt-8 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <section>
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Clinic</p>
+            <h2 id="clinicName" class="mt-2 text-3xl font-bold text-white"></h2>
+            <p id="clinicAddress" class="mt-3 text-slate-300"></p>
+          </section>
+
+          <section class="grid gap-3 sm:grid-cols-2 lg:w-[28rem]">
+            <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Province</p>
+              <p id="clinicProvince" class="mt-2 text-base font-medium text-white"></p>
+            </article>
+
+            <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p class="text-xs uppercase tracking-[0.2em] text-slate-400">District / Area</p>
+              <p id="clinicDistrictArea" class="mt-2 text-base font-medium text-white"></p>
+            </article>
+
+            <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 sm:col-span-2">
+              <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Facility Type</p>
+              <p id="clinicFacilityType" class="mt-2 text-base font-medium text-white"></p>
+            </article>
+          </section>
+        </div>
+
+        <section class="mt-6">
+          <h3 class="text-xl font-semibold text-white">Services Offered</h3>
+          <div id="clinicServices" class="mt-4 flex flex-wrap gap-3"></div>
+        </section>
+      </section>
+
+      <section class="mt-8 flex items-center justify-between">
+        <h2 class="text-2xl font-semibold text-white">Available Slots</h2>
+        <p id="slotsCount" class="text-sm text-slate-400"></p>
+      </section>
+
+      <section
+        id="slotsEmptyState"
+        class="mt-6 hidden rounded-[1.75rem] border border-white/10 bg-white/5 px-6 py-8 text-center"
+        aria-live="polite"
+      >
+        <h3 class="text-xl font-semibold text-white">No appointment slots currently available</h3>
+        <p class="mt-2 text-slate-400">
+          Please check again later or choose a different clinic.
+        </p>
+      </section>
+
+      <section id="slotsList" class="mt-6 grid gap-5"></section>
+    </section>
   </main>
+
+  <footer class="border-t border-white/10 bg-slate-950/90">
+    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
+      Community Clinic Appointment &amp; Queue System
+    </p>
+  </footer>
 </body>
 </html>

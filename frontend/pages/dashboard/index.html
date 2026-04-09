@@ -3,19 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
+  <title>Dashboard | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
 </head>
-<body>
-  <header>
-    <h1>Clinic Queue System</h1>
+<body class="min-h-screen bg-slate-950 text-white">
+  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
+      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+
+      <ul class="flex items-center gap-3 text-sm font-medium">
+        <li>
+          <a
+            href="/dashboard"
+            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
+          >
+            Dashboard
+          </a>
+        </li>
+        <li>
+          <a
+            href="/login"
+            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+          >
+            Logout
+          </a>
+        </li>
+      </ul>
+    </nav>
   </header>
 
-  <main>
-    <h2>Dashboard</h2>
-    <p>This is the dashboard.</p>
-    <p><a href="/login">Login</a></p>
-    <p><a href="/register">Register</a></p>
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
+        Patient Portal
+      </p>
+
+      <h1 class="text-4xl font-bold tracking-tight text-white">
+        Patient Dashboard
+      </h1>
+
+      <p class="mt-3 max-w-2xl text-slate-300">
+        Welcome back,
+        <strong id="patientName" class="font-semibold text-cyan-300">Patient</strong>.
+        Manage your clinic visits, check available clinics, and keep track of your appointments in one place.
+      </p>
+    </section>
+
+    <section class="mt-8 grid gap-6 md:grid-cols-3" aria-label="Dashboard actions">
+      <article class="rounded-[1.75rem] border border-cyan-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+          Clinics
+        </p>
+        <h2 class="mt-3 text-2xl font-semibold text-white">
+          Search Clinics
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-300">
+          Search for nearby clinics, filter by province or facility type, and view available appointment slots.
+        </p>
+        <a
+          href="/clinics"
+          class="mt-6 inline-flex rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+        >
+          Go to Clinics
+        </a>
+      </article>
+
+      <article class="rounded-[1.75rem] border border-blue-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
+          Appointments
+        </p>
+        <h2 class="mt-3 text-2xl font-semibold text-white">
+          My Appointments
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-300">
+          View your booked appointments, check dates and times, and track your current appointment status.
+        </p>
+        <a
+          href="/appointments"
+          class="mt-6 inline-flex rounded-full border border-blue-300/30 bg-blue-400/15 px-5 py-3 text-sm font-semibold text-blue-200 transition hover:bg-blue-400/25"
+        >
+          View Appointments
+        </a>
+      </article>
+
+      <article class="rounded-[1.75rem] border border-red-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-red-300">
+          Session
+        </p>
+        <h2 class="mt-3 text-2xl font-semibold text-white">
+          Logout
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-300">
+          Sign out of your account securely and return to the login page when you are done.
+        </p>
+        <a
+          href="/login"
+          class="mt-6 inline-flex rounded-full border border-red-300/30 bg-red-400/15 px-5 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-400/25"
+        >
+          Logout
+        </a>
+      </article>
+    </section>
   </main>
+
+  <footer class="border-t border-white/10 bg-slate-950/90">
+    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
+      Community Clinic Appointment &amp; Queue System
+    </p>
+  </footer>
 </body>
 </html>

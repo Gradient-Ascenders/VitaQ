@@ -1,13 +1,7 @@
-import express from "express";
-import { fetchClinicSlots } from "./slot.controller.js";
-
+const express = require('express');
 const router = express.Router();
+const { fetchClinicSlots } = require('./slot.controller');
 
-/**
- * GET /api/clinics/:clinicId/slots
- *
- * Returns all available future appointment slots for a specific clinic.
- */
 router.get('/:clinicId/slots', fetchClinicSlots);
 
-export default router;
+module.exports = router;

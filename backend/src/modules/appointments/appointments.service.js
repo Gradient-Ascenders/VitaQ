@@ -1,4 +1,4 @@
-const { supabase } = require('../../lib/supabaseClient');
+const supabase = require('../../lib/supabaseClient');
 
 /**
  * Creates a standard error object with an attached HTTP status code.
@@ -153,6 +153,42 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
   };
 }
 
+async function fetchAppointmentsByPatientId(patientId) {
+  if (!patientId) {
+    throw createServiceError('patient_id is required.', 400);
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .select(`
+      id,
+      status,
+      created_at,
+      clinic:clinics (
+        name,
+        address,
+        province,
+        district,
+        area,
+        facility_type
+      ),
+      slot:appointment_slots (
+        date,
+        start_time,
+        end_time
+      )
+    `)
+    .eq('patient_id', patientId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw createServiceError('Failed to fetch patient appointments.', 500);
+  }
+
+  return data || [];
+}
+
 module.exports = {
-  createAppointmentBooking
+  createAppointmentBooking,
+  fetchAppointmentsByPatientId
 };

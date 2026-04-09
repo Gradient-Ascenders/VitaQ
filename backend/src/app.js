@@ -1,6 +1,6 @@
-// Import required packages
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // Import route modules
 const clinicsRoutes = require('./modules/clinics/clinics.routes');
@@ -10,13 +10,22 @@ const appointmentsRoutes = require('./modules/appointments/appointments.routes')
 // Create the Express application
 const app = express();
 
-// Enable CORS so the frontend can make requests to the backend
+// Root/frontend paths
+const rootDir = path.join(__dirname, '..', '..');
+const frontendDir = path.join(rootDir, 'frontend');
+
+// Enable CORS
 app.use(cors());
 
-// Allow the backend to read JSON request bodies
+// Allow JSON request bodies
 app.use(express.json());
 
-// Simple health-check route to confirm the backend is running
+// Serve frontend static files
+app.use('/assets', express.static(path.join(frontendDir, 'assets')));
+app.use('/js', express.static(path.join(frontendDir, 'js')));
+app.use('/lib', express.static(path.join(frontendDir, 'lib')));
+
+// Simple health-check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -24,17 +33,31 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount the clinics route module
-// Example: GET /api/clinics
+// API routes
 app.use('/api/clinics', clinicsRoutes);
-
-// Mount the slot route module
-// Example: GET /api/clinics/:clinicId/slots
 app.use('/api/clinics', slotRoutes);
-
-// Mount the appointments route module
-// Example: POST /api/appointments
 app.use('/api/appointments', appointmentsRoutes);
 
-// Export the app so server.js can run it
+// Helper to serve page files
+function sendPage(pageFolder) {
+  return (req, res) => {
+    res.sendFile(path.join(frontendDir, 'pages', pageFolder, 'index.html'));
+  };
+}
+
+// Frontend page routes
+app.get('/', sendPage('landing'));
+app.get('/register', sendPage('register'));
+app.get('/login', sendPage('login'));
+app.get('/dashboard', sendPage('dashboard'));
+app.get('/clinics', sendPage('clinics'));
+app.get('/clinic/:id', sendPage('clinic'));
+app.get('/booking-confirmation', sendPage('booking-confirmation'));
+app.get('/appointments', sendPage('appointments'));
+
+// Final 404 fallback
+app.use((req, res) => {
+  res.status(404).send('404 Not Found');
+});
+
 module.exports = app;

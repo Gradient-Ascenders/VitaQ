@@ -3,19 +3,349 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Landing</title>
-  <link rel="stylesheet" href="/assets/css/output.css" />
-</head>
-<body>
-  <header>
-    <h1>Clinic Queue System</h1>
-  </header>
+  <title>VitaQ | Community Clinic Appointment & Queue System</title>
+  <link rel="stylesheet" href="../../assets/css/output.css" />
 
-  <main>
-    <h2>Landing Page</h2>
-    <p>This is the landing page.</p>
-    <p><a href="/login">Login</a></p>
-    <p><a href="/register">Register</a></p>
-  </main>
+  <style>
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-14px); }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-float-slow {
+      animation: floatSlow 7s ease-in-out infinite;
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
+</head>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <!-- Background -->
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
+
+      <div class="absolute left-[8%] top-[14%] h-56 w-56 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[28%] h-48 w-48 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[10%] top-[18%] h-64 w-64 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/" aria-label="Go to home page" class="flex items-center gap-3">
+          <img
+            src="../../assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="h-14 w-auto object-contain md:h-16 lg:h-20"
+          />
+        </a>
+
+        <nav aria-label="Primary" class="hidden md:flex">
+          <ul class="flex items-center gap-8 text-sm font-medium text-[#a9b1d6]">
+            <li><a href="#features" class="transition hover:text-[#7aa2f7]">Features</a></li>
+            <li><a href="#how-it-works" class="transition hover:text-[#7aa2f7]">How it works</a></li>
+            <li><a href="#why-vitaq" class="transition hover:text-[#7aa2f7]">Why VitaQ</a></li>
+          </ul>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <a
+            href="/login"
+            class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          >
+            Login
+          </a>
+          <a
+            href="/register"
+            class="rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-4 py-2.5 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+          >
+            Register
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <main class="relative z-10">
+      <section class="mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-14 px-6 pb-14 pt-8 md:px-8 lg:grid-cols-2 lg:px-10 lg:pb-20 lg:pt-10">
+        <!-- Left content -->
+        <div class="max-w-2xl">
+          <p class="animate-fade-up text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+            Smarter clinic access. Shorter waits.
+          </p>
+
+          <h1 class="animate-fade-up-delay mt-6 text-5xl font-bold leading-[1.02] text-[#e0e5ff] sm:text-6xl lg:text-7xl">
+            Book appointments.
+            <span class="block text-[#7aa2f7]">Track queues.</span>
+            <span class="block text-[#c0caf5]">Move care forward.</span>
+          </h1>
+
+          <p class="mt-6 max-w-xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+            VitaQ helps patients find clinics, book available slots, and stay updated
+            on wait times with a simple, modern experience built for community healthcare.
+          </p>
+
+          <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+            <a
+              href="/register"
+              class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+            >
+              Get started
+            </a>
+
+            <a
+              href="/login"
+              class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+            >
+              Login
+            </a>
+          </div>
+
+          <ul class="mt-10 grid max-w-xl grid-cols-1 gap-4 sm:grid-cols-3">
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-2xl font-bold text-[#e0e5ff]">24/7</p>
+              <p class="mt-1 text-sm text-[#8b93b8]">Appointment access</p>
+            </li>
+
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-2xl font-bold text-[#e0e5ff]">Live</p>
+              <p class="mt-1 text-sm text-[#8b93b8]">Queue visibility</p>
+            </li>
+
+            <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-2xl font-bold text-[#e0e5ff]">Fast</p>
+              <p class="mt-1 text-sm text-[#8b93b8]">Clinic search</p>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Right visual -->
+        <div class="relative flex min-h-[560px] items-center justify-center lg:min-h-[680px]">
+          <div class="relative h-[520px] w-full max-w-[620px] lg:h-[640px]">
+            <!-- Glow -->
+            <div class="absolute bottom-[8%] right-[10%] h-56 w-56 rounded-full bg-[#e0af68]/18 blur-3xl" aria-hidden="true"></div>
+            <div class="absolute bottom-[18%] right-[24%] h-44 w-44 rounded-full bg-[#7aa2f7]/12 blur-3xl" aria-hidden="true"></div>
+
+            <!-- Layered geometric panels -->
+            <div class="absolute inset-0 flex items-end justify-end" aria-hidden="true">
+              <div class="relative h-full w-full">
+                <div class="absolute bottom-0 right-0 h-[78%] w-[62%] rounded-tl-[2.75rem] bg-[#e0af68]/8 animate-float-slow"></div>
+                <div class="absolute bottom-[3%] right-[6%] h-[72%] w-[58%] rounded-tl-[2.5rem] bg-[#e0af68]/10 animate-float-slow" style="animation-delay: 200ms;"></div>
+                <div class="absolute bottom-[6%] right-[12%] h-[66%] w-[54%] rounded-tl-[2.25rem] bg-[#e0af68]/12 animate-float-slow" style="animation-delay: 400ms;"></div>
+                <div class="absolute bottom-[9%] right-[18%] h-[60%] w-[50%] rounded-tl-[2rem] bg-[#e0af68]/14 animate-float-slow" style="animation-delay: 600ms;"></div>
+                <div class="absolute bottom-[12%] right-[24%] h-[54%] w-[46%] rounded-tl-[1.75rem] bg-[#e0af68]/16 animate-float-slow" style="animation-delay: 800ms;"></div>
+                <div class="absolute bottom-[15%] right-[30%] h-[48%] w-[42%] rounded-tl-[1.5rem] bg-[#e0af68]/18 animate-float-slow" style="animation-delay: 1000ms;"></div>
+                <div class="absolute bottom-[18%] right-[36%] h-[42%] w-[38%] rounded-tl-[1.25rem] bg-[#e0af68]/20 animate-float-slow" style="animation-delay: 1200ms;"></div>
+                <div class="absolute bottom-[21%] right-[42%] h-[36%] w-[34%] rounded-tl-[1rem] bg-[#e0af68]/24 animate-float-slow" style="animation-delay: 1400ms;"></div>
+              </div>
+            </div>
+
+            <!-- Floating info cards -->
+            <aside class="absolute left-[3%] top-[12%] w-64 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+              <p class="text-sm font-medium text-[#7dcfff]">Nearest clinics</p>
+              <h2 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Find care near you</h2>
+              <p class="mt-2 text-sm leading-6 text-[#a9b1d6]">
+                Search by province, district, and facility type to quickly locate the right clinic.
+              </p>
+            </aside>
+
+            <aside class="absolute bottom-[9%] left-[12%] w-72 rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+              <p class="text-sm font-medium text-[#bb9af7]">Live status</p>
+              <ul class="mt-3 space-y-3">
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+                  <span class="text-sm text-[#c0caf5]">Queue position</span>
+                  <span class="text-sm font-semibold text-[#e0e5ff]">#04</span>
+                </li>
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+                  <span class="text-sm text-[#c0caf5]">Estimated wait</span>
+                  <span class="text-sm font-semibold text-[#e0e5ff]">18 mins</span>
+                </li>
+                <li class="flex items-center justify-between rounded-2xl bg-[#24283b]/90 px-4 py-3">
+                  <span class="text-sm text-[#c0caf5]">Booking status</span>
+                  <span class="text-sm font-semibold text-[#9ece6a]">Confirmed</span>
+                </li>
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="relative z-10 border-t border-[#2a2f45]" aria-labelledby="features-heading">
+        <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
+          <div class="max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+              Core features
+            </p>
+            <h2 id="features-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+              Everything patients need in one clear flow
+            </h2>
+          </div>
+
+          <div class="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+              <div class="mb-4 inline-flex rounded-2xl bg-[#7aa2f7]/15 px-3 py-2 text-sm font-semibold text-[#7aa2f7]">
+                01
+              </div>
+              <h3 class="text-xl font-semibold text-[#e0e5ff]">Clinic search</h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                Browse clinics by area, facility type, and services without confusion.
+              </p>
+            </article>
+
+            <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+              <div class="mb-4 inline-flex rounded-2xl bg-[#7dcfff]/15 px-3 py-2 text-sm font-semibold text-[#7dcfff]">
+                02
+              </div>
+              <h3 class="text-xl font-semibold text-[#e0e5ff]">Appointment booking</h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                View available slots and book visits through a clean, guided experience.
+              </p>
+            </article>
+
+            <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+              <div class="mb-4 inline-flex rounded-2xl bg-[#bb9af7]/15 px-3 py-2 text-sm font-semibold text-[#bb9af7]">
+                03
+              </div>
+              <h3 class="text-xl font-semibold text-[#e0e5ff]">Queue tracking</h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                Get live updates on your place in line and your estimated waiting time.
+              </p>
+            </article>
+
+            <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+              <div class="mb-4 inline-flex rounded-2xl bg-[#9ece6a]/15 px-3 py-2 text-sm font-semibold text-[#9ece6a]">
+                04
+              </div>
+              <h3 class="text-xl font-semibold text-[#e0e5ff]">Patient updates</h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                Stay informed with booking confirmations and status notifications.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section id="how-it-works" class="relative z-10" aria-labelledby="how-it-works-heading">
+        <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
+          <div class="grid gap-8 lg:grid-cols-2">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                How it works
+              </p>
+              <h2 id="how-it-works-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+                From search to confirmation in a few simple steps
+              </h2>
+            </div>
+
+            <ol class="grid gap-4">
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+                <p class="text-sm font-semibold text-[#7aa2f7]">Step 1</p>
+                <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Create your account</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Register securely and access your dashboard in seconds.
+                </p>
+              </li>
+
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+                <p class="text-sm font-semibold text-[#7dcfff]">Step 2</p>
+                <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Find a clinic</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Search by province, district, and facility type to find suitable care.
+                </p>
+              </li>
+
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+                <p class="text-sm font-semibold text-[#bb9af7]">Step 3</p>
+                <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Book a time slot</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Select an available appointment and confirm instantly.
+                </p>
+              </li>
+
+              <li class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-5">
+                <p class="text-sm font-semibold text-[#9ece6a]">Step 4</p>
+                <h3 class="mt-1 text-lg font-semibold text-[#e0e5ff]">Track your visit</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  View status updates and estimated wait times before your turn arrives.
+                </p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section id="why-vitaq" class="relative z-10 border-t border-[#2a2f45]" aria-labelledby="why-vitaq-heading">
+        <div class="mx-auto max-w-7xl px-6 py-20 md:px-8 lg:px-10">
+          <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.14),rgba(187,154,247,0.10),rgba(36,40,59,0.92))] p-8 shadow-2xl shadow-black/10 md:p-12">
+            <div class="max-w-3xl">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Ready to begin?
+              </p>
+              <h2 id="why-vitaq-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+                A calmer, clearer clinic experience starts here.
+              </h2>
+              <p class="mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+                Join VitaQ to book appointments faster, reduce uncertainty, and stay connected to your clinic journey.
+              </p>
+
+              <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+                <a
+                  href="/register"
+                  class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+                >
+                  Create account
+                </a>
+
+                <a
+                  href="/login"
+                  class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/80 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+                >
+                  Sign in
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>

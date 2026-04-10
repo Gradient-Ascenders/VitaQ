@@ -81,7 +81,7 @@ function renderSlots(slots, clinic) {
 
   slots.forEach((slot) => {
     const availability = Math.max((slot.capacity || 0) - (slot.booked_count || 0), 0);
-    const isAvailable = availability > 0 && slot.status !== 'cancelled';
+    const isAvailable = availability > 0 && slot.status === 'available';
 
     const slotCard = document.createElement('article');
     slotCard.className =

@@ -1,8 +1,6 @@
-// This file contains shared authentication helpers that can be reused
-// across protected pages. The goal is to keep login, logout, and access
-// control behaviour consistent throughout the Sprint 1 flow.
+// Shared authentication helpers for VitaQ protected and public pages.
 
-// This signs the user out and returns them to the login page.
+// Signs the user out and sends them back to the login page.
 async function logoutUser() {
   if (!window.supabaseClient) {
     console.error("Supabase client is not available.");
@@ -11,7 +9,7 @@ async function logoutUser() {
   }
 
   try {
-    const { error } = await window.supabaseClient.auth.signOut();
+    const { error } = await window.supabaseClient.auth.signOut({ scope: "global" });
 
     if (error) {
       console.error("Supabase logout error:", error);
@@ -26,7 +24,7 @@ async function logoutUser() {
   }
 }
 
-// This attaches the shared logout behaviour to a specific button or link.
+// Attaches logout behaviour to a button.
 function initialiseLogoutButton(buttonId) {
   const logoutButton = document.getElementById(buttonId);
 
@@ -40,8 +38,7 @@ function initialiseLogoutButton(buttonId) {
   });
 }
 
-// This checks the current session and returns it to the caller.
-// It is useful when a page needs user details after access is confirmed.
+// Returns the current Supabase session.
 async function getCurrentSession() {
   if (!window.supabaseClient) {
     throw new Error("Supabase client is not available.");
@@ -56,8 +53,8 @@ async function getCurrentSession() {
   return data.session;
 }
 
-// This helper should be called on protected pages.
-// If there is no active session, the user is redirected to /login.
+// Use this on protected pages.
+// If no session exists, redirect to /login.
 async function requireAuthenticatedUser() {
   try {
     const session = await getCurrentSession();
@@ -71,6 +68,24 @@ async function requireAuthenticatedUser() {
   } catch (error) {
     console.error("Protected page session check failed:", error);
     window.location.href = "/login";
+    return null;
+  }
+}
+
+// Use this on public auth pages like /login and /register.
+// If a session already exists, redirect to /dashboard.
+async function redirectIfAuthenticated() {
+  try {
+    const session = await getCurrentSession();
+
+    if (session) {
+      window.location.href = "/dashboard";
+      return session;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Public page session check failed:", error);
     return null;
   }
 }

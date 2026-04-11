@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clinic Details | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/lib/supabaseClient.js"></script>
-  <script src="/js/shared/auth.js"></script>
-  <script src="/js/features/clinic-details.js"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-white">
   <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
@@ -33,12 +29,13 @@
           </a>
         </li>
         <li>
-          <a
-            href="/login"
+          <button
+            id="logoutButton"
+            type="button"
             class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
           >
             Logout
-          </a>
+          </button>
         </li>
       </ul>
     </nav>
@@ -136,5 +133,14 @@
       Community Clinic Appointment &amp; Queue System
     </p>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/clinic-details.js"></script>
+  <script>
+    requireAuthenticatedUser();
+    initialiseLogoutButton('logoutButton');
+  </script>
 </body>
 </html>

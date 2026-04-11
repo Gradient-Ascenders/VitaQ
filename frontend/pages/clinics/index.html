@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Find a Clinic | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
-  <script src="/js/features/clinics.js" defer></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-white">
   <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
@@ -22,12 +21,13 @@
           </a>
         </li>
         <li>
-          <a
-            href="/login"
+          <button
+            id="logoutButton"
+            type="button"
             class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
           >
             Logout
-          </a>
+          </button>
         </li>
       </ul>
     </nav>
@@ -60,7 +60,7 @@
             id="searchInput"
             name="search"
             type="text"
-            placeholder="Search by name,area,services"
+            placeholder="Search by name, area, services"
             class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
           />
         </section>
@@ -150,5 +150,14 @@
       Community Clinic Appointment &amp; Queue System
     </p>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/clinics.js"></script>
+  <script>
+    requireAuthenticatedUser();
+    initialiseLogoutButton('logoutButton');
+  </script>
 </body>
 </html>

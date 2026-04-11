@@ -4,11 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login | VitaQ</title>
-  <link rel="stylesheet" href="../../assets/css/output.css" />
+  <link rel="stylesheet" href="/assets/css/output.css" />
 </head>
 <body class="min-h-screen overflow-hidden bg-[#1a1b26] text-[#c0caf5]">
   <main class="relative flex min-h-screen items-center justify-center px-6 py-12">
-    <!-- Static background -->
     <section
       aria-hidden="true"
       class="pointer-events-none absolute inset-0 overflow-hidden"
@@ -20,20 +19,18 @@
       <div class="absolute left-[45%] bottom-[8%] h-44 w-44 animate-pulse rounded-full bg-[#7dcfff]/8 blur-3xl [animation-delay:700ms]"></div>
     </section>
 
-    <!-- Top-left logo -->
     <a
       href="/"
       aria-label="Go to home page"
       class="absolute left-8 top-8 z-20"
     >
       <img
-        src="../../assets/images/vitaq-logo.png"
+        src="/assets/images/vitaq-logo.png"
         alt="VitaQ logo"
         class="h-16 w-auto object-contain md:h-20 lg:h-24"
       />
     </a>
 
-    <!-- Centered auth content -->
     <section class="relative z-10 w-full max-w-sm" aria-labelledby="login-heading">
       <header class="mb-8 text-center">
         <h1
@@ -150,7 +147,11 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../../lib/supabaseClient.js"></script>
-  <script src="../../js/features/login.js"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/login.js"></script>
+  <script>
+    redirectIfAuthenticated();
+  </script>
 </body>
 </html>

@@ -94,9 +94,9 @@ function renderSlots(slots, clinic) {
     const isAvailable = availability > 0 && slot.status === 'available';
 
     const accentStyles = [
-      'from-[#7dcfff]/14 to-transparent border-[#7dcfff]/20',
-      'from-[#7aa2f7]/14 to-transparent border-[#7aa2f7]/20',
-      'from-[#bb9af7]/14 to-transparent border-[#bb9af7]/20'
+      'border-[#7dcfff]/20',
+      'border-[#7aa2f7]/20',
+      'border-[#bb9af7]/20'
     ];
 
     const accentStyle = accentStyles[index % accentStyles.length];
@@ -114,35 +114,37 @@ function renderSlots(slots, clinic) {
 
     slotCard.innerHTML = `
       <section class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <section class="flex flex-col gap-5 sm:flex-row sm:items-stretch lg:flex-1">
-          <article class="min-w-[12rem] rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-            <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Date</p>
-            <p class="mt-3 text-lg font-semibold text-[#e0e5ff]">${formatDate(slot.date)}</p>
-          </article>
-
-          <section class="grid flex-1 gap-4 sm:grid-cols-3">
+        <div class="flex-1">
+          <div class="grid gap-4 md:grid-cols-[1.3fr_1fr]">
             <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-              <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Start</p>
-              <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatTime(slot.start_time)}</p>
+              <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Date</p>
+              <p class="mt-3 text-xl font-semibold text-[#e0e5ff]">${formatDate(slot.date)}</p>
             </article>
 
-            <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-              <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">End</p>
-              <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatTime(slot.end_time)}</p>
-            </article>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
+                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Start</p>
+                <p class="mt-3 text-lg font-semibold text-[#e0e5ff]">${formatTime(slot.start_time)}</p>
+              </article>
 
-            <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-              <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Status</p>
-              <p class="mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-medium ${availabilityBadgeClass}">
-                ${isAvailable ? `${availability} spaces left` : 'Unavailable'}
-              </p>
-            </article>
-          </section>
-        </section>
+              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
+                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">End</p>
+                <p class="mt-3 text-lg font-semibold text-[#e0e5ff]">${formatTime(slot.end_time)}</p>
+              </article>
+            </div>
+          </div>
+        </div>
 
-        <section class="lg:pl-4">
+        <div class="flex flex-col gap-4 lg:w-[13rem] lg:items-stretch">
+          <div class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Status</p>
+            <p class="mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-medium ${availabilityBadgeClass}">
+              ${isAvailable ? `${availability} space${availability === 1 ? '' : 's'} left` : 'Unavailable'}
+            </p>
+          </div>
+
           <button
-            class="book-slot-btn inline-flex min-w-[9.5rem] items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${buttonClass}"
+            class="book-slot-btn inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${buttonClass}"
             data-slot-id="${slot.id}"
             data-clinic-id="${clinic.id}"
             data-clinic-name="${clinic.name}"
@@ -154,7 +156,7 @@ function renderSlots(slots, clinic) {
           >
             Book slot
           </button>
-        </section>
+        </div>
       </section>
     `;
 

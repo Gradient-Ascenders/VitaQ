@@ -15,7 +15,6 @@ function formatServices(services) {
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-ZA', {
-    weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -89,74 +88,67 @@ function renderSlots(slots, clinic) {
   slotsEmptyState.classList.add('hidden');
   slotsCount.textContent = `${slots.length} slot${slots.length === 1 ? '' : 's'} available`;
 
-  slots.forEach((slot, index) => {
+  slots.forEach((slot) => {
     const availability = Math.max((slot.capacity || 0) - (slot.booked_count || 0), 0);
     const isAvailable = availability > 0 && slot.status === 'available';
 
-    const accentStyles = [
-      'border-[#7dcfff]/20',
-      'border-[#7aa2f7]/20',
-      'border-[#bb9af7]/20'
-    ];
-
-    const accentStyle = accentStyles[index % accentStyles.length];
-
     const slotCard = document.createElement('article');
-    slotCard.className = `rounded-[1.75rem] border bg-[linear-gradient(135deg,rgba(26,27,38,0.82),rgba(36,40,59,0.82))] p-5 shadow-lg shadow-black/10 backdrop-blur-sm ${accentStyle}`;
+    slotCard.className =
+      'rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(26,27,38,0.82),rgba(36,40,59,0.82))] px-5 py-5 shadow-lg shadow-black/10 backdrop-blur-sm';
 
-    const availabilityBadgeClass = isAvailable
-      ? 'border border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]'
-      : 'border border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]';
+    const availabilityClass = isAvailable
+      ? 'text-[#38f2c2]'
+      : 'text-[#f7768e]';
 
     const buttonClass = isAvailable
-      ? 'border border-[#7aa2f7]/25 bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] text-[#1a1b26] hover:scale-[1.02] hover:brightness-110'
+      ? 'border border-[#00b4d8]/50 bg-[#0a2540] text-[#b8ecff] hover:border-[#00b4d8] hover:bg-[#0d2d4d]'
       : 'cursor-not-allowed border border-[#414868] bg-[#24283b]/80 text-[#6b7194]';
 
     slotCard.innerHTML = `
-      <section class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex-1">
-          <div class="grid gap-4 md:grid-cols-[1.3fr_1fr]">
-            <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-              <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Date</p>
-              <p class="mt-3 text-xl font-semibold text-[#e0e5ff]">${formatDate(slot.date)}</p>
-            </article>
+      <section class="grid gap-5 lg:grid-cols-[1.45fr_1fr_1fr_1.45fr_auto] lg:items-center">
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Date</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatDate(slot.date)}
+          </p>
+        </article>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Start</p>
-                <p class="mt-3 text-lg font-semibold text-[#e0e5ff]">${formatTime(slot.start_time)}</p>
-              </article>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Start Time</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatTime(slot.start_time)}
+          </p>
+        </article>
 
-              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">End</p>
-                <p class="mt-3 text-lg font-semibold text-[#e0e5ff]">${formatTime(slot.end_time)}</p>
-              </article>
-            </div>
-          </div>
-        </div>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">End Time</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatTime(slot.end_time)}
+          </p>
+        </article>
 
-        <div class="flex flex-col gap-4 lg:w-[13rem] lg:items-stretch">
-          <div class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Status</p>
-            <p class="mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-medium ${availabilityBadgeClass}">
-              ${isAvailable ? `${availability} space${availability === 1 ? '' : 's'} left` : 'Unavailable'}
-            </p>
-          </div>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Availability</p>
+          <p class="mt-3 text-[1.05rem] font-semibold ${availabilityClass}">
+            ${isAvailable ? `${availability} space${availability === 1 ? '' : 's'} left` : 'Unavailable'}
+          </p>
+        </article>
 
+        <section class="lg:justify-self-end">
           <button
-            class="book-slot-btn inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${buttonClass}"
+            class="book-slot-btn inline-flex min-w-[4.8rem] items-center justify-center rounded-full px-6 py-3 text-base font-semibold transition ${buttonClass}"
             data-slot-id="${slot.id}"
             data-clinic-id="${clinic.id}"
             data-clinic-name="${clinic.name}"
             data-slot-date="${slot.date}"
             data-slot-start="${slot.start_time}"
             data-slot-end="${slot.end_time}"
-            data-default-label="Book slot"
+            data-default-label="Book"
             ${isAvailable ? '' : 'disabled'}
           >
-            Book slot
+            Book
           </button>
-        </div>
+        </section>
       </section>
     `;
 
@@ -180,7 +172,7 @@ function attachBookHandlers() {
       const defaultLabel = button.dataset.defaultLabel || 'Book';
 
       button.disabled = true;
-      button.textContent = 'Booking...';
+      button.textContent = defaultLabel;
 
       const {
         data: { session }

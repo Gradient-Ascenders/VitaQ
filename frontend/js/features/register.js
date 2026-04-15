@@ -9,6 +9,7 @@ const confirmPasswordInput = document.getElementById("confirmPassword");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
+const oauthButtons = Array.from(document.querySelectorAll("[data-oauth-provider]"));
 
 // Existing shared Supabase client
 const supabaseClient = window.supabaseClient;
@@ -43,10 +44,85 @@ function hideFieldError(element) {
   element.classList.add("hidden");
 }
 
+// Update the social signup buttons while an OAuth redirect is being started.
+function setOAuthButtonsLoadingState(isLoading, activeButton) {
+  oauthButtons.forEach(function (button) {
+    const providerLabel = button.dataset.providerLabel || "Provider";
+    const isActiveButton = button === activeButton;
+
+    button.disabled = isLoading;
+
+    if (isLoading && isActiveButton) {
+      button.classList.add("opacity-70", "cursor-not-allowed");
+      button.setAttribute("aria-busy", "true");
+      button.setAttribute("aria-label", `Signing up with ${providerLabel}`);
+    } else {
+      button.classList.remove("opacity-70", "cursor-not-allowed");
+      button.removeAttribute("aria-busy");
+      button.setAttribute("aria-label", `Sign up with ${providerLabel}`);
+    }
+  });
+}
+
 // Basic email format check
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+// Reuse the dashboard redirect after a successful social sign-up.
+function getOAuthRedirectUrl() {
+  return `${window.location.origin}/dashboard`;
+}
+
+// Start an OAuth sign-up flow through Supabase Auth.
+async function handleOAuthSignup(provider) {
+  const options = {
+    redirectTo: getOAuthRedirectUrl()
+  };
+
+  if (provider === "azure") {
+    options.scopes = "email";
+  }
+
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+    provider: provider,
+    options: options
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+}
+
+// Attach social sign-up behaviour to the provider buttons.
+function initialiseOAuthButtons() {
+  oauthButtons.forEach(function (button) {
+    button.addEventListener("click", async function () {
+      const provider = button.dataset.oauthProvider;
+      const providerLabel = button.dataset.providerLabel || "that provider";
+
+      hideMessage();
+      hideFieldError(emailError);
+      hideFieldError(passwordError);
+      hideFieldError(confirmPasswordError);
+      setOAuthButtonsLoadingState(true, button);
+
+      try {
+        await handleOAuthSignup(provider);
+      } catch (error) {
+        console.error(`Unexpected OAuth sign-up handling error for ${provider}:`, error);
+        showMessage(`Sign up with ${providerLabel} could not be started right now.`);
+        setOAuthButtonsLoadingState(false, null);
+      }
+    });
+  });
+}
+
+initialiseOAuthButtons();
 
 // Handle form submission
 registerForm.addEventListener("submit", async function (e) {

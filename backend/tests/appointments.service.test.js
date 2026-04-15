@@ -3,6 +3,9 @@ const mockSlotSelect = jest.fn();
 const mockSlotUpdate = jest.fn();
 const mockAppointmentsSelect = jest.fn();
 const mockAppointmentsInsert = jest.fn();
+const mockAppointmentsDelete = jest.fn();
+const mockQueueEntriesSelect = jest.fn();
+const mockQueueEntriesInsert = jest.fn();
 
 let slotFetchResult;
 let slotUpdateResult;
@@ -10,6 +13,12 @@ let rollbackResult;
 let existingBookingsResult;
 let appointmentInsertResult;
 let patientAppointmentsResult;
+let queueAppointmentFetchResult;
+let queueExistingEntriesResult;
+let queueNumberCountResult;
+let queuePositionCountResult;
+let queueEntryInsertResult;
+let appointmentDeleteResult;
 
 const slotSelectEq = jest.fn();
 const slotSelectSingle = jest.fn();
@@ -18,8 +27,10 @@ const slotUpdateSelect = jest.fn();
 const appointmentsSelectEq = jest.fn();
 const appointmentsSelectLimit = jest.fn();
 const appointmentsSelectOrder = jest.fn();
+const appointmentsSelectSingle = jest.fn();
 const appointmentsInsertSelect = jest.fn();
 const appointmentsInsertSingle = jest.fn();
+const appointmentsDeleteEq = jest.fn();
 
 const slotSelectSingleChain = {
     single: slotSelectSingle,
@@ -51,6 +62,9 @@ const appointmentsSelectChain = {
     order(column, config) {
         return appointmentsSelectOrder(column, config);
     },
+    single() {
+        return appointmentsSelectSingle();
+    },
 };
 
 const appointmentsInsertSingleChain = {
@@ -61,6 +75,32 @@ const appointmentsInsertChain = {
     select(selection) {
         return appointmentsInsertSelect(selection);
     },
+};
+
+const appointmentsDeleteChain = {
+    eq(column, value) {
+        return appointmentsDeleteEq(column, value);
+    },
+};
+
+function createQueueEntriesSelectChain(result) {
+    const chain = {
+        eq: jest.fn(() => chain),
+        limit: jest.fn(() => Promise.resolve(result)),
+        then(resolve, reject) {
+            return Promise.resolve(result).then(resolve, reject);
+        },
+    };
+
+    return chain;
+}
+
+const queueEntriesInsertSingleChain = {
+    single: jest.fn(() => Promise.resolve(queueEntryInsertResult)),
+};
+
+const queueEntriesInsertChain = {
+    select: jest.fn(() => queueEntriesInsertSingleChain),
 };
 
 jest.mock('../src/lib/supabaseClient', () => ({
@@ -109,6 +149,48 @@ describe('appointments.service', () => {
             error: null,
         };
         patientAppointmentsResult = { data: [], error: null };
+        queueAppointmentFetchResult = {
+            data: {
+                id: 'appointment-1',
+                patient_id: 'patient-1',
+                clinic_id: 'clinic-1',
+                status: 'booked',
+                slot: {
+                    date: '2099-06-01',
+                    start_time: '10:00:00',
+                    end_time: '10:30:00',
+                },
+                clinic: {
+                    name: 'Mangaung Clinic',
+                    address: '123 Main Rd',
+                    province: 'Free State',
+                    district: 'Mangaung',
+                    area: 'Botshabelo',
+                    facility_type: 'clinic',
+                },
+            },
+            error: null,
+        };
+        queueExistingEntriesResult = { data: [], error: null };
+        queueNumberCountResult = { count: 0, error: null };
+        queuePositionCountResult = { count: 0, error: null };
+        queueEntryInsertResult = {
+            data: {
+                id: 'queue-1',
+                clinic_id: 'clinic-1',
+                patient_id: 'patient-1',
+                appointment_id: 'appointment-1',
+                queue_number: 1,
+                queue_date: '2099-06-01',
+                source: 'appointment',
+                status: 'waiting',
+                estimated_wait_minutes: 0,
+                created_at: '2026-04-15T08:05:00.000Z',
+                updated_at: '2026-04-15T08:05:00.000Z',
+            },
+            error: null,
+        };
+        appointmentDeleteResult = { data: null, error: null };
 
         mockFrom.mockImplementation((tableName) => {
             if (tableName === 'appointment_slots') {
@@ -122,6 +204,14 @@ describe('appointments.service', () => {
                 return {
                     select: mockAppointmentsSelect,
                     insert: mockAppointmentsInsert,
+                    delete: mockAppointmentsDelete,
+                };
+            }
+
+            if (tableName === 'queue_entries') {
+                return {
+                    select: mockQueueEntriesSelect,
+                    insert: mockQueueEntriesInsert,
                 };
             }
 
@@ -140,10 +230,23 @@ describe('appointments.service', () => {
         appointmentsSelectEq.mockImplementation(() => appointmentsSelectChain);
         appointmentsSelectLimit.mockImplementation(() => Promise.resolve(existingBookingsResult));
         appointmentsSelectOrder.mockImplementation(() => Promise.resolve(patientAppointmentsResult));
+        appointmentsSelectSingle.mockImplementation(() => Promise.resolve(queueAppointmentFetchResult));
 
         mockAppointmentsInsert.mockReturnValue(appointmentsInsertChain);
         appointmentsInsertSelect.mockReturnValue(appointmentsInsertSingleChain);
         appointmentsInsertSingle.mockImplementation(() => Promise.resolve(appointmentInsertResult));
+
+        mockAppointmentsDelete.mockReturnValue(appointmentsDeleteChain);
+        appointmentsDeleteEq.mockImplementation(() => Promise.resolve(appointmentDeleteResult));
+
+        mockQueueEntriesSelect
+            .mockImplementationOnce(() => createQueueEntriesSelectChain(queueExistingEntriesResult))
+            .mockImplementationOnce(() => createQueueEntriesSelectChain(queueNumberCountResult))
+            .mockImplementationOnce(() => createQueueEntriesSelectChain(queuePositionCountResult));
+        mockQueueEntriesInsert.mockReturnValue(queueEntriesInsertChain);
+        queueEntriesInsertSingleChain.single.mockImplementation(() =>
+            Promise.resolve(queueEntryInsertResult)
+        );
     });
 
     describe('createAppointmentBooking', () => {
@@ -373,6 +476,32 @@ describe('appointments.service', () => {
                     ...slotUpdateResult.data[0],
                     availability: 2,
                 },
+                queue: queueEntryInsertResult.data,
+                position: 1,
+            });
+        });
+
+        test('rolls back appointment and slot when queue entry creation fails', async () => {
+            queueEntryInsertResult = {
+                data: null,
+                error: { message: 'queue insert failed' },
+            };
+
+            await expect(
+                createAppointmentBooking({
+                    patientId: 'patient-1',
+                    clinicId: 'clinic-1',
+                    slotId: 'slot-1',
+                })
+            ).rejects.toMatchObject({
+                message: 'Appointment could not be completed because the queue entry failed.',
+                statusCode: 500,
+            });
+
+            expect(mockAppointmentsDelete).toHaveBeenCalledTimes(1);
+            expect(appointmentsDeleteEq).toHaveBeenCalledWith('id', 'appointment-1');
+            expect(mockSlotUpdate).toHaveBeenNthCalledWith(2, {
+                booked_count: 2,
             });
         });
     });

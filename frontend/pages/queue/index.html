@@ -173,6 +173,60 @@
             </article>
           </section>
 
+          <section class="mt-8 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                    Queue state
+                  </p>
+                  <h3 class="mt-3 text-2xl font-bold text-[#e0e5ff]">
+                    Your current queue status
+                  </h3>
+                </div>
+
+                <p
+                  id="queueStateBadge"
+                  class="inline-flex rounded-full border border-[#414868] bg-[#24283b]/80 px-4 py-2 text-sm font-semibold text-[#c0caf5]"
+                >
+                  Not in queue
+                </p>
+              </div>
+
+              <p
+                id="queueStateMessage"
+                class="mt-5 text-base leading-8 text-[#a9b1d6]"
+                aria-live="polite"
+              >
+                You are not currently in the queue for this clinic visit.
+              </p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+                State guide
+              </p>
+
+              <ul class="mt-5 space-y-3 text-sm text-[#c0caf5]">
+                <li class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3">
+                  <span class="font-semibold text-[#e0e5ff]">Not in queue</span>: your appointment is linked, but you have not been added to the clinic queue yet.
+                </li>
+                <li class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3">
+                  <span class="font-semibold text-[#e0e5ff]">Waiting</span>: you are in the queue and waiting to be called.
+                </li>
+                <li class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3">
+                  <span class="font-semibold text-[#e0e5ff]">In consultation</span>: you are currently being attended to by clinic staff.
+                </li>
+                <li class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3">
+                  <span class="font-semibold text-[#e0e5ff]">Complete</span>: your queue journey for this visit has been finished.
+                </li>
+                <li class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3">
+                  <span class="font-semibold text-[#e0e5ff]">Cancelled</span>: this queue entry has been cancelled and will no longer move forward.
+                </li>
+              </ul>
+            </article>
+          </section>
+
           <section class="mt-8 rounded-[1.75rem] border border-[#7dcfff]/20 bg-[#7dcfff]/10 p-6 text-[#b8ecff]">
             <h3 class="text-xl font-semibold text-[#e0f7ff]">Queue updates for your clinic visit</h3>
             <p class="mt-3 leading-7">

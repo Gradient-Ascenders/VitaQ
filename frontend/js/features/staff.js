@@ -364,6 +364,10 @@ function getNextQueueNumber() {
   return `Q${String(highestNumber + 1).padStart(3, '0')}`;
 }
 
+function hasQueueTimeConflict(timeLabel) {
+  return staffState.queueEntries.some((entry) => entry.timeLabel === timeLabel);
+}
+
 function addWalkInPatient(patientName, visitType, timeLabel) {
   const newEntry = {
     id: `queue-${Date.now()}`,
@@ -440,6 +444,16 @@ function initialiseWalkInForm() {
       staffState.feedback = {
         type: 'error',
         message: 'Select a time before adding a walk-in.'
+      };
+      renderFeedback();
+      timeField.focus();
+      return;
+    }
+
+    if (hasQueueTimeConflict(timeLabel)) {
+      staffState.feedback = {
+        type: 'error',
+        message: `The ${timeLabel} slot is already in use. Choose a different time for this walk-in.`
       };
       renderFeedback();
       timeField.focus();

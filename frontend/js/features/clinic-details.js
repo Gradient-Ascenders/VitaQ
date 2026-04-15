@@ -25,9 +25,127 @@ function formatTime(timeString) {
   return timeString?.slice(0, 5) || '';
 }
 
+const QUEUE_JOIN_STATES = {
+  NOT_JOINED: 'not_joined',
+  JOINING: 'joining',
+  JOINED_SUCCESSFULLY: 'joined_successfully',
+  FAILED_TO_JOIN: 'failed_to_join'
+};
+
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value || 'N/A';
+}
+
+function getQueueJoinUiConfig(state, message) {
+  switch (state) {
+    case QUEUE_JOIN_STATES.JOINING:
+      return {
+        label: 'Joining',
+        labelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]',
+        buttonText: 'Joining...',
+        buttonDisabled: true,
+        buttonClass: 'border-[#7dcfff]/30 bg-[#7dcfff]/10 text-[#b8ecff]',
+        message:
+          message || 'Sending your queue request. Please wait while VitaQ prepares your place in line.',
+        messageClass: 'text-[#b8ecff]'
+      };
+    case QUEUE_JOIN_STATES.JOINED_SUCCESSFULLY:
+      return {
+        label: 'Joined successfully',
+        labelClass: 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]',
+        buttonText: 'Joined',
+        buttonDisabled: true,
+        buttonClass: 'border-[#9ece6a]/30 bg-[#9ece6a]/10 text-[#d6f3b8]',
+        message:
+          message || 'You have joined the queue successfully. Queue progress will appear here once the backend integration is connected.',
+        messageClass: 'text-[#d6f3b8]'
+      };
+    case QUEUE_JOIN_STATES.FAILED_TO_JOIN:
+      return {
+        label: 'Failed to join',
+        labelClass: 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]',
+        buttonText: 'Try Again',
+        buttonDisabled: false,
+        buttonClass: 'border-[#f7768e]/30 bg-[#f7768e]/10 text-[#f4b5c0] hover:border-[#f7768e] hover:bg-[#f7768e]/16',
+        message:
+          message || 'Queue joining is not available yet on this page. Please try again after the queue API is connected.',
+        messageClass: 'text-[#f4b5c0]'
+      };
+    case QUEUE_JOIN_STATES.NOT_JOINED:
+    default:
+      return {
+        label: 'Not joined',
+        labelClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+        buttonText: 'Join Queue',
+        buttonDisabled: false,
+        buttonClass: 'border-[#7aa2f7]/40 bg-[#7aa2f7]/12 text-[#c0caf5] hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18',
+        message: message || 'You have not joined this clinic queue yet.',
+        messageClass: 'text-[#a9b1d6]'
+      };
+  }
+}
+
+function renderQueueJoinState(state, message = '') {
+  const button = document.getElementById('queueJoinButton');
+  const label = document.getElementById('queueJoinStateLabel');
+  const messageElement = document.getElementById('queueJoinMessage');
+
+  if (!button || !label || !messageElement) {
+    return;
+  }
+
+  const config = getQueueJoinUiConfig(state, message);
+
+  label.textContent = config.label;
+  label.className = `inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${config.labelClass}`;
+
+  button.textContent = config.buttonText;
+  button.disabled = config.buttonDisabled;
+  button.className = `mt-5 inline-flex w-full items-center justify-center rounded-2xl border px-5 py-3 text-sm font-semibold transition ${config.buttonClass}`;
+
+  messageElement.textContent = config.message;
+  messageElement.className = `mt-4 text-sm leading-7 ${config.messageClass}`;
+}
+
+async function submitQueueJoinRequest() {
+  // This placeholder keeps the state flow honest until the queue data model is finalized.
+  await new Promise((resolve) => window.setTimeout(resolve, 900));
+
+  throw new Error(
+    'Queue joining is not connected yet. The existing booking flow remains the active patient path for now.'
+  );
+}
+
+function initialiseQueueJoinState() {
+  const button = document.getElementById('queueJoinButton');
+
+  if (!button) {
+    return;
+  }
+
+  renderQueueJoinState(QUEUE_JOIN_STATES.NOT_JOINED);
+
+  button.addEventListener('click', async () => {
+    renderQueueJoinState(QUEUE_JOIN_STATES.JOINING);
+
+    try {
+      await submitQueueJoinRequest();
+      renderQueueJoinState(QUEUE_JOIN_STATES.JOINED_SUCCESSFULLY);
+    } catch (error) {
+      renderQueueJoinState(
+        QUEUE_JOIN_STATES.FAILED_TO_JOIN,
+        error.message || 'Queue joining failed.'
+      );
+    }
+  });
+
+  // Small debug hook so the ready states can be reviewed before the API is wired.
+  window.__vitaqQueueJoinDebug = {
+    setState(state, message = '') {
+      renderQueueJoinState(state, message);
+    }
+  };
 }
 
 function renderServices(services) {
@@ -280,4 +398,7 @@ async function loadClinicPage() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadClinicPage);
+document.addEventListener('DOMContentLoaded', () => {
+  initialiseQueueJoinState();
+  loadClinicPage();
+});

@@ -30,7 +30,6 @@ const QUEUE_STATES = {
 };
 
 const QUEUE_EMPTY_STATES = {
-  NOT_YET_ADDED_TO_QUEUE: 'not_yet_added_to_queue',
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
 
@@ -139,9 +138,9 @@ function getQueueStateConfig(state) {
     case QUEUE_STATES.NOT_IN_QUEUE:
     default:
       return {
-        label: 'Not in queue',
-        badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
-        message: 'You are not currently in the queue for this clinic visit.'
+        label: 'Waiting',
+        badgeClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]',
+        message: 'You are currently in the queue and waiting for your turn at the clinic.'
       };
   }
 }
@@ -163,12 +162,6 @@ function renderQueueState(state) {
 
 function getQueueEmptyStateConfig(emptyState) {
   switch (emptyState) {
-    case QUEUE_EMPTY_STATES.NOT_YET_ADDED_TO_QUEUE:
-      return {
-        eyebrow: 'Queue not started',
-        title: 'Not yet added to queue',
-        message: 'Your appointment exists, but you have not been added to the live clinic queue yet. Please check again closer to your visit time or when staff open the queue.'
-      };
     case QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE:
     default:
       return {
@@ -304,7 +297,7 @@ function loadQueuePage() {
   const date = params.get('date') || '';
   const start = params.get('start') || '';
   const end = params.get('end') || '';
-  const state = params.get('state') || QUEUE_STATES.NOT_IN_QUEUE;
+  const state = params.get('state') || QUEUE_STATES.WAITING;
   const emptyState = params.get('empty_state') || '';
 
   document.getElementById('queueClinicHero').textContent = clinic;
@@ -318,11 +311,6 @@ function loadQueuePage() {
 
   if (emptyState === QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE) {
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
-    return;
-  }
-
-  if (state === QUEUE_STATES.NOT_IN_QUEUE) {
-    renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_YET_ADDED_TO_QUEUE);
     return;
   }
 

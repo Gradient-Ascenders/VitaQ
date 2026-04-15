@@ -620,6 +620,9 @@
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .grid-cols-\[0\.7fr_1\.2fr_1fr_1fr_1\.1fr\] {
+    grid-template-columns: 0.7fr 1.2fr 1fr 1fr 1.1fr;
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -686,6 +689,20 @@
       margin-block-end: calc(calc(var(--spacing) * 5) * calc(1 - var(--tw-space-y-reverse)));
     }
   }
+  .divide-y {
+    :where(& > :not(:last-child)) {
+      --tw-divide-y-reverse: 0;
+      border-bottom-style: var(--tw-border-style);
+      border-top-style: var(--tw-border-style);
+      border-top-width: calc(1px * var(--tw-divide-y-reverse));
+      border-bottom-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
+    }
+  }
+  .divide-\[\#414868\] {
+    :where(& > :not(:last-child)) {
+      border-color: #414868;
+    }
+  }
   .self-center {
     align-self: center;
   }
@@ -750,6 +767,10 @@
   .border-t {
     border-top-style: var(--tw-border-style);
     border-top-width: 1px;
+  }
+  .border-b {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
   }
   .border-\[\#00b4d8\]\/50 {
     border-color: color-mix(in oklab, #00b4d8 50%, transparent);
@@ -984,6 +1005,9 @@
   .px-10 {
     padding-inline: calc(var(--spacing) * 10);
   }
+  .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
   }
@@ -1194,9 +1218,6 @@
   }
   .text-\[\#e0e5ff\] {
     color: #e0e5ff;
-  }
-  .text-\[\#e0f7ff\] {
-    color: #e0f7ff;
   }
   .text-\[\#f2a7b7\] {
     color: #f2a7b7;
@@ -1515,9 +1536,24 @@
       line-height: var(--tw-leading, var(--text-lg--line-height));
     }
   }
+  .md\:block {
+    @media (width >= 48rem) {
+      display: block;
+    }
+  }
   .md\:flex {
     @media (width >= 48rem) {
       display: flex;
+    }
+  }
+  .md\:grid {
+    @media (width >= 48rem) {
+      display: grid;
+    }
+  }
+  .md\:hidden {
+    @media (width >= 48rem) {
+      display: none;
     }
   }
   .md\:h-16 {
@@ -1538,6 +1574,16 @@
   .md\:grid-cols-3 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .md\:grid-cols-4 {
+    @media (width >= 48rem) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .md\:grid-cols-\[0\.7fr_1\.2fr_1fr_1fr_1\.1fr\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 0.7fr 1.2fr 1fr 1fr 1.1fr;
     }
   }
   .md\:flex-row {
@@ -1755,6 +1801,11 @@
   inherits: false;
 }
 @property --tw-space-y-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-divide-y-reverse {
   syntax: "*";
   inherits: false;
   initial-value: 0;
@@ -2009,6 +2060,7 @@
       --tw-skew-x: initial;
       --tw-skew-y: initial;
       --tw-space-y-reverse: 0;
+      --tw-divide-y-reverse: 0;
       --tw-border-style: solid;
       --tw-gradient-position: initial;
       --tw-gradient-from: #0000;

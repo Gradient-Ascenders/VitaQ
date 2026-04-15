@@ -33,6 +33,24 @@ function getStatusClasses(status) {
   }
 }
 
+function canViewQueue(appointment) {
+  return appointment?.status === 'booked' && appointment?.clinic && appointment?.slot?.date;
+}
+
+function buildQueuePageUrl(appointment) {
+  const clinic = appointment.clinic || {};
+  const slot = appointment.slot || {};
+  const params = new URLSearchParams({
+    clinic: clinic.name || '',
+    clinicId: appointment.clinic_id || '',
+    date: slot.date || '',
+    start: slot.start_time || '',
+    end: slot.end_time || ''
+  });
+
+  return `/queue?${params.toString()}`;
+}
+
 function renderAppointments(appointments) {
   const appointmentsList = document.getElementById('appointmentsList');
   const appointmentsCount = document.getElementById('appointmentsCount');
@@ -56,6 +74,16 @@ function renderAppointments(appointments) {
     const slot = appointment.slot || {};
     const location = [clinic.area, clinic.district, clinic.province].filter(Boolean).join(' • ');
     const address = clinic.address || 'Address not available';
+    const queueAction = canViewQueue(appointment)
+      ? `
+        <a
+          href="${buildQueuePageUrl(appointment)}"
+          class="inline-flex items-center justify-center rounded-2xl border border-[#7aa2f7]/35 bg-[#7aa2f7]/12 px-5 py-3 text-sm font-semibold text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
+        >
+          View Queue
+        </a>
+      `
+      : '';
 
     const card = document.createElement('article');
     card.className =
@@ -89,6 +117,8 @@ function renderAppointments(appointments) {
             ${address}
           </p>
         </section>
+
+        ${queueAction ? `<section class="lg:justify-self-end">${queueAction}</section>` : ''}
       </section>
 
       <section class="mt-6 grid gap-4 md:grid-cols-3">

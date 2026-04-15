@@ -1,4 +1,74 @@
 // Shared authentication helpers for VitaQ protected and public pages.
+let authCallbackPromise = null;
+
+// Finalise an OAuth callback if Supabase redirected back with an auth code.
+async function completeAuthCallbackIfPresent() {
+  if (authCallbackPromise) {
+    return authCallbackPromise;
+  }
+
+  authCallbackPromise = (async function () {
+    if (!window.supabaseClient) {
+      throw new Error("Supabase client is not available.");
+    }
+
+    const currentUrl = new URL(window.location.href);
+    const authCode = currentUrl.searchParams.get("code");
+
+    if (!authCode) {
+      return null;
+    }
+
+    const { data, error } = await window.supabaseClient.auth.exchangeCodeForSession(authCode);
+
+    if (error) {
+      throw error;
+    }
+
+    currentUrl.searchParams.delete("code");
+    currentUrl.searchParams.delete("scope");
+    currentUrl.searchParams.delete("authuser");
+    currentUrl.searchParams.delete("prompt");
+
+    const cleanedUrl = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+    window.history.replaceState({}, document.title, cleanedUrl);
+
+    return data.session || null;
+  })();
+
+  return authCallbackPromise;
+}
+
+// Give Supabase a short window to restore a session after an OAuth redirect.
+async function waitForSessionRecovery(timeoutMs = 2000) {
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available.");
+  }
+
+  return new Promise((resolve) => {
+    let authSubscription = null;
+
+    function cleanup(resolvedSession) {
+      window.clearTimeout(timeoutId);
+
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
+
+      resolve(resolvedSession);
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      cleanup(null);
+    }, timeoutMs);
+
+    authSubscription = window.supabaseClient.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
+        cleanup(session);
+      }
+    });
+  });
+}
 
 // Signs the user out and sends them back to the login page.
 async function logoutUser() {
@@ -39,10 +109,12 @@ function initialiseLogoutButton(buttonId) {
 }
 
 // Returns the current Supabase session.
-async function getCurrentSession() {
+async function getCurrentSession(waitForRecovery = false) {
   if (!window.supabaseClient) {
     throw new Error("Supabase client is not available.");
   }
+
+  await completeAuthCallbackIfPresent();
 
   const { data, error } = await window.supabaseClient.auth.getSession();
 
@@ -50,14 +122,22 @@ async function getCurrentSession() {
     throw error;
   }
 
-  return data.session;
+  if (data.session) {
+    return data.session;
+  }
+
+  if (waitForRecovery) {
+    return waitForSessionRecovery();
+  }
+
+  return null;
 }
 
 // Use this on protected pages.
 // If no session exists, redirect to /login.
 async function requireAuthenticatedUser() {
   try {
-    const session = await getCurrentSession();
+    const session = await getCurrentSession(true);
 
     if (!session) {
       window.location.href = "/login";
@@ -76,7 +156,7 @@ async function requireAuthenticatedUser() {
 // If a session already exists, redirect to /dashboard.
 async function redirectIfAuthenticated() {
   try {
-    const session = await getCurrentSession();
+    const session = await getCurrentSession(false);
 
     if (session) {
       window.location.href = "/dashboard";

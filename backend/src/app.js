@@ -6,6 +6,7 @@ const path = require('path');
 const clinicsRoutes = require('./modules/clinics/clinics.routes');
 const slotRoutes = require('./modules/slots/slot.routes');
 const appointmentsRoutes = require('./modules/appointments/appointments.routes');
+const queueRoutes = require('./modules/queue/queue.routes');
 
 // Create the Express application
 const app = express();
@@ -37,6 +38,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/clinics', clinicsRoutes);
 app.use('/api/clinics', slotRoutes);
 app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/queue', queueRoutes);
 
 // Helper to serve page files
 function sendPage(pageFolder) {

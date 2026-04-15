@@ -120,6 +120,32 @@ function formatArrivalTypeLabel(arrivalType) {
   return arrivalType === ARRIVAL_TYPES.WALK_IN ? 'Walk-in' : 'Appointment';
 }
 
+function getTimeSortValue(timeLabel) {
+  if (!timeLabel) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const [hours, minutes] = timeLabel.split(':').map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return (hours * 60) + minutes;
+}
+
+function getSortedQueueEntries() {
+  return [...staffState.queueEntries].sort((leftEntry, rightEntry) => {
+    const timeDifference = getTimeSortValue(leftEntry.timeLabel) - getTimeSortValue(rightEntry.timeLabel);
+
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+
+    return leftEntry.queueNumber.localeCompare(rightEntry.queueNumber);
+  });
+}
+
 function getArrivalTypeClasses(arrivalType) {
   if (arrivalType === ARRIVAL_TYPES.WALK_IN) {
     return 'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]';
@@ -162,7 +188,7 @@ function getQueueSummaryCounts() {
 }
 
 function getNextWaitingEntry() {
-  return staffState.queueEntries.find((entry) => entry.status === STAFF_QUEUE_STATUSES.WAITING) || null;
+  return getSortedQueueEntries().find((entry) => entry.status === STAFF_QUEUE_STATUSES.WAITING) || null;
 }
 
 function renderFeedback() {
@@ -270,7 +296,7 @@ function renderQueueTable() {
 
   tableBody.innerHTML = '';
 
-  staffState.queueEntries.forEach((entry) => {
+  getSortedQueueEntries().forEach((entry) => {
     const isBusy = staffState.actionInProgressId === entry.id;
     const patientName = escapeHtml(entry.patientName);
     const visitType = escapeHtml(entry.visitType);

@@ -83,6 +83,11 @@ function formatServicesSummary(services) {
   return serviceList.slice(0, 3).join(" • ");
 }
 
+function formatAvailableSlotsLabel(count) {
+  const numericCount = Number.isFinite(Number(count)) ? Math.max(Number(count), 0) : 0;
+  return `${numericCount} slot${numericCount === 1 ? "" : "s"} available`;
+}
+
 function renderClinics(clinics) {
   clinicsList.innerHTML = "";
 
@@ -104,6 +109,7 @@ function renderClinics(clinics) {
       const facilityType = clinic.facility_type || "Facility type not available";
       const services = formatServicesSummary(clinic.services_offered);
       const address = clinic.address || "Address not available";
+      const availableSlotsLabel = formatAvailableSlotsLabel(clinic.available_slots_count);
 
       return `
         <article class="flex h-full flex-col rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7aa2f7]/40 hover:bg-[#24283b]/82">
@@ -131,6 +137,10 @@ function renderClinics(clinics) {
               ${escapeHtml(services)}
             </p>
           </div>
+
+          <p class="mt-4 text-sm font-medium text-[#b8ecff]">
+            ${escapeHtml(availableSlotsLabel)}
+          </p>
 
           <a
             href="/clinic/${encodeURIComponent(clinic.id)}"

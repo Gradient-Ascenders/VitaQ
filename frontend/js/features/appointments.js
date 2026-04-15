@@ -23,13 +23,13 @@ function formatStatus(status) {
 function getStatusClasses(status) {
   switch (status) {
     case 'booked':
-      return 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-300';
+      return 'border border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]';
     case 'completed':
-      return 'border border-blue-400/20 bg-blue-400/10 text-blue-300';
+      return 'border border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]';
     case 'cancelled':
-      return 'border border-red-400/20 bg-red-400/10 text-red-300';
+      return 'border border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]';
     default:
-      return 'border border-white/10 bg-white/5 text-slate-300';
+      return 'border border-[#414868] bg-[#24283b]/80 text-[#c0caf5]';
   }
 }
 
@@ -42,62 +42,69 @@ function renderAppointments(appointments) {
 
   if (!appointments || appointments.length === 0) {
     appointmentsCount.textContent = '0 appointments';
+    appointmentsList.classList.add('hidden');
     emptyState.classList.remove('hidden');
     return;
   }
 
+  appointmentsList.classList.remove('hidden');
   emptyState.classList.add('hidden');
   appointmentsCount.textContent = `${appointments.length} appointment${appointments.length === 1 ? '' : 's'}`;
 
   appointments.forEach((appointment) => {
     const clinic = appointment.clinic || {};
     const slot = appointment.slot || {};
-    const location = [clinic.area, clinic.district, clinic.province].filter(Boolean).join(', ');
+    const location = [clinic.area, clinic.district, clinic.province].filter(Boolean).join(' • ');
+    const address = clinic.address || 'Address not available';
 
     const card = document.createElement('article');
-    card.className = 'rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-lg shadow-slate-950/30';
+    card.className =
+      'rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm';
 
     card.innerHTML = `
       <section class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <section class="flex-1">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
-            Appointment
-          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <p class="inline-flex rounded-2xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7dcfff]">
+              Appointment
+            </p>
+            <p class="inline-flex rounded-full px-4 py-2 text-sm font-semibold ${getStatusClasses(appointment.status)}">
+              ${formatStatus(appointment.status)}
+            </p>
+          </div>
 
-          <h3 class="mt-3 text-2xl font-semibold text-white">
+          <h3 class="mt-4 text-2xl font-semibold text-[#e0e5ff]">
             ${clinic.name || 'Clinic not available'}
           </h3>
 
-          <p class="mt-2 text-slate-300">
+          <p class="mt-3 text-sm text-[#a9b1d6]">
             ${location || 'Location not available'}
           </p>
 
-          <p class="mt-2 text-sm text-slate-400">
+          <p class="mt-2 text-sm text-[#8b93b8]">
             ${clinic.facility_type || 'Facility type not available'}
           </p>
-        </section>
 
-        <section>
-          <p class="inline-flex rounded-full px-4 py-2 text-sm font-semibold ${getStatusClasses(appointment.status)}">
-            ${formatStatus(appointment.status)}
+          <p class="mt-2 text-sm text-[#8b93b8]">
+            ${address}
           </p>
         </section>
       </section>
 
       <section class="mt-6 grid gap-4 md:grid-cols-3">
-        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Date</p>
-          <p class="mt-2 text-base font-medium text-white">${formatDate(slot.date)}</p>
+        <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
+          <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Date</p>
+          <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatDate(slot.date)}</p>
         </article>
 
-        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Time</p>
-          <p class="mt-2 text-base font-medium text-white">${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</p>
+        <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
+          <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Time</p>
+          <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}</p>
         </article>
 
-        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Booked On</p>
-          <p class="mt-2 text-base font-medium text-white">${formatDate(appointment.created_at)}</p>
+        <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5">
+          <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Booked On</p>
+          <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatDate(appointment.created_at)}</p>
         </article>
       </section>
     `;

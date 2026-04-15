@@ -5,151 +5,265 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Find a Clinic | VitaQ</title>
   <link rel="stylesheet" href="/assets/css/output.css" />
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5.5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-white">
-  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
-      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
 
-      <ul class="flex items-center gap-3 text-sm font-medium">
-        <li>
-          <a
-            href="/dashboard"
-            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
-          >
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <button
-            id="logoutButton"
-            type="button"
-            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
-          >
-            Logout
-          </button>
-        </li>
-      </ul>
-    </nav>
-  </header>
+      <div class="absolute left-[6%] top-[10%] h-60 w-60 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[24%] h-44 w-44 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[8%] top-[15%] h-72 w-72 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
 
-  <main class="mx-auto max-w-6xl px-6 py-10">
-    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
-        Clinic Directory
-      </p>
-
-      <h1 class="text-4xl font-bold tracking-tight text-white">
-        Find a Clinic
-      </h1>
-
-      <p class="mt-3 max-w-3xl text-slate-300">
-        Search for clinics, narrow results by location and facility type, and choose a clinic to view available appointment slots.
-      </p>
-    </section>
-
-    <section class="mt-8 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
-      <h2 class="text-xl font-semibold text-white">Search and Filters</h2>
-
-      <form class="mt-5 grid gap-5 lg:grid-cols-4" id="clinicSearchForm">
-        <section>
-          <label for="searchInput" class="mb-2 block text-sm font-medium text-slate-200">
-            Search
-          </label>
-          <input
-            id="searchInput"
-            name="search"
-            type="text"
-            placeholder="Search by name, area, services"
-            class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/dashboard" aria-label="Go to dashboard" class="flex items-center gap-3">
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="h-14 w-auto object-contain md:h-16 lg:h-20"
           />
+        </a>
+
+        <nav aria-label="Clinics page navigation" class="hidden md:flex">
+          <ul class="flex items-center gap-3 text-sm font-medium">
+            <li>
+              <a
+                href="/dashboard"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Dashboard
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <button
+          id="logoutButton"
+          type="button"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:bg-[#2a2f45]"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <main class="relative z-10">
+      <section class="mx-auto max-w-7xl px-6 pb-10 pt-6 md:px-8 lg:px-10">
+        <div class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <section class="animate-fade-up max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+              Clinic directory
+            </p>
+
+            <h1 class="mt-5 text-4xl font-bold leading-[1.04] text-[#e0e5ff] sm:text-5xl lg:text-6xl">
+              Find the right clinic.
+              <span class="block text-[#7aa2f7]">Book with clarity.</span>
+            </h1>
+
+            <p class="mt-6 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+              Search across clinics, narrow results by location and facility type,
+              and open a clinic profile to review services and available appointment slots.
+            </p>
+
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+              <a
+                href="/dashboard"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Return to dashboard
+              </a>
+            </div>
+          </section>
+
+          <section class="animate-fade-up-delay relative hidden lg:block">
+            <div class="relative mx-auto flex max-w-[30rem] flex-col gap-5">
+              <div class="absolute -left-8 top-10 h-40 w-40 rounded-full bg-[#7aa2f7]/10 blur-3xl"></div>
+              <div class="absolute -right-6 bottom-8 h-36 w-36 rounded-full bg-[#bb9af7]/10 blur-3xl"></div>
+
+              <article class="relative rounded-[2rem] border border-[#414868] bg-[#1f2335]/82 p-6 shadow-2xl shadow-black/20 backdrop-blur-md">
+                <p class="text-sm font-medium text-[#7dcfff]">Search clinics</p>
+                <h2 class="mt-2 text-2xl font-semibold leading-tight text-[#e0e5ff]">
+                  Filter by location, area, and facility type
+                </h2>
+                <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                  Use the search tools below to quickly narrow the list and find a clinic that matches your needs.
+                </p>
+              </article>
+
+              <article class="relative rounded-[2rem] border border-[#414868] bg-[#24283b]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+                <p class="text-sm font-medium text-[#bb9af7]">Search flow</p>
+                <ul class="mt-3 space-y-3 text-sm text-[#c0caf5]">
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">1. Search or filter clinics</li>
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">2. Review clinic details</li>
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">3. Open available slots</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
+        <section class="rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Search and filters
+              </p>
+              <h2 class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Find a Clinic
+              </h2>
+            </div>
+
+            <p class="text-sm text-[#8b93b8]">
+              Refine by search, province, district, or facility type
+            </p>
+          </div>
+
+          <form class="mt-8 grid gap-5 lg:grid-cols-4" id="clinicSearchForm">
+            <section>
+              <label for="searchInput" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                Search
+              </label>
+              <input
+                id="searchInput"
+                name="search"
+                type="text"
+                placeholder="Search by name, area, services"
+                class="w-full rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-white outline-none transition placeholder:text-[#6b7194] focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20"
+              />
+            </section>
+
+            <section>
+              <label for="provinceFilter" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                Province
+              </label>
+              <select
+                id="provinceFilter"
+                name="province"
+                class="w-full rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-white outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20"
+              >
+                <option value="">All Provinces</option>
+              </select>
+            </section>
+
+            <section>
+              <label for="districtFilter" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                District / Area
+              </label>
+              <select
+                id="districtFilter"
+                name="district"
+                class="w-full rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-white outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20"
+              >
+                <option value="">All Districts</option>
+              </select>
+            </section>
+
+            <section>
+              <label for="facilityTypeFilter" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                Facility Type
+              </label>
+              <select
+                id="facilityTypeFilter"
+                name="facility_type"
+                class="w-full rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-white outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20"
+              >
+                <option value="">All Facility Types</option>
+              </select>
+            </section>
+          </form>
         </section>
 
-        <section>
-          <label for="provinceFilter" class="mb-2 block text-sm font-medium text-slate-200">
-            Province
-          </label>
-          <select
-            id="provinceFilter"
-            name="province"
-            class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
+        <section class="mt-8 rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Search results
+              </p>
+              <h2 class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Clinic Results
+              </h2>
+            </div>
+
+            <p id="resultsCount" class="text-sm text-[#8b93b8]">Loading clinics...</p>
+          </div>
+
+          <section
+            id="loadingState"
+            class="mt-6 rounded-3xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-6 py-5 text-[#b8ecff]"
+            aria-live="polite"
           >
-            <option value="">All Provinces</option>
-          </select>
-        </section>
+            Loading clinics...
+          </section>
 
-        <section>
-          <label for="districtFilter" class="mb-2 block text-sm font-medium text-slate-200">
-            District / Area
-          </label>
-          <select
-            id="districtFilter"
-            name="district"
-            class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
+          <section
+            id="errorState"
+            class="mt-6 hidden rounded-3xl border border-[#f7768e]/20 bg-[#f7768e]/10 px-6 py-5 text-[#f4b5c0]"
+            aria-live="polite"
           >
-            <option value="">All Districts</option>
-          </select>
-        </section>
+            We could not load clinics right now. Please try again.
+          </section>
 
-        <section>
-          <label for="facilityTypeFilter" class="mb-2 block text-sm font-medium text-slate-200">
-            Facility Type
-          </label>
-          <select
-            id="facilityTypeFilter"
-            name="facility_type"
-            class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20"
+          <section
+            id="emptyState"
+            class="mt-6 hidden rounded-3xl border border-[#414868] bg-[#24283b]/70 px-6 py-8 text-center backdrop-blur-sm"
+            aria-live="polite"
           >
-            <option value="">All Facility Types</option>
-          </select>
+            <h3 class="text-xl font-semibold text-[#e0e5ff]">No clinics found</h3>
+            <p class="mt-2 text-[#a9b1d6]">
+              Try changing your search or filters to see more results.
+            </p>
+          </section>
+
+          <section
+            id="clinicsList"
+            class="mt-6 grid gap-6 xl:grid-cols-2"
+            aria-label="Clinic search results"
+          ></section>
         </section>
-      </form>
-    </section>
+      </section>
+    </main>
 
-    <section class="mt-8 flex items-center justify-between">
-      <h2 class="text-2xl font-semibold text-white">Clinic Results</h2>
-      <p id="resultsCount" class="text-sm text-slate-400">Loading clinics...</p>
-    </section>
-
-    <section
-      id="loadingState"
-      class="mt-6 rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/10 px-6 py-5 text-cyan-200"
-      aria-live="polite"
-    >
-      Loading clinics...
-    </section>
-
-    <section
-      id="errorState"
-      class="mt-6 hidden rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-6 py-5 text-red-200"
-      aria-live="polite"
-    >
-      We could not load clinics right now. Please try again.
-    </section>
-
-    <section
-      id="emptyState"
-      class="mt-6 hidden rounded-[1.75rem] border border-white/10 bg-white/5 px-6 py-8 text-center"
-      aria-live="polite"
-    >
-      <h3 class="text-xl font-semibold text-white">No clinics found</h3>
-      <p class="mt-2 text-slate-400">
-        Try changing your search or filters to see more results.
-      </p>
-    </section>
-
-    <section
-      id="clinicsList"
-      class="mt-6 grid gap-6 lg:grid-cols-2"
-      aria-label="Clinic search results"
-    ></section>
-  </main>
-
-  <footer class="border-t border-white/10 bg-slate-950/90">
-    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
-      Community Clinic Appointment &amp; Queue System
-    </p>
-  </footer>
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/lib/supabaseClient.js"></script>

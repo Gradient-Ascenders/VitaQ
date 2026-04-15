@@ -15,7 +15,6 @@ function formatServices(services) {
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-ZA', {
-    weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -39,15 +38,22 @@ function renderServices(services) {
 
   if (cleanedServices.length === 0) {
     servicesContainer.innerHTML = `
-      <p class="text-slate-400">No services listed for this clinic.</p>
+      <p class="text-[#8b93b8]">No services listed for this clinic.</p>
     `;
     return;
   }
 
-  cleanedServices.forEach((service) => {
+  cleanedServices.forEach((service, index) => {
     const badge = document.createElement('span');
-    badge.className =
-      'rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-200';
+
+    const badgeStyles = [
+      'border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]',
+      'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#b9cfff]',
+      'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dbcaff]',
+      'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]'
+    ];
+
+    badge.className = `rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-sm backdrop-blur-sm ${badgeStyles[index % badgeStyles.length]}`;
     badge.textContent = service;
     servicesContainer.appendChild(badge);
   });
@@ -55,7 +61,10 @@ function renderServices(services) {
 
 function renderClinic(clinic) {
   setText('clinicName', clinic.name);
-  setText('clinicAddress', clinic.address || `${clinic.area || ''}, ${clinic.district || ''}, ${clinic.province || ''}`);
+  setText(
+    'clinicAddress',
+    clinic.address || `${clinic.area || ''}, ${clinic.district || ''}, ${clinic.province || ''}`
+  );
   setText('clinicProvince', clinic.province);
   setText('clinicDistrictArea', [clinic.district, clinic.area].filter(Boolean).join(' / '));
   setText('clinicFacilityType', clinic.facility_type);
@@ -85,46 +94,56 @@ function renderSlots(slots, clinic) {
 
     const slotCard = document.createElement('article');
     slotCard.className =
-      'rounded-[1.5rem] border border-white/10 bg-white/5 p-5 shadow-lg shadow-slate-950/30';
+      'rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(26,27,38,0.82),rgba(36,40,59,0.82))] px-5 py-5 shadow-lg shadow-black/10 backdrop-blur-sm';
+
+    const availabilityClass = isAvailable
+      ? 'text-[#38f2c2]'
+      : 'text-[#f7768e]';
+
+    const buttonClass = isAvailable
+      ? 'border border-[#00b4d8]/50 bg-[#0a2540] text-[#b8ecff] hover:border-[#00b4d8] hover:bg-[#0d2d4d]'
+      : 'cursor-not-allowed border border-[#414868] bg-[#24283b]/80 text-[#6b7194]';
 
     slotCard.innerHTML = `
-      <section class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:flex-1">
-          <article>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Date</p>
-            <p class="mt-2 text-base font-medium text-white">${formatDate(slot.date)}</p>
-          </article>
+      <section class="grid gap-5 lg:grid-cols-[1.45fr_1fr_1fr_1.45fr_auto] lg:items-center">
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Date</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatDate(slot.date)}
+          </p>
+        </article>
 
-          <article>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Start Time</p>
-            <p class="mt-2 text-base font-medium text-white">${formatTime(slot.start_time)}</p>
-          </article>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Start Time</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatTime(slot.start_time)}
+          </p>
+        </article>
 
-          <article>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">End Time</p>
-            <p class="mt-2 text-base font-medium text-white">${formatTime(slot.end_time)}</p>
-          </article>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">End Time</p>
+          <p class="mt-3 text-[1.05rem] font-semibold text-white">
+            ${formatTime(slot.end_time)}
+          </p>
+        </article>
 
-          <article>
-            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Availability</p>
-            <p class="mt-2 text-base font-medium ${isAvailable ? 'text-emerald-300' : 'text-red-300'}">
-              ${isAvailable ? `${availability} spaces left` : 'Unavailable'}
-            </p>
-          </article>
-        </section>
+        <article>
+          <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Availability</p>
+          <p class="mt-3 text-[1.05rem] font-semibold ${availabilityClass}">
+            ${isAvailable ? `${availability} space${availability === 1 ? '' : 's'} left` : 'Unavailable'}
+          </p>
+        </article>
 
-        <section>
+        <section class="lg:justify-self-end">
           <button
-            class="book-slot-btn rounded-full px-5 py-3 text-sm font-semibold transition
-            ${isAvailable
-              ? 'border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20'
-              : 'cursor-not-allowed border border-white/10 bg-white/5 text-slate-500'}"
+            class="book-slot-btn inline-flex min-w-[4.8rem] items-center justify-center rounded-full px-6 py-3 text-base font-semibold transition ${buttonClass}"
             data-slot-id="${slot.id}"
             data-clinic-id="${clinic.id}"
             data-clinic-name="${clinic.name}"
             data-slot-date="${slot.date}"
             data-slot-start="${slot.start_time}"
             data-slot-end="${slot.end_time}"
+            data-default-label="Book"
             ${isAvailable ? '' : 'disabled'}
           >
             Book
@@ -150,32 +169,33 @@ function attachBookHandlers() {
       const slotDate = button.dataset.slotDate;
       const slotStart = button.dataset.slotStart;
       const slotEnd = button.dataset.slotEnd;
+      const defaultLabel = button.dataset.defaultLabel || 'Book';
 
       button.disabled = true;
-      button.textContent = 'Booking...';
+      button.textContent = defaultLabel;
 
       const {
-      data: { session }
+        data: { session }
       } = await window.supabaseClient.auth.getSession();
 
       if (!session?.access_token) {
-      alert('Please log in to book an appointment.');
-      window.location.href = '/login';
-      return;
-    }
+        alert('Please log in to book an appointment.');
+        window.location.href = '/login';
+        return;
+      }
 
       try {
         const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-        clinic_id: clinicId,
-        slot_id: slotId
-        })
-      });
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            slot_id: slotId
+          })
+        });
 
         const data = await response.json();
 
@@ -191,20 +211,20 @@ function attachBookHandlers() {
         });
 
         sessionStorage.setItem(
-        'latestBooking',
-        JSON.stringify({
-        clinic: clinicName,
-        date: slotDate,
-        start: slotStart,
-        end: slotEnd
-        })
+          'latestBooking',
+          JSON.stringify({
+            clinic: clinicName,
+            date: slotDate,
+            start: slotStart,
+            end: slotEnd
+          })
         );
 
         window.location.href = `/booking-confirmation?${params.toString()}`;
       } catch (error) {
         alert(error.message || 'Could not book this appointment.');
         button.disabled = false;
-        button.textContent = 'Book';
+        button.textContent = defaultLabel;
       }
     });
   });
@@ -226,35 +246,36 @@ async function loadClinicPage() {
 
   try {
     const [clinicResponse, slotsResponse] = await Promise.all([
-    fetch(`/api/clinics/${clinicId}`),
-    fetch(`/api/clinics/${clinicId}/slots`)
-  ]);
+      fetch(`/api/clinics/${clinicId}`),
+      fetch(`/api/clinics/${clinicId}/slots`)
+    ]);
 
-  if (!clinicResponse.ok) {
-  const text = await clinicResponse.text();
-  throw new Error(`Failed to load clinic: ${text}`);
-  }
+    if (!clinicResponse.ok) {
+      const text = await clinicResponse.text();
+      throw new Error(`Failed to load clinic: ${text}`);
+    }
 
-  if (!slotsResponse.ok) {
-    const text = await slotsResponse.text();
-    throw new Error(`Failed to load slots: ${text}`);
-  }
+    if (!slotsResponse.ok) {
+      const text = await slotsResponse.text();
+      throw new Error(`Failed to load slots: ${text}`);
+    }
 
-  const clinicPayload = await clinicResponse.json();
-  const slotsPayload = await slotsResponse.json();
+    const clinicPayload = await clinicResponse.json();
+    const slotsPayload = await slotsResponse.json();
 
-  const clinic = clinicPayload.data;
-  const slots = slotsPayload.data || [];
+    const clinic = clinicPayload.data;
+    const slots = slotsPayload.data || [];
 
-  renderClinic(clinic);
-  renderSlots(slots, clinic);
+    renderClinic(clinic);
+    renderSlots(slots, clinic);
 
-  loadingState.classList.add('hidden');
-  clinicContent.classList.remove('hidden');
+    loadingState.classList.add('hidden');
+    clinicContent.classList.remove('hidden');
   } catch (error) {
     console.error(error);
     loadingState.classList.add('hidden');
-    errorState.textContent = error.message || 'We could not load this clinic right now. Please try again.';
+    errorState.textContent =
+      error.message || 'We could not load this clinic right now. Please try again.';
     errorState.classList.remove('hidden');
   }
 }

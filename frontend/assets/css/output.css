@@ -206,6 +206,9 @@
   }
 }
 @layer utilities {
+  .pointer-events-auto {
+    pointer-events: auto;
+  }
   .pointer-events-none {
     pointer-events: none;
   }
@@ -235,9 +238,6 @@
   }
   .end {
     inset-inline-end: var(--spacing);
-  }
-  .top-8 {
-    top: calc(var(--spacing) * 8);
   }
   .top-10 {
     top: calc(var(--spacing) * 10);
@@ -334,9 +334,6 @@
   }
   .-left-8 {
     left: calc(var(--spacing) * -8);
-  }
-  .left-8 {
-    left: calc(var(--spacing) * 8);
   }
   .left-\[3\%\] {
     left: 3%;
@@ -442,9 +439,6 @@
   }
   .h-14 {
     height: calc(var(--spacing) * 14);
-  }
-  .h-16 {
-    height: calc(var(--spacing) * 16);
   }
   .h-36 {
     height: calc(var(--spacing) * 36);
@@ -580,6 +574,9 @@
   }
   .w-auto {
     width: auto;
+  }
+  .w-fit {
+    width: fit-content;
   }
   .w-full {
     width: 100%;
@@ -1610,11 +1607,6 @@
       height: calc(var(--spacing) * 16);
     }
   }
-  .md\:h-20 {
-    @media (width >= 48rem) {
-      height: calc(var(--spacing) * 20);
-    }
-  }
   .md\:grid-cols-2 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1699,11 +1691,6 @@
   .lg\:h-20 {
     @media (width >= 64rem) {
       height: calc(var(--spacing) * 20);
-    }
-  }
-  .lg\:h-24 {
-    @media (width >= 64rem) {
-      height: calc(var(--spacing) * 24);
     }
   }
   .lg\:h-\[640px\] {
@@ -1826,6 +1813,43 @@
   .xl\:grid-cols-4 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
+@layer components {
+  .vitaq-logo-link {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+  }
+  .vitaq-logo-image {
+    height: calc(var(--spacing) * 16);
+    width: auto;
+    object-fit: contain;
+    @media (width >= 48rem) {
+      height: 4.5rem;
+    }
+    @media (width >= 64rem) {
+      height: calc(var(--spacing) * 24);
+    }
+  }
+  .vitaq-logo-shell {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: calc(var(--spacing) * 0);
+    top: calc(var(--spacing) * 0);
+    z-index: 20;
+  }
+  .vitaq-logo-floating {
+    margin-inline: auto;
+    max-width: var(--container-7xl);
+    padding-inline: calc(var(--spacing) * 6);
+    padding-block: calc(var(--spacing) * 6);
+    @media (width >= 48rem) {
+      padding-inline: calc(var(--spacing) * 8);
+    }
+    @media (width >= 64rem) {
+      padding-inline: calc(var(--spacing) * 10);
     }
   }
 }

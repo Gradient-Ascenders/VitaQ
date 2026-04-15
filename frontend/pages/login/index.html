@@ -20,17 +20,21 @@
       <div class="absolute left-[45%] bottom-[8%] h-44 w-44 animate-pulse rounded-full bg-[#7dcfff]/8 blur-3xl [animation-delay:700ms]"></div>
     </section>
 
-    <a
-      href="/"
-      aria-label="Go to home page"
-      class="absolute left-8 top-8 z-20"
-    >
-      <img
-        src="/assets/images/vitaq-logo.png"
-        alt="VitaQ logo"
-        class="h-16 w-auto object-contain md:h-20 lg:h-24"
-      />
-    </a>
+    <div class="vitaq-logo-shell">
+      <div class="vitaq-logo-floating">
+        <a
+          href="/"
+          aria-label="Go to home page"
+          class="pointer-events-auto w-fit vitaq-logo-link"
+        >
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="vitaq-logo-image"
+          />
+        </a>
+      </div>
+    </div>
 
     <section
       class="relative z-10 w-full max-w-md rounded-[2rem] border border-white/10 bg-[#1f2335]/85 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl sm:p-8"

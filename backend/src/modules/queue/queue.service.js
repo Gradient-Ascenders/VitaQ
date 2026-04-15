@@ -1,4 +1,5 @@
 const supabase = require('../../lib/supabaseClient');
+const WAIT_MINUTES_PER_PATIENT = 15;
 
 /**
  * Creates a standard service error with an HTTP status code.
@@ -16,6 +17,66 @@ function createServiceError(message, statusCode = 400) {
  */
 function getTodayDateString() {
   return new Date().toISOString().split('T')[0];
+}
+
+function formatAppointmentTimeLabel(entry) {
+  const startTime = entry?.appointment?.slot?.start_time;
+
+  if (startTime) {
+    return startTime.slice(0, 5);
+  }
+
+  if (entry?.source === 'walk_in') {
+    return 'Walk-in';
+  }
+
+  return 'N/A';
+}
+
+function buildQueueSummary(entries) {
+  return entries.reduce(
+    (summary, entry) => {
+      summary.total += 1;
+
+      if (entry.status === 'waiting') {
+        summary.waiting += 1;
+      }
+
+      if (entry.status === 'in_consultation') {
+        summary.in_consultation += 1;
+      }
+
+      if (entry.status === 'complete') {
+        summary.complete += 1;
+      }
+
+      return summary;
+    },
+    {
+      total: 0,
+      waiting: 0,
+      in_consultation: 0,
+      complete: 0
+    }
+  );
+}
+
+function calculateLivePosition(entries, patientEntryId) {
+  const waitingEntries = entries.filter((entry) => entry.status === 'waiting');
+  const positionIndex = waitingEntries.findIndex((entry) => entry.id === patientEntryId);
+
+  return positionIndex === -1 ? null : positionIndex + 1;
+}
+
+function mapQueueEntriesForPatient(entries, patientId) {
+  return entries.map((entry, index) => ({
+    id: entry.id,
+    position: index + 1,
+    queue_number: entry.queue_number,
+    status: entry.status,
+    appointment_time: formatAppointmentTimeLabel(entry),
+    is_current_patient: String(entry.patient_id) === String(patientId)
+  }));
 }
 
 /**
@@ -168,6 +229,85 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
   };
 }
 
+/**
+ * Returns the logged-in patient's queue status for a clinic visit date.
+ */
+async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
+  if (!patientId || !clinicId || !queueDate) {
+    throw createServiceError('patient_id, clinic_id, and date are required.', 400);
+  }
+
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at,
+      appointment:appointments (
+        id,
+        slot:appointment_slots (
+          start_time,
+          end_time
+        )
+      )
+    `)
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', queueDate)
+    .order('queue_number', { ascending: true });
+
+  if (error) {
+    throw createServiceError('Failed to fetch queue status.', 500);
+  }
+
+  const queueEntries = Array.isArray(data) ? data : [];
+  const patientEntry = queueEntries.find((entry) => String(entry.patient_id) === String(patientId)) || null;
+  const queueSummary = buildQueueSummary(queueEntries);
+  const mappedQueueEntries = mapQueueEntriesForPatient(queueEntries, patientId);
+
+  if (!patientEntry) {
+    return {
+      is_in_queue: false,
+      position: null,
+      queue_entry: null,
+      queue_summary: queueSummary,
+      queue_entries: mappedQueueEntries
+    };
+  }
+
+  const position = calculateLivePosition(queueEntries, patientEntry.id);
+  const estimatedWaitMinutes = position === null ? 0 : (position - 1) * WAIT_MINUTES_PER_PATIENT;
+
+  return {
+    is_in_queue: true,
+    position,
+    queue_entry: {
+      id: patientEntry.id,
+      clinic_id: patientEntry.clinic_id,
+      appointment_id: patientEntry.appointment_id,
+      queue_number: patientEntry.queue_number,
+      queue_date: patientEntry.queue_date,
+      source: patientEntry.source,
+      status: patientEntry.status,
+      estimated_wait_minutes: patientEntry.status === 'waiting' ? estimatedWaitMinutes : 0,
+      created_at: patientEntry.created_at,
+      updated_at: patientEntry.updated_at,
+      appointment_time: patientEntry.appointment?.slot?.start_time || null,
+      appointment_end_time: patientEntry.appointment?.slot?.end_time || null
+    },
+    queue_summary: queueSummary,
+    queue_entries: mappedQueueEntries
+  };
+}
+
 module.exports = {
-  joinQueueFromAppointment
+  joinQueueFromAppointment,
+  fetchPatientQueueStatus
 };

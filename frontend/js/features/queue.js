@@ -22,6 +22,7 @@ function formatTimeRange(start, end) {
 }
 
 const QUEUE_STATES = {
+  UNAVAILABLE: 'unavailable',
   NOT_IN_QUEUE: 'not_in_queue',
   WAITING: 'waiting',
   IN_CONSULTATION: 'in_consultation',
@@ -30,6 +31,7 @@ const QUEUE_STATES = {
 };
 
 const QUEUE_EMPTY_STATES = {
+  NOT_IN_QUEUE: 'not_in_queue',
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
 
@@ -43,6 +45,8 @@ function getQueueBadgeClasses(state) {
       return 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]';
     case QUEUE_STATES.CANCELLED:
       return 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]';
+    case QUEUE_STATES.UNAVAILABLE:
+      return 'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]';
     case QUEUE_STATES.NOT_IN_QUEUE:
     default:
       return 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]';
@@ -55,58 +59,13 @@ function formatQueueStateLabel(state) {
       return 'In consultation';
     case QUEUE_STATES.NOT_IN_QUEUE:
       return 'Not in queue';
+    case QUEUE_STATES.UNAVAILABLE:
+      return 'Unavailable';
     default:
       return state
         ? state.charAt(0).toUpperCase() + state.slice(1)
         : 'Unknown';
   }
-}
-
-function getMockQueueEntries(appointmentStart, currentState) {
-  return [
-    {
-      position: 1,
-      patientLabel: 'Patient 01',
-      appointmentTime: '08:00',
-      queueNumber: 'A001',
-      status: QUEUE_STATES.COMPLETE
-    },
-    {
-      position: 2,
-      patientLabel: 'Patient 02',
-      appointmentTime: '08:30',
-      queueNumber: 'A002',
-      status: QUEUE_STATES.COMPLETE
-    },
-    {
-      position: 3,
-      patientLabel: 'Patient 03',
-      appointmentTime: '09:00',
-      queueNumber: 'A003',
-      status: QUEUE_STATES.WAITING
-    },
-    {
-      position: 4,
-      patientLabel: 'You',
-      appointmentTime: appointmentStart ? appointmentStart.slice(0, 5) : '09:30',
-      queueNumber: 'A004',
-      status: currentState
-    },
-    {
-      position: 5,
-      patientLabel: 'Patient 05',
-      appointmentTime: '10:00',
-      queueNumber: 'A005',
-      status: QUEUE_STATES.WAITING
-    },
-    {
-      position: 6,
-      patientLabel: 'Patient 06',
-      appointmentTime: '10:30',
-      queueNumber: 'A006',
-      status: QUEUE_STATES.IN_CONSULTATION
-    }
-  ];
 }
 
 function getQueueStateConfig(state) {
@@ -136,6 +95,17 @@ function getQueueStateConfig(state) {
         message: 'This queue entry has been cancelled and is no longer active for this clinic visit.'
       };
     case QUEUE_STATES.NOT_IN_QUEUE:
+      return {
+        label: 'Not in queue',
+        badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+        message: 'You do not currently have an active queue entry for this clinic visit.'
+      };
+    case QUEUE_STATES.UNAVAILABLE:
+      return {
+        label: 'Unavailable',
+        badgeClass: 'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]',
+        message: 'Queue information could not be loaded right now. Please try again shortly.'
+      };
     default:
       return {
         label: 'Waiting',
@@ -162,6 +132,12 @@ function renderQueueState(state) {
 
 function getQueueEmptyStateConfig(emptyState) {
   switch (emptyState) {
+    case QUEUE_EMPTY_STATES.NOT_IN_QUEUE:
+      return {
+        eyebrow: 'Not in queue',
+        title: 'No active queue entry for this visit',
+        message: 'This visit does not currently have an active queue entry. Return to your appointments if you need to confirm the visit details.'
+      };
     case QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE:
     default:
       return {
@@ -205,7 +181,57 @@ function renderQueueEmptyState(emptyState) {
   emptyContainer.classList.remove('hidden');
 }
 
-function renderQueueList(entries) {
+function formatWaitTime(minutes, queueState) {
+  if (queueState === QUEUE_STATES.IN_CONSULTATION) {
+    return 'Now';
+  }
+
+  if (
+    queueState === QUEUE_STATES.NOT_IN_QUEUE
+    || queueState === QUEUE_STATES.UNAVAILABLE
+    || queueState === QUEUE_STATES.CANCELLED
+    || queueState === QUEUE_STATES.COMPLETE
+  ) {
+    return '--';
+  }
+
+  if (typeof minutes !== 'number' || Number.isNaN(minutes)) {
+    return '--';
+  }
+
+  return `${minutes} min${minutes === 1 ? '' : 's'}`;
+}
+
+function renderQueueMetrics(queueEntry, position, queueState) {
+  const positionValue = document.getElementById('queuePositionValue');
+  const queueNumberValue = document.getElementById('queueNumberValue');
+  const queueWaitValue = document.getElementById('queueWaitValue');
+
+  if (!positionValue || !queueNumberValue || !queueWaitValue) {
+    return;
+  }
+
+  if (queueState === QUEUE_STATES.IN_CONSULTATION) {
+    positionValue.textContent = 'Now';
+  } else if (typeof position === 'number') {
+    positionValue.textContent = String(position);
+  } else {
+    positionValue.textContent = '--';
+  }
+
+  queueNumberValue.textContent = queueEntry?.queue_number || '--';
+  queueWaitValue.textContent = formatWaitTime(queueEntry?.estimated_wait_minutes, queueState);
+}
+
+function buildPatientLabel(entry) {
+  if (entry.is_current_patient) {
+    return 'You';
+  }
+
+  return `Patient ${String(entry.position).padStart(2, '0')}`;
+}
+
+function renderQueueList(entries, summaryCounts) {
   const list = document.getElementById('queueList');
   const summary = document.getElementById('queueListSummary');
   const totalCount = document.getElementById('queueTotalCount');
@@ -232,10 +258,10 @@ function renderQueueList(entries) {
     footnote.classList.remove('hidden');
   }
 
-  const total = entries.length;
-  const waiting = entries.filter((entry) => entry.status === QUEUE_STATES.WAITING).length;
-  const inConsultation = entries.filter((entry) => entry.status === QUEUE_STATES.IN_CONSULTATION).length;
-  const complete = entries.filter((entry) => entry.status === QUEUE_STATES.COMPLETE).length;
+  const total = Number(summaryCounts?.total || entries.length);
+  const waiting = Number(summaryCounts?.waiting || 0);
+  const inConsultation = Number(summaryCounts?.in_consultation || 0);
+  const complete = Number(summaryCounts?.complete || 0);
 
   if (summary) {
     summary.textContent = `${total} patient${total === 1 ? '' : 's'} in this queue`;
@@ -251,8 +277,9 @@ function renderQueueList(entries) {
   entries.forEach((entry) => {
     const item = document.createElement('article');
     item.className = 'grid gap-4 px-5 py-4 md:grid-cols-[0.7fr_1.2fr_1fr_1fr_1.1fr] md:items-center';
+    const patientLabel = buildPatientLabel(entry);
 
-    const highlightClass = entry.patientLabel === 'You'
+    const highlightClass = entry.is_current_patient
       ? 'border border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]'
       : 'border border-[#414868] bg-[#24283b]/80 text-[#c0caf5]';
 
@@ -265,18 +292,18 @@ function renderQueueList(entries) {
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Patient</p>
         <p class="inline-flex rounded-full px-3 py-1.5 text-sm font-semibold ${highlightClass}">
-          ${entry.patientLabel}
+          ${patientLabel}
         </p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Appointment</p>
-        <p class="text-sm font-medium text-[#c0caf5]">${entry.appointmentTime}</p>
+        <p class="text-sm font-medium text-[#c0caf5]">${entry.appointment_time}</p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Queue Number</p>
-        <p class="text-sm font-medium text-[#c0caf5]">${entry.queueNumber}</p>
+        <p class="text-sm font-medium text-[#c0caf5]">${entry.queue_number}</p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">
@@ -291,14 +318,11 @@ function renderQueueList(entries) {
   });
 }
 
-function loadQueuePage() {
-  const params = new URLSearchParams(window.location.search);
+function applyVisitDetails(params) {
   const clinic = params.get('clinic') || 'Clinic not available';
   const date = params.get('date') || '';
   const start = params.get('start') || '';
   const end = params.get('end') || '';
-  const state = params.get('state') || QUEUE_STATES.WAITING;
-  const emptyState = params.get('empty_state') || '';
 
   document.getElementById('queueClinicHero').textContent = clinic;
   document.getElementById('queueClinicName').textContent = clinic;
@@ -307,14 +331,65 @@ function loadQueuePage() {
   document.getElementById('queueDayCaption').textContent = date
     ? `Queue details for ${formatDate(date)}`
     : 'Visit date unavailable';
-  renderQueueState(state);
+}
 
-  if (emptyState === QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE) {
+async function loadQueuePage() {
+  const params = new URLSearchParams(window.location.search);
+  const clinicId = params.get('clinicId') || '';
+  const date = params.get('date') || '';
+  initialiseLogoutButton('logoutButton');
+  applyVisitDetails(params);
+
+  const session = await requireAuthenticatedUser();
+  if (!session) {
+    return;
+  }
+
+  if (!clinicId || !date) {
+    renderQueueState(QUEUE_STATES.UNAVAILABLE);
+    renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
     return;
   }
 
-  renderQueueList(getMockQueueEntries(start, state));
+  try {
+    const response = await fetch(`/api/queue/my-status?clinic_id=${encodeURIComponent(clinicId)}&date=${encodeURIComponent(date)}`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    const payload = await response.json();
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to load queue status.');
+    }
+
+    const queueData = payload.data || {};
+    const queueState = queueData.is_in_queue
+      ? queueData.queue_entry?.status || QUEUE_STATES.WAITING
+      : QUEUE_STATES.NOT_IN_QUEUE;
+
+    renderQueueState(queueState);
+    renderQueueMetrics(queueData.queue_entry, queueData.position, queueState);
+
+    if (!queueData.is_in_queue) {
+      renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_IN_QUEUE);
+      return;
+    }
+
+    renderQueueList(queueData.queue_entries || [], queueData.queue_summary || {});
+  } catch (error) {
+    console.error(error);
+    renderQueueState(QUEUE_STATES.UNAVAILABLE);
+    renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
+    renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', loadQueuePage);

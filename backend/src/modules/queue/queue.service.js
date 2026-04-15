@@ -33,8 +33,8 @@ async function generateQueueNumber(clinicId, queueDate) {
     throw createServiceError('Failed to generate queue number.', 500);
   }
 
-  const nextNumber = (count || 0) + 1;
-  return `A${String(nextNumber).padStart(3, '0')}`;
+  // queue_number is an integer in Supabase, so return 1, 2, 3, etc.
+  return (count || 0) + 1;
 }
 
 /**

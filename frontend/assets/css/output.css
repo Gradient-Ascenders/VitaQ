@@ -236,9 +236,6 @@
   .end {
     inset-inline-end: var(--spacing);
   }
-  .top-8 {
-    top: calc(var(--spacing) * 8);
-  }
   .top-10 {
     top: calc(var(--spacing) * 10);
   }
@@ -335,9 +332,6 @@
   .-left-8 {
     left: calc(var(--spacing) * -8);
   }
-  .left-8 {
-    left: calc(var(--spacing) * 8);
-  }
   .left-\[3\%\] {
     left: 3%;
   }
@@ -433,12 +427,6 @@
   }
   .table {
     display: table;
-  }
-  .h-14 {
-    height: calc(var(--spacing) * 14);
-  }
-  .h-16 {
-    height: calc(var(--spacing) * 16);
   }
   .h-36 {
     height: calc(var(--spacing) * 36);
@@ -565,9 +553,6 @@
   }
   .w-\[1024px\] {
     width: 1024px;
-  }
-  .w-auto {
-    width: auto;
   }
   .w-full {
     width: 100%;
@@ -1509,16 +1494,6 @@
       display: flex;
     }
   }
-  .md\:h-16 {
-    @media (width >= 48rem) {
-      height: calc(var(--spacing) * 16);
-    }
-  }
-  .md\:h-20 {
-    @media (width >= 48rem) {
-      height: calc(var(--spacing) * 20);
-    }
-  }
   .md\:grid-cols-2 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1588,16 +1563,6 @@
   .lg\:grid {
     @media (width >= 64rem) {
       display: grid;
-    }
-  }
-  .lg\:h-20 {
-    @media (width >= 64rem) {
-      height: calc(var(--spacing) * 20);
-    }
-  }
-  .lg\:h-24 {
-    @media (width >= 64rem) {
-      height: calc(var(--spacing) * 24);
     }
   }
   .lg\:h-\[640px\] {
@@ -1720,6 +1685,39 @@
   .xl\:grid-cols-4 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
+@layer components {
+  .vitaq-logo-link {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+  }
+  .vitaq-logo-image {
+    height: calc(var(--spacing) * 14);
+    width: auto;
+    object-fit: contain;
+    @media (width >= 48rem) {
+      height: calc(var(--spacing) * 16);
+    }
+    @media (width >= 64rem) {
+      height: calc(var(--spacing) * 20);
+    }
+  }
+  .vitaq-logo-floating {
+    position: absolute;
+    top: calc(var(--spacing) * 6);
+    left: calc(var(--spacing) * 6);
+    z-index: 20;
+    @media (width >= 48rem) {
+      top: calc(var(--spacing) * 8);
+    }
+    @media (width >= 48rem) {
+      left: calc(var(--spacing) * 8);
+    }
+    @media (width >= 64rem) {
+      left: calc(var(--spacing) * 10);
     }
   }
 }

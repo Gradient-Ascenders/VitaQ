@@ -33,8 +33,8 @@ function loadQueuePage() {
   document.getElementById('queueDate').textContent = formatDate(date);
   document.getElementById('queueTime').textContent = formatTimeRange(start, end);
   document.getElementById('queueDayCaption').textContent = date
-    ? `Queue for ${formatDate(date)}`
-    : 'Queue date unavailable';
+    ? `Queue details for ${formatDate(date)}`
+    : 'Visit date unavailable';
 }
 
 document.addEventListener('DOMContentLoaded', loadQueuePage);

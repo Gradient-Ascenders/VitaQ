@@ -188,6 +188,28 @@ function renderFeedback() {
   feedback.textContent = staffState.feedback.message;
 }
 
+function renderWalkInFormFeedback(type, message) {
+  const feedback = document.getElementById('walkInFormFeedback');
+
+  if (!feedback) {
+    return;
+  }
+
+  if (!type || !message) {
+    feedback.className = 'mt-6 hidden';
+    feedback.textContent = '';
+    return;
+  }
+
+  const typeClasses = {
+    success: 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]',
+    error: 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
+  };
+
+  feedback.className = `mt-6 rounded-2xl border px-4 py-3 text-sm font-medium ${typeClasses[type] || typeClasses.error}`;
+  feedback.textContent = message;
+}
+
 function renderClinicSnapshot() {
   const nextWaitingEntry = getNextWaitingEntry();
 
@@ -385,6 +407,7 @@ function addWalkInPatient(patientName, visitType, timeLabel) {
     type: 'success',
     message: `${patientName} added to the queue as walk-in ${newEntry.queueNumber}.`
   };
+  renderWalkInFormFeedback('success', `${patientName} was added for ${timeLabel}.`);
   refreshStaffDashboard();
 }
 
@@ -430,32 +453,22 @@ function initialiseWalkInForm() {
     const timeLabel = timeField.value;
     const visitType = visitTypeField.value;
 
+    renderWalkInFormFeedback(null, '');
+
     if (!patientName) {
-      staffState.feedback = {
-        type: 'error',
-        message: 'Enter a patient name before adding a walk-in.'
-      };
-      renderFeedback();
+      renderWalkInFormFeedback('error', 'Enter a patient name before adding a walk-in.');
       patientNameField.focus();
       return;
     }
 
     if (!timeLabel) {
-      staffState.feedback = {
-        type: 'error',
-        message: 'Select a time before adding a walk-in.'
-      };
-      renderFeedback();
+      renderWalkInFormFeedback('error', 'Select a time before adding a walk-in.');
       timeField.focus();
       return;
     }
 
     if (hasQueueTimeConflict(timeLabel)) {
-      staffState.feedback = {
-        type: 'error',
-        message: `The ${timeLabel} slot is already in use. Choose a different time for this walk-in.`
-      };
-      renderFeedback();
+      renderWalkInFormFeedback('error', `The ${timeLabel} slot is already in use. Choose a different time for this walk-in.`);
       timeField.focus();
       return;
     }
@@ -471,13 +484,15 @@ function initialiseWalkInForm() {
 async function initialiseStaffPage() {
   initialiseLogoutButton('logoutButton');
 
-  const session = await requireAuthenticatedUser();
+  let session = null;
 
-  if (!session) {
-    return;
+  try {
+    session = await getCurrentSession(true);
+  } catch (error) {
+    console.error('Staff page session check failed:', error);
   }
 
-  const userName = session.user?.user_metadata?.full_name || session.user?.email || 'Staff';
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email || 'Staff';
   setTextContent('staffName', userName);
 
   refreshStaffDashboard();

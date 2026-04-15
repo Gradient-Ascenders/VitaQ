@@ -163,6 +163,7 @@ async function fetchAppointmentsByPatientId(patientId) {
     .select(`
       id,
       clinic_id,
+      slot_id,
       status,
       created_at,
       clinic:clinics (

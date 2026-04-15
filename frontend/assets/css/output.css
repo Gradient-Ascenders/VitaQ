@@ -1701,14 +1701,14 @@
     gap: calc(var(--spacing) * 3);
   }
   .vitaq-logo-image {
-    height: calc(var(--spacing) * 14);
+    height: calc(var(--spacing) * 16);
     width: auto;
     object-fit: contain;
     @media (width >= 48rem) {
-      height: calc(var(--spacing) * 16);
+      height: 4.5rem;
     }
     @media (width >= 64rem) {
-      height: calc(var(--spacing) * 20);
+      height: calc(var(--spacing) * 24);
     }
   }
   .vitaq-logo-shell {

@@ -6,7 +6,7 @@
   }
 
   .vitaq-logo-image {
-    @apply h-14 w-auto object-contain md:h-16 lg:h-20;
+    @apply h-16 w-auto object-contain md:h-[4.5rem] lg:h-24;
   }
 
   .vitaq-logo-shell {

@@ -674,6 +674,13 @@
   .gap-14 {
     gap: calc(var(--spacing) * 14);
   }
+  .space-y-2 {
+    :where(& > :not(:last-child)) {
+      --tw-space-y-reverse: 0;
+      margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+      margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+    }
+  }
   .space-y-3 {
     :where(& > :not(:last-child)) {
       --tw-space-y-reverse: 0;
@@ -778,6 +785,10 @@
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
   }
+  .border-dashed {
+    --tw-border-style: dashed;
+    border-style: dashed;
+  }
   .border-\[\#00b4d8\]\/50 {
     border-color: color-mix(in oklab, #00b4d8 50%, transparent);
   }
@@ -831,6 +842,9 @@
   }
   .bg-\[\#1f3d2e\] {
     background-color: #1f3d2e;
+  }
+  .bg-\[\#1f2335\]\/55 {
+    background-color: color-mix(in oklab, #1f2335 55%, transparent);
   }
   .bg-\[\#1f2335\]\/80 {
     background-color: color-mix(in oklab, #1f2335 80%, transparent);
@@ -1079,6 +1093,9 @@
   }
   .text-center {
     text-align: center;
+  }
+  .text-right {
+    text-align: right;
   }
   .text-2xl {
     font-size: var(--text-2xl);
@@ -1534,6 +1551,16 @@
       outline-style: none;
     }
   }
+  .disabled\:cursor-not-allowed {
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+  .disabled\:opacity-60 {
+    &:disabled {
+      opacity: 60%;
+    }
+  }
   .sm\:grid-cols-3 {
     @media (width >= 40rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1557,6 +1584,11 @@
   .sm\:justify-between {
     @media (width >= 40rem) {
       justify-content: space-between;
+    }
+  }
+  .sm\:justify-end {
+    @media (width >= 40rem) {
+      justify-content: flex-end;
     }
   }
   .sm\:p-8 {
@@ -1627,6 +1659,11 @@
       grid-template-columns: 0.7fr 1.2fr 1fr 1fr 1.1fr;
     }
   }
+  .md\:grid-cols-\[1\.25fr_1\.2fr_0\.9fr_0\.9fr_0\.9fr_1\.15fr\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 1.25fr 1.2fr 0.9fr 0.9fr 0.9fr 1.15fr;
+    }
+  }
   .md\:flex-row {
     @media (width >= 48rem) {
       flex-direction: row;
@@ -1640,6 +1677,11 @@
   .md\:justify-between {
     @media (width >= 48rem) {
       justify-content: space-between;
+    }
+  }
+  .md\:gap-5 {
+    @media (width >= 48rem) {
+      gap: calc(var(--spacing) * 5);
     }
   }
   .md\:p-8 {

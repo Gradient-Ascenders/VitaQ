@@ -29,6 +29,12 @@ const QUEUE_STATES = {
   CANCELLED: 'cancelled'
 };
 
+const QUEUE_EMPTY_STATES = {
+  NO_APPOINTMENT_FOR_TODAY: 'no_appointment_for_today',
+  NOT_YET_ADDED_TO_QUEUE: 'not_yet_added_to_queue',
+  QUEUE_UNAVAILABLE: 'queue_unavailable'
+};
+
 function getQueueBadgeClasses(state) {
   switch (state) {
     case QUEUE_STATES.WAITING:
@@ -56,6 +62,21 @@ function formatQueueStateLabel(state) {
         ? state.charAt(0).toUpperCase() + state.slice(1)
         : 'Unknown';
   }
+}
+
+function isToday(dateString) {
+  if (!dateString) {
+    return false;
+  }
+
+  const today = new Date();
+  const localToday = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0')
+  ].join('-');
+
+  return dateString === localToday;
 }
 
 function getMockQueueEntries(appointmentStart, currentState) {
@@ -156,6 +177,63 @@ function renderQueueState(state) {
   message.textContent = config.message;
 }
 
+function getQueueEmptyStateConfig(emptyState) {
+  switch (emptyState) {
+    case QUEUE_EMPTY_STATES.NO_APPOINTMENT_FOR_TODAY:
+      return {
+        eyebrow: 'Queue unavailable today',
+        title: 'No appointment for today',
+        message: 'This queue page is only active on the day of your clinic appointment. Return on your scheduled date to view the daily queue.'
+      };
+    case QUEUE_EMPTY_STATES.NOT_YET_ADDED_TO_QUEUE:
+      return {
+        eyebrow: 'Queue not started',
+        title: 'Not yet added to queue',
+        message: 'Your appointment exists, but you have not been added to the live clinic queue yet. Please check again closer to your visit time or when staff open the queue.'
+      };
+    case QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE:
+    default:
+      return {
+        eyebrow: 'Queue unavailable',
+        title: 'Queue unavailable right now',
+        message: 'The clinic queue cannot be displayed at the moment. Please refresh later or contact clinic staff if the problem continues.'
+      };
+  }
+}
+
+function renderQueueEmptyState(emptyState) {
+  const content = document.getElementById('queueListContent');
+  const emptyContainer = document.getElementById('queueEmptyState');
+  const eyebrow = document.getElementById('queueEmptyStateEyebrow');
+  const title = document.getElementById('queueEmptyStateTitle');
+  const message = document.getElementById('queueEmptyStateMessage');
+  const summary = document.getElementById('queueListSummary');
+  const footnote = document.getElementById('queueListFootnote');
+
+  if (!emptyContainer || !title || !message || !eyebrow) {
+    return;
+  }
+
+  const config = getQueueEmptyStateConfig(emptyState);
+
+  if (content) {
+    content.classList.add('hidden');
+  }
+
+  if (summary) {
+    summary.textContent = config.title;
+  }
+
+  if (footnote) {
+    footnote.classList.add('hidden');
+  }
+
+  eyebrow.textContent = config.eyebrow;
+  title.textContent = config.title;
+  message.textContent = config.message;
+  emptyContainer.classList.remove('hidden');
+}
+
 function renderQueueList(entries) {
   const list = document.getElementById('queueList');
   const summary = document.getElementById('queueListSummary');
@@ -163,9 +241,24 @@ function renderQueueList(entries) {
   const waitingCount = document.getElementById('queueWaitingCount');
   const inConsultationCount = document.getElementById('queueInConsultationCount');
   const completeCount = document.getElementById('queueCompleteCount');
+  const content = document.getElementById('queueListContent');
+  const emptyContainer = document.getElementById('queueEmptyState');
+  const footnote = document.getElementById('queueListFootnote');
 
   if (!list) {
     return;
+  }
+
+  if (content) {
+    content.classList.remove('hidden');
+  }
+
+  if (emptyContainer) {
+    emptyContainer.classList.add('hidden');
+  }
+
+  if (footnote) {
+    footnote.classList.remove('hidden');
   }
 
   const total = entries.length;
@@ -234,6 +327,7 @@ function loadQueuePage() {
   const start = params.get('start') || '';
   const end = params.get('end') || '';
   const state = params.get('state') || QUEUE_STATES.NOT_IN_QUEUE;
+  const emptyState = params.get('empty_state') || '';
 
   document.getElementById('queueClinicHero').textContent = clinic;
   document.getElementById('queueClinicName').textContent = clinic;
@@ -243,6 +337,22 @@ function loadQueuePage() {
     ? `Queue details for ${formatDate(date)}`
     : 'Visit date unavailable';
   renderQueueState(state);
+
+  if (emptyState === QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE) {
+    renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
+    return;
+  }
+
+  if (!isToday(date)) {
+    renderQueueEmptyState(QUEUE_EMPTY_STATES.NO_APPOINTMENT_FOR_TODAY);
+    return;
+  }
+
+  if (state === QUEUE_STATES.NOT_IN_QUEUE) {
+    renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_YET_ADDED_TO_QUEUE);
+    return;
+  }
+
   renderQueueList(getMockQueueEntries(start, state));
 }
 

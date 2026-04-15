@@ -241,41 +241,59 @@
               <p id="queueListSummary" class="text-sm text-[#8b93b8]">Loading queue list...</p>
             </div>
 
-            <section class="mt-6 grid gap-4 md:grid-cols-4">
-              <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Total</p>
-                <p id="queueTotalCount" class="mt-3 text-2xl font-bold text-[#e0e5ff]">0</p>
-              </article>
+            <section id="queueListContent">
+              <section class="mt-6 grid gap-4 md:grid-cols-4">
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Total</p>
+                  <p id="queueTotalCount" class="mt-3 text-2xl font-bold text-[#e0e5ff]">0</p>
+                </article>
 
-              <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Waiting</p>
-                <p id="queueWaitingCount" class="mt-3 text-2xl font-bold text-[#7dcfff]">0</p>
-              </article>
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Waiting</p>
+                  <p id="queueWaitingCount" class="mt-3 text-2xl font-bold text-[#7dcfff]">0</p>
+                </article>
 
-              <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">In Consultation</p>
-                <p id="queueInConsultationCount" class="mt-3 text-2xl font-bold text-[#7aa2f7]">0</p>
-              </article>
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">In Consultation</p>
+                  <p id="queueInConsultationCount" class="mt-3 text-2xl font-bold text-[#7aa2f7]">0</p>
+                </article>
 
-              <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Complete</p>
-                <p id="queueCompleteCount" class="mt-3 text-2xl font-bold text-[#9ece6a]">0</p>
-              </article>
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Complete</p>
+                  <p id="queueCompleteCount" class="mt-3 text-2xl font-bold text-[#9ece6a]">0</p>
+                </article>
+              </section>
+
+              <section class="mt-6 overflow-hidden rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90">
+                <div class="hidden grid-cols-[0.7fr_1.2fr_1fr_1fr_1.1fr] gap-4 border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:grid">
+                  <p>Position</p>
+                  <p>Patient</p>
+                  <p>Appointment</p>
+                  <p>Queue Number</p>
+                  <p>Status</p>
+                </div>
+
+                <div id="queueList" class="divide-y divide-[#414868]"></div>
+              </section>
             </section>
 
-            <section class="mt-6 overflow-hidden rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90">
-              <div class="hidden grid-cols-[0.7fr_1.2fr_1fr_1fr_1.1fr] gap-4 border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:grid">
-                <p>Position</p>
-                <p>Patient</p>
-                <p>Appointment</p>
-                <p>Queue Number</p>
-                <p>Status</p>
-              </div>
-
-              <div id="queueList" class="divide-y divide-[#414868]"></div>
+            <section
+              id="queueEmptyState"
+              class="mt-6 hidden rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/90 px-6 py-8 text-center"
+              aria-live="polite"
+            >
+              <p id="queueEmptyStateEyebrow" class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Queue status
+              </p>
+              <h4 id="queueEmptyStateTitle" class="mt-4 text-2xl font-bold text-[#e0e5ff]">
+                Queue information unavailable
+              </h4>
+              <p id="queueEmptyStateMessage" class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+                Queue details cannot be shown right now.
+              </p>
             </section>
 
-            <p class="mt-4 text-sm leading-7 text-[#8b93b8]">
+            <p id="queueListFootnote" class="mt-4 text-sm leading-7 text-[#8b93b8]">
               Queue entries shown here are currently frontend placeholders for layout review. Backend queue data can be connected later without changing the page structure.
             </p>
           </section>

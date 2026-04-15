@@ -162,6 +162,7 @@ async function fetchAppointmentsByPatientId(patientId) {
     .from('appointments')
     .select(`
       id,
+      clinic_id,
       status,
       created_at,
       clinic:clinics (

@@ -763,6 +763,9 @@
   .border-\[\#7aa2f7\]\/30 {
     border-color: color-mix(in oklab, #7aa2f7 30%, transparent);
   }
+  .border-\[\#7aa2f7\]\/35 {
+    border-color: color-mix(in oklab, #7aa2f7 35%, transparent);
+  }
   .border-\[\#7dcfff\]\/20 {
     border-color: color-mix(in oklab, #7dcfff 20%, transparent);
   }
@@ -1191,6 +1194,9 @@
   }
   .text-\[\#e0e5ff\] {
     color: #e0e5ff;
+  }
+  .text-\[\#e0f7ff\] {
+    color: #e0f7ff;
   }
   .text-\[\#f2a7b7\] {
     color: #f2a7b7;

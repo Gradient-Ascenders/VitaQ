@@ -1,6 +1,53 @@
 // Import the shared Supabase client
 const supabase = require('../../lib/supabaseClient');
 
+function isFutureAvailableSlot(slot, now = new Date()) {
+  const today = now.toISOString().split('T')[0];
+  const currentTime = now.toTimeString().split(' ')[0];
+  const remainingCapacity = (slot.capacity || 0) - (slot.booked_count || 0);
+
+  if (remainingCapacity <= 0) {
+    return false;
+  }
+
+  if (slot.date < today) {
+    return false;
+  }
+
+  if (slot.date === today && slot.end_time <= currentTime) {
+    return false;
+  }
+
+  return true;
+}
+
+async function fetchAvailableSlotCounts(clinicIds) {
+  if (!Array.isArray(clinicIds) || clinicIds.length === 0) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from('appointment_slots')
+    .select('clinic_id, date, end_time, capacity, booked_count')
+    .in('clinic_id', clinicIds)
+    .eq('status', 'available');
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const now = new Date();
+
+  return (data || []).reduce((counts, slot) => {
+    if (!isFutureAvailableSlot(slot, now)) {
+      return counts;
+    }
+
+    counts[slot.clinic_id] = (counts[slot.clinic_id] || 0) + 1;
+    return counts;
+  }, {});
+}
+
 // Service function responsible for building and running the clinic query
 async function fetchClinics(filters = {}) {
   try {
@@ -73,8 +120,13 @@ async function fetchClinics(filters = {}) {
       throw new Error(error.message);
     }
 
+    const clinics = data || [];
+    const availableSlotCounts = await fetchAvailableSlotCounts(
+      clinics.map((clinic) => clinic.id).filter(Boolean)
+    );
+
     // Normalize the returned clinic objects so the frontend gets a consistent shape
-    return (data || []).map((clinic) => ({
+    return clinics.map((clinic) => ({
       id: clinic.id,
       name: clinic.name || '',
       province: clinic.province || '',
@@ -84,7 +136,8 @@ async function fetchClinics(filters = {}) {
       address: clinic.address || '',
       services_offered: clinic.services_offered || '',
       latitude: clinic.latitude ?? null,
-      longitude: clinic.longitude ?? null
+      longitude: clinic.longitude ?? null,
+      available_slots_count: availableSlotCounts[clinic.id] || 0
     }));
   } catch (error) {
     // Re-throw a cleaner error message for the controller to catch

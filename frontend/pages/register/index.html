@@ -98,6 +98,54 @@
           </button>
         </form>
 
+        <section class="my-8 flex items-center gap-4" aria-hidden="true">
+          <span class="h-px flex-1 bg-[#414868]"></span>
+          <span class="text-sm text-[#7f85a3]">or sign up with</span>
+          <span class="h-px flex-1 bg-[#414868]"></span>
+        </section>
+
+        <section class="flex gap-3">
+          <button
+            type="button"
+            id="googleRegisterButton"
+            data-oauth-provider="google"
+            data-provider-label="Google"
+            aria-label="Sign up with Google"
+            class="group min-w-0 flex-1 rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] shadow-sm transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          >
+            <span class="flex flex-col items-center gap-3">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition group-hover:scale-105">
+                <img
+                  src="https://www.google.com/favicon.ico"
+                  alt=""
+                  class="h-6 w-6 object-contain"
+                />
+              </span>
+              <span class="text-sm font-semibold text-[#e0e5ff]">Google</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            id="microsoftRegisterButton"
+            data-oauth-provider="azure"
+            data-provider-label="Microsoft"
+            aria-label="Sign up with Microsoft"
+            class="group min-w-0 flex-1 rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] shadow-sm transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+          >
+            <span class="flex flex-col items-center gap-3">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition group-hover:scale-105">
+                <img
+                  src="https://www.microsoft.com/favicon.ico"
+                  alt=""
+                  class="h-6 w-6 object-contain"
+                />
+              </span>
+              <span class="text-sm font-semibold text-[#e0e5ff]">Microsoft</span>
+            </span>
+          </button>
+        </section>
+
         <p class="mt-6 text-center text-sm text-[#8b93b8]">
           Already have an account?
           <a href="/login" class="font-medium text-[#7aa2f7] underline underline-offset-2 hover:text-[#bb9af7]">

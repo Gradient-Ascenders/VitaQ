@@ -8,6 +8,7 @@ const passwordInput = document.getElementById("password");
 const errorMessage = document.getElementById("errorMessage");
 const loginButton = document.getElementById("loginButton");
 const togglePasswordButton = document.getElementById("togglePassword");
+const oauthButtons = Array.from(document.querySelectorAll("[data-oauth-provider]"));
 
 // This helper clears any visible error message from a previous attempt.
 function clearError() {
@@ -33,6 +34,26 @@ function setLoadingState(isLoading) {
     loginButton.textContent = "Login";
     loginButton.classList.remove("opacity-70", "cursor-not-allowed");
   }
+}
+
+// This updates the social login buttons while an OAuth redirect is being started.
+function setOAuthButtonsLoadingState(isLoading, activeButton) {
+  oauthButtons.forEach(function (button) {
+    const providerLabel = button.dataset.providerLabel || "Provider";
+    const isActiveButton = button === activeButton;
+
+    button.disabled = isLoading;
+
+    if (isLoading && isActiveButton) {
+      button.classList.add("opacity-70", "cursor-not-allowed");
+      button.setAttribute("aria-busy", "true");
+      button.setAttribute("aria-label", `Signing in with ${providerLabel}`);
+    } else {
+      button.classList.remove("opacity-70", "cursor-not-allowed");
+      button.removeAttribute("aria-busy");
+      button.setAttribute("aria-label", `Sign in with ${providerLabel}`);
+    }
+  });
 }
 
 // This function performs the client-side checks before we try to sign in.
@@ -113,6 +134,62 @@ async function redirectAuthenticatedUser() {
   }
 }
 
+// Build a safe redirect target for OAuth providers.
+function getOAuthRedirectUrl() {
+  return `${window.location.origin}/dashboard`;
+}
+
+// This starts a third-party login flow via Supabase Auth.
+async function handleOAuthLogin(provider) {
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available on the page.");
+  }
+
+  const options = {
+    redirectTo: getOAuthRedirectUrl()
+  };
+
+  if (provider === "azure") {
+    options.scopes = "email";
+  }
+
+  const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+    provider: provider,
+    options: options
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  // In the browser, Supabase normally redirects immediately. If a URL is returned
+  // without an automatic redirect, fall back to navigating manually.
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+}
+
+// Attach OAuth login behaviour to the social buttons.
+function initialiseOAuthButtons() {
+  oauthButtons.forEach(function (button) {
+    button.addEventListener("click", async function () {
+      const provider = button.dataset.oauthProvider;
+      const providerLabel = button.dataset.providerLabel || "that provider";
+
+      clearError();
+      setOAuthButtonsLoadingState(true, button);
+
+      try {
+        await handleOAuthLogin(provider);
+      } catch (error) {
+        console.error(`Unexpected OAuth login handling error for ${provider}:`, error);
+        showError(`Sign in with ${providerLabel} could not be started right now. Please try again.`);
+        setOAuthButtonsLoadingState(false, null);
+      }
+    });
+  });
+}
+
 // This sends the validated credentials to Supabase Auth and handles
 // the different outcomes in a user-friendly way.
 async function handleValidatedLogin(email, password) {
@@ -171,6 +248,7 @@ async function handleValidatedLogin(email, password) {
 
 // Initialise smaller page interactions first.
 initialisePasswordToggle();
+initialiseOAuthButtons();
 
 // Check whether the user is already logged in.
 redirectAuthenticatedUser();

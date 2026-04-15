@@ -587,6 +587,9 @@
   .max-w-xl {
     max-width: var(--container-xl);
   }
+  .min-w-0 {
+    min-width: calc(var(--spacing) * 0);
+  }
   .flex-1 {
     flex: 1;
   }
@@ -601,9 +604,6 @@
   }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
-  .grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .flex-col {
     flex-direction: column;
@@ -840,9 +840,6 @@
   }
   .bg-\[\#9ece6a\]\/15 {
     background-color: color-mix(in oklab, #9ece6a 15%, transparent);
-  }
-  .bg-\[\#11131c\] {
-    background-color: #11131c;
   }
   .bg-\[\#24283b\] {
     background-color: #24283b;
@@ -1294,10 +1291,6 @@
   }
   .shadow-2xl {
     --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
-  .shadow-\[0_8px_24px_rgba\(0\,0\,0\,0\.2\)\] {
-    --tw-shadow: 0 8px 24px var(--tw-shadow-color, rgba(0,0,0,0.2));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .shadow-\[0_8px_24px_rgba\(0\,0\,0\,0\.18\)\] {

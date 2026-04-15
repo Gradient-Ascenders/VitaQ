@@ -72,7 +72,7 @@ function renderClinic(clinic) {
   renderServices(clinic.services_offered);
 }
 
-function renderSlots(slots, clinic) {
+function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
   const slotsList = document.getElementById('slotsList');
   const slotsEmptyState = document.getElementById('slotsEmptyState');
   const slotsCount = document.getElementById('slotsCount');
@@ -91,18 +91,31 @@ function renderSlots(slots, clinic) {
   slots.forEach((slot) => {
     const availability = Math.max((slot.capacity || 0) - (slot.booked_count || 0), 0);
     const isAvailable = availability > 0 && slot.status === 'available';
+    const isBookedByPatient = bookedSlotIds.has(String(slot.id));
+    const canBook = isAvailable && !isBookedByPatient;
 
     const slotCard = document.createElement('article');
     slotCard.className =
       'rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(26,27,38,0.82),rgba(36,40,59,0.82))] px-5 py-5 shadow-lg shadow-black/10 backdrop-blur-sm';
 
-    const availabilityClass = isAvailable
+    const availabilityClass = isBookedByPatient
+      ? 'text-[#9ece6a]'
+      : isAvailable
       ? 'text-[#38f2c2]'
       : 'text-[#f7768e]';
 
-    const buttonClass = isAvailable
+    const buttonClass = canBook
       ? 'border border-[#00b4d8]/50 bg-[#0a2540] text-[#b8ecff] hover:border-[#00b4d8] hover:bg-[#0d2d4d]'
+      : isBookedByPatient
+      ? 'cursor-not-allowed border border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]'
       : 'cursor-not-allowed border border-[#414868] bg-[#24283b]/80 text-[#6b7194]';
+
+    const buttonLabel = isBookedByPatient ? 'Booked' : 'Book';
+    const availabilityLabel = isBookedByPatient
+      ? 'Booked'
+      : isAvailable
+      ? `${availability} space${availability === 1 ? '' : 's'} left`
+      : 'Unavailable';
 
     slotCard.innerHTML = `
       <section class="grid gap-5 lg:grid-cols-[1.45fr_1fr_1fr_1.45fr_auto] lg:items-center">
@@ -130,7 +143,7 @@ function renderSlots(slots, clinic) {
         <article>
           <p class="text-xs uppercase tracking-[0.28em] text-[#8b93b8]">Availability</p>
           <p class="mt-3 text-[1.05rem] font-semibold ${availabilityClass}">
-            ${isAvailable ? `${availability} space${availability === 1 ? '' : 's'} left` : 'Unavailable'}
+            ${availabilityLabel}
           </p>
         </article>
 
@@ -143,10 +156,10 @@ function renderSlots(slots, clinic) {
             data-slot-date="${slot.date}"
             data-slot-start="${slot.start_time}"
             data-slot-end="${slot.end_time}"
-            data-default-label="Book"
-            ${isAvailable ? '' : 'disabled'}
+            data-default-label="${buttonLabel}"
+            ${canBook ? '' : 'disabled'}
           >
-            Book
+            ${buttonLabel}
           </button>
         </section>
       </section>
@@ -156,6 +169,34 @@ function renderSlots(slots, clinic) {
   });
 
   attachBookHandlers();
+}
+
+async function fetchBookedSlotIds(session, clinicId) {
+  if (!session?.access_token) {
+    return new Set();
+  }
+
+  const response = await fetch('/api/appointments', {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`
+    }
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.message || 'Failed to load your appointments.');
+  }
+
+  const bookedSlotIds = (payload.data || [])
+    .filter((appointment) => (
+      String(appointment.clinic_id) === String(clinicId)
+      && appointment.status === 'booked'
+      && appointment.slot_id
+    ))
+    .map((appointment) => String(appointment.slot_id));
+
+  return new Set(bookedSlotIds);
 }
 
 function attachBookHandlers() {
@@ -245,9 +286,16 @@ async function loadClinicPage() {
   }
 
   try {
-    const [clinicResponse, slotsResponse] = await Promise.all([
+    const session = await requireAuthenticatedUser();
+
+    if (!session) {
+      return;
+    }
+
+    const [clinicResponse, slotsResponse, bookedSlotIds] = await Promise.all([
       fetch(`/api/clinics/${clinicId}`),
-      fetch(`/api/clinics/${clinicId}/slots`)
+      fetch(`/api/clinics/${clinicId}/slots`),
+      fetchBookedSlotIds(session, clinicId)
     ]);
 
     if (!clinicResponse.ok) {
@@ -267,7 +315,7 @@ async function loadClinicPage() {
     const slots = slotsPayload.data || [];
 
     renderClinic(clinic);
-    renderSlots(slots, clinic);
+    renderSlots(slots, clinic, bookedSlotIds);
 
     loadingState.classList.add('hidden');
     clinicContent.classList.remove('hidden');

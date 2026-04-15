@@ -50,6 +50,7 @@ app.get('/', sendPage('landing'));
 app.get('/register', sendPage('register'));
 app.get('/login', sendPage('login'));
 app.get('/dashboard', sendPage('dashboard'));
+app.get('/admin', sendPage('admin'));
 app.get('/clinics', sendPage('clinics'));
 app.get('/clinic/:id', sendPage('clinic'));
 app.get('/booking-confirmation', sendPage('booking-confirmation'));

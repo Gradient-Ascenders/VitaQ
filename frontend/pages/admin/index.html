@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | VitaQ</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+  <link rel="stylesheet" href="/assets/css/output.css" />
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5.5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
+</head>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
+
+      <div class="absolute left-[8%] top-[12%] h-56 w-56 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[26%] h-48 w-48 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[10%] top-[16%] h-64 w-64 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
+
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/admin" aria-label="Go to admin dashboard" class="vitaq-logo-link">
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="vitaq-logo-image"
+          />
+        </a>
+
+        <nav aria-label="Admin dashboard navigation" class="hidden md:flex">
+          <ul class="flex items-center gap-3 text-sm font-medium">
+            <li>
+              <a
+                href="/admin"
+                aria-current="page"
+                class="rounded-2xl border border-[#7aa2f7]/30 bg-[#7aa2f7]/12 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
+              >
+                Admin Dashboard
+              </a>
+            </li>
+            <li>
+              <a
+                href="/dashboard"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Patient Dashboard
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <button
+          id="logoutButton"
+          type="button"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:bg-[#2a2f45]"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <main class="relative z-10">
+      <section class="mx-auto max-w-7xl px-6 pb-8 pt-4 md:px-8 lg:px-10">
+        <div class="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+          <section class="animate-fade-up rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.14),rgba(187,154,247,0.10),rgba(36,40,59,0.92))] p-8 shadow-2xl shadow-black/10 md:p-10">
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+              Admin portal
+            </p>
+
+            <h1 class="mt-5 text-4xl font-bold leading-tight text-[#e0e5ff] sm:text-5xl">
+              Review staff requests,
+              <span id="adminName" class="text-[#7aa2f7]">Admin</span>.
+            </h1>
+
+            <p class="mt-5 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+              Confirm which clinic staff members should receive verified access. This page keeps
+              pending verification requests visible, actionable, and easy to review during Sprint 2.
+            </p>
+
+            <div id="adminActionFeedback" class="hidden mt-8" aria-live="polite"></div>
+
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+              <a
+                href="#pending-staff-requests"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Review requests
+              </a>
+
+              <a
+                href="/dashboard"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Return to dashboard
+              </a>
+            </div>
+          </section>
+
+          <aside class="animate-fade-up-delay rounded-[2rem] border border-[#414868] bg-[#1f2335]/80 p-6 shadow-2xl shadow-black/10 backdrop-blur-md md:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+              Review summary
+            </p>
+
+            <div class="mt-6 grid gap-4">
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#7dcfff]">Pending requests</p>
+                <h2 id="pendingRequestCount" class="mt-2 text-3xl font-semibold text-[#e0e5ff]">0</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Staff verification requests currently waiting for an admin decision.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#9ece6a]">Approved today</p>
+                <h2 id="approvedRequestCount" class="mt-2 text-3xl font-semibold text-[#e0e5ff]">0</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Requests you have approved during this admin session.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#f7768e]">Rejected today</p>
+                <h2 id="rejectedRequestCount" class="mt-2 text-3xl font-semibold text-[#e0e5ff]">0</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Requests you have rejected during this admin session.
+                </p>
+              </article>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section
+        id="pending-staff-requests"
+        class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10"
+        aria-labelledby="pending-staff-requests-heading"
+      >
+        <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div class="max-w-2xl">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Staff verification
+              </p>
+              <h2 id="pending-staff-requests-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Pending staff requests
+              </h2>
+            </div>
+
+            <p id="requestTableSummary" class="text-sm text-[#8b93b8]">Loading staff requests...</p>
+          </div>
+
+          <section class="mt-8 grid gap-4 md:grid-cols-3">
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Review focus</p>
+              <p class="mt-3 text-lg font-semibold leading-7 text-[#e0e5ff]">Staff account verification</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Action flow</p>
+              <p class="mt-3 text-lg font-semibold leading-7 text-[#e0e5ff]">Approve or reject each request</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Current mode</p>
+              <p class="mt-3 text-lg font-semibold leading-7 text-[#e0e5ff]">Frontend placeholders for demo review</p>
+            </article>
+          </section>
+
+          <section id="adminRequestTable" class="mt-8 overflow-hidden rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/85 shadow-lg shadow-black/10">
+            <div class="hidden border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#8b93b8] md:grid md:grid-cols-[1.25fr_1.2fr_0.9fr_0.9fr_0.9fr_1.15fr] md:gap-5">
+              <p>Full name</p>
+              <p>Clinic</p>
+              <p>Staff ID</p>
+              <p>Request status</p>
+              <p>Request date</p>
+              <p class="text-right">Actions</p>
+            </div>
+
+            <div id="adminRequestTableBody" class="divide-y divide-[#414868]"></div>
+          </section>
+
+          <section
+            id="adminEmptyState"
+            class="hidden mt-8 rounded-[1.75rem] border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-12 text-center shadow-lg shadow-black/10"
+          >
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+              All caught up
+            </p>
+            <h3 class="mt-4 text-3xl font-bold text-[#e0e5ff]">
+              No pending staff requests right now
+            </h3>
+            <p class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+              Every staff verification request in this admin view has already been handled for this session.
+              Check back later when new requests are submitted.
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
+        <div class="grid gap-6 md:grid-cols-3">
+          <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#7dcfff]/15 px-3 py-2 text-sm font-semibold text-[#7dcfff]">
+              Review detail
+            </div>
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              Check clinic assignment
+            </h3>
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              Confirm that each request is linked to the correct clinic before you approve access.
+            </p>
+          </article>
+
+          <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#7aa2f7]/15 px-3 py-2 text-sm font-semibold text-[#7aa2f7]">
+              Sprint 2
+            </div>
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              Support staff workflows
+            </h3>
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              Verified staff access helps prepare the clinic-side workflows needed for queue management and status updates.
+            </p>
+          </article>
+
+          <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#f7768e]/12 px-3 py-2 text-sm font-semibold text-[#f7768e]">
+              Session
+            </div>
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              Logout
+            </h3>
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              Sign out securely once you have finished reviewing pending staff verification requests.
+            </p>
+            <button
+              id="logoutCardButton"
+              type="button"
+              class="mt-6 inline-flex items-center justify-center rounded-2xl border border-[#f7768e]/25 bg-[#f7768e]/10 px-5 py-3 text-sm font-semibold text-[#f2a7b7] transition hover:bg-[#f7768e]/16"
+            >
+              Logout
+            </button>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/admin.js"></script>
+</body>
+</html>

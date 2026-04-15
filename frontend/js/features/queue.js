@@ -30,7 +30,6 @@ const QUEUE_STATES = {
 };
 
 const QUEUE_EMPTY_STATES = {
-  NO_APPOINTMENT_FOR_TODAY: 'no_appointment_for_today',
   NOT_YET_ADDED_TO_QUEUE: 'not_yet_added_to_queue',
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
@@ -62,21 +61,6 @@ function formatQueueStateLabel(state) {
         ? state.charAt(0).toUpperCase() + state.slice(1)
         : 'Unknown';
   }
-}
-
-function isToday(dateString) {
-  if (!dateString) {
-    return false;
-  }
-
-  const today = new Date();
-  const localToday = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0')
-  ].join('-');
-
-  return dateString === localToday;
 }
 
 function getMockQueueEntries(appointmentStart, currentState) {
@@ -179,12 +163,6 @@ function renderQueueState(state) {
 
 function getQueueEmptyStateConfig(emptyState) {
   switch (emptyState) {
-    case QUEUE_EMPTY_STATES.NO_APPOINTMENT_FOR_TODAY:
-      return {
-        eyebrow: 'Queue unavailable today',
-        title: 'No appointment for today',
-        message: 'This queue page is only active on the day of your clinic appointment. Return on your scheduled date to view the daily queue.'
-      };
     case QUEUE_EMPTY_STATES.NOT_YET_ADDED_TO_QUEUE:
       return {
         eyebrow: 'Queue not started',
@@ -267,7 +245,7 @@ function renderQueueList(entries) {
   const complete = entries.filter((entry) => entry.status === QUEUE_STATES.COMPLETE).length;
 
   if (summary) {
-    summary.textContent = `${total} patient${total === 1 ? '' : 's'} in today’s queue`;
+    summary.textContent = `${total} patient${total === 1 ? '' : 's'} in this queue`;
   }
 
   if (totalCount) totalCount.textContent = String(total);
@@ -340,11 +318,6 @@ function loadQueuePage() {
 
   if (emptyState === QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE) {
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
-    return;
-  }
-
-  if (!isToday(date)) {
-    renderQueueEmptyState(QUEUE_EMPTY_STATES.NO_APPOINTMENT_FOR_TODAY);
     return;
   }
 

@@ -4,115 +4,253 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard | VitaQ</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
   <link rel="stylesheet" href="/assets/css/output.css" />
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5.5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-white">
-  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
-      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
 
-      <ul class="flex items-center gap-3 text-sm font-medium">
-        <li>
-          <a
-            href="/dashboard"
-            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
-          >
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <button
-            id="logoutButton"
-            type="button"
-            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
-          >
-            Logout
-          </button>
-        </li>
-      </ul>
-    </nav>
-  </header>
+      <div class="absolute left-[8%] top-[12%] h-56 w-56 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[26%] h-48 w-48 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[10%] top-[16%] h-64 w-64 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
 
-  <main class="mx-auto max-w-6xl px-6 py-10">
-    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
-        Patient Portal
-      </p>
-
-      <h1 class="text-4xl font-bold tracking-tight text-white">
-        Patient Dashboard
-      </h1>
-
-      <p class="mt-3 max-w-2xl text-slate-300">
-        Welcome back,
-        <strong id="patientName" class="font-semibold text-cyan-300">Patient</strong>.
-        Manage your clinic visits, check available clinics, and keep track of your appointments in one place.
-      </p>
-    </section>
-
-    <section class="mt-8 grid gap-6 md:grid-cols-3" aria-label="Dashboard actions">
-      <article class="rounded-[1.75rem] border border-cyan-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-          Clinics
-        </p>
-        <h2 class="mt-3 text-2xl font-semibold text-white">
-          Search Clinics
-        </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-300">
-          Search for nearby clinics, filter by province or facility type, and view available appointment slots.
-        </p>
-        <a
-          href="/clinics"
-          class="mt-6 inline-flex rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-        >
-          Go to Clinics
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/dashboard" aria-label="Go to dashboard" class="flex items-center gap-3">
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="h-14 w-auto object-contain md:h-16 lg:h-20"
+          />
         </a>
-      </article>
 
-      <article class="rounded-[1.75rem] border border-blue-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
-          Appointments
-        </p>
-        <h2 class="mt-3 text-2xl font-semibold text-white">
-          My Appointments
-        </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-300">
-          View your booked appointments, check dates and times, and track your current appointment status.
-        </p>
-        <a
-          href="/appointments"
-          class="mt-6 inline-flex rounded-full border border-blue-300/30 bg-blue-400/15 px-5 py-3 text-sm font-semibold text-blue-200 transition hover:bg-blue-400/25"
-        >
-          View Appointments
-        </a>
-      </article>
+        <nav aria-label="Dashboard navigation" class="hidden md:flex">
+          <ul class="flex items-center gap-3 text-sm font-medium">
+            <li>
+              <a
+                href="/dashboard"
+                aria-current="page"
+                class="rounded-2xl border border-[#7aa2f7]/30 bg-[#7aa2f7]/12 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
+              >
+                Dashboard
+              </a>
+            </li>
+            <li>
+              <a
+                href="/clinics"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Search Clinics
+              </a>
+            </li>
+            <li>
+              <a
+                href="/appointments"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                My Appointments
+              </a>
+            </li>
+          </ul>
+        </nav>
 
-      <article class="rounded-[1.75rem] border border-red-400/15 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-red-300">
-          Session
-        </p>
-        <h2 class="mt-3 text-2xl font-semibold text-white">
-          Logout
-        </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-300">
-          Sign out of your account securely and return to the login page when you are done.
-        </p>
         <button
-          id="logoutCardButton"
+          id="logoutButton"
           type="button"
-          class="mt-6 inline-flex rounded-full border border-red-300/30 bg-red-400/15 px-5 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-400/25"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:bg-[#2a2f45]"
         >
           Logout
         </button>
-      </article>
-    </section>
-  </main>
+      </div>
+    </header>
 
-  <footer class="border-t border-white/10 bg-slate-950/90">
-    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
-      Community Clinic Appointment &amp; Queue System
-    </p>
-  </footer>
+    <main class="relative z-10">
+      <section class="mx-auto max-w-7xl px-6 pb-8 pt-4 md:px-8 lg:px-10">
+        <div class="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+          <section class="animate-fade-up rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.14),rgba(187,154,247,0.10),rgba(36,40,59,0.92))] p-8 shadow-2xl shadow-black/10 md:p-10">
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+              Patient portal
+            </p>
+
+            <h1 class="mt-5 text-4xl font-bold leading-tight text-[#e0e5ff] sm:text-5xl">
+              Welcome back,
+              <span id="patientName" class="text-[#7aa2f7]">Patient</span>.
+            </h1>
+
+            <p class="mt-5 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+              Manage your clinic visits through a calmer, clearer dashboard. Search clinics,
+              review your bookings, and stay on top of your healthcare journey in one place.
+            </p>
+
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+              <a
+                href="/clinics"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Search clinics
+              </a>
+
+              <a
+                href="/appointments"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                View appointments
+              </a>
+            </div>
+          </section>
+
+          <aside class="animate-fade-up-delay rounded-[2rem] border border-[#414868] bg-[#1f2335]/80 p-6 shadow-2xl shadow-black/10 backdrop-blur-md md:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+              Quick overview
+            </p>
+
+            <div class="mt-6 grid gap-4">
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#7dcfff]">Clinic search</p>
+                <h2 class="mt-2 text-lg font-semibold text-[#e0e5ff]">Find the right facility</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Browse clinics by province, district, and facility type with a clean search flow.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#7aa2f7]">Appointments</p>
+                <h2 class="mt-2 text-lg font-semibold text-[#e0e5ff]">Keep track of bookings</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Review your booked visits, appointment times, and current statuses at a glance.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#9ece6a]">Secure access</p>
+                <h2 class="mt-2 text-lg font-semibold text-[#e0e5ff]">Private patient session</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Your dashboard remains protected and tied to your authenticated account session.
+                </p>
+              </article>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10" aria-labelledby="dashboard-actions-heading">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+            Quick actions
+          </p>
+          <h2 id="dashboard-actions-heading" class="mt-4 text-3xl font-bold text-[#e0e5ff] md:text-4xl">
+            Choose what you want to do next
+          </h2>
+        </div>
+
+        <div class="mt-12 grid gap-6 md:grid-cols-3">
+          <article class="group rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7dcfff]/40 hover:bg-[#24283b]/85">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#7dcfff]/15 px-3 py-2 text-sm font-semibold text-[#7dcfff]">
+              Clinics
+            </div>
+
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              Search Clinics
+            </h3>
+
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              Search for nearby clinics, filter by province or facility type, and view available appointment slots.
+            </p>
+
+            <a
+              href="/clinics"
+              class="mt-6 inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+            >
+              Go to clinics
+            </a>
+          </article>
+
+          <article class="group rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7aa2f7]/40 hover:bg-[#24283b]/85">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#7aa2f7]/15 px-3 py-2 text-sm font-semibold text-[#7aa2f7]">
+              Appointments
+            </div>
+
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              My Appointments
+            </h3>
+
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              View your booked appointments, check dates and times, and track your current appointment status.
+            </p>
+
+            <a
+              href="/appointments"
+              class="mt-6 inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-5 py-3 text-sm font-semibold text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+            >
+              View appointments
+            </a>
+          </article>
+
+          <article class="group rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#f7768e]/35 hover:bg-[#24283b]/85">
+            <div class="mb-4 inline-flex rounded-2xl bg-[#f7768e]/12 px-3 py-2 text-sm font-semibold text-[#f7768e]">
+              Session
+            </div>
+
+            <h3 class="text-2xl font-semibold text-[#e0e5ff]">
+              Logout
+            </h3>
+
+            <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+              Sign out of your account securely and return to the login page whenever you are done.
+            </p>
+
+            <button
+              id="logoutCardButton"
+              type="button"
+              class="mt-6 inline-flex items-center justify-center rounded-2xl border border-[#f7768e]/25 bg-[#f7768e]/10 px-5 py-3 text-sm font-semibold text-[#f2a7b7] transition hover:bg-[#f7768e]/16"
+            >
+              Logout
+            </button>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/lib/supabaseClient.js"></script>

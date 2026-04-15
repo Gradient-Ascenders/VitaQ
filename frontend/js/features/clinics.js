@@ -98,45 +98,50 @@ function renderClinics(clinics) {
   resultsCount.textContent = `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found`;
 
   const cardsMarkup = clinics
-  .map((clinic) => {
-    const locationParts = [clinic.area, clinic.district, clinic.province].filter(Boolean);
-    const locationText = locationParts.length > 0 ? locationParts.join(" • ") : "Location not available";
-    const facilityType = clinic.facility_type || "Facility type not available";
-    const services = formatServicesSummary(clinic.services_offered);
-    const address = clinic.address || "Address not available";
+    .map((clinic) => {
+      const locationParts = [clinic.area, clinic.district, clinic.province].filter(Boolean);
+      const locationText = locationParts.length > 0 ? locationParts.join(" • ") : "Location not available";
+      const facilityType = clinic.facility_type || "Facility type not available";
+      const services = formatServicesSummary(clinic.services_offered);
+      const address = clinic.address || "Address not available";
 
-    return `
-      <article class="flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-lg shadow-slate-950/40 backdrop-blur">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-          ${escapeHtml(facilityType)}
-        </p>
+      return `
+        <article class="flex h-full flex-col rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7aa2f7]/40 hover:bg-[#24283b]/82">
+          <div class="flex items-start justify-between gap-4">
+            <p class="inline-flex rounded-2xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7dcfff]">
+              ${escapeHtml(facilityType)}
+            </p>
+          </div>
 
-        <h3 class="mt-3 text-2xl font-semibold text-white">
-          ${escapeHtml(clinic.name || "Unnamed Clinic")}
-        </h3>
+          <h3 class="mt-4 text-2xl font-semibold text-[#e0e5ff]">
+            ${escapeHtml(clinic.name || "Unnamed Clinic")}
+          </h3>
 
-        <p class="mt-3 text-sm text-slate-300">
-          ${escapeHtml(locationText)}
-        </p>
+          <p class="mt-3 text-sm text-[#a9b1d6]">
+            ${escapeHtml(locationText)}
+          </p>
 
-        <p class="mt-2 text-sm text-slate-400">
-          ${escapeHtml(address)}
-        </p>
+          <p class="mt-2 text-sm text-[#8b93b8]">
+            ${escapeHtml(address)}
+          </p>
 
-        <p class="mt-4 text-sm leading-6 text-slate-300 break-words">
-          ${escapeHtml(services)}
-        </p>
+          <div class="mt-5 rounded-[1.25rem] border border-[#414868] bg-[#1f2335]/85 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Services</p>
+            <p class="mt-2 text-sm leading-6 break-words text-[#c0caf5]">
+              ${escapeHtml(services)}
+            </p>
+          </div>
 
-        <a
-          href="/clinic/${encodeURIComponent(clinic.id)}"
-          class="mt-6 inline-flex self-start rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-        >
-          View Slots
-        </a>
-      </article>
-    `;
-  })
-  .join("");
+          <a
+            href="/clinic/${encodeURIComponent(clinic.id)}"
+            class="mt-6 inline-flex self-start rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+          >
+            View slots
+          </a>
+        </article>
+      `;
+    })
+    .join("");
 
   clinicsList.innerHTML = cardsMarkup;
 }

@@ -4,102 +4,210 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Appointments | VitaQ</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
   <link rel="stylesheet" href="/assets/css/output.css" />
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5.5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-white">
-  <header class="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Main navigation">
-      <a href="/dashboard" class="text-xl font-bold tracking-tight text-cyan-400">VitaQ</a>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
 
-      <ul class="flex items-center gap-3 text-sm font-medium">
-        <li>
-          <a
-            href="/dashboard"
-            class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-300 transition hover:bg-cyan-400/20"
+      <div class="absolute left-[6%] top-[10%] h-60 w-60 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[24%] h-44 w-44 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[8%] top-[15%] h-72 w-72 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
+
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/dashboard" aria-label="Go to dashboard" class="flex items-center gap-3">
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="h-14 w-auto object-contain md:h-16 lg:h-20"
+          />
+        </a>
+
+        <nav aria-label="Appointments page navigation" class="hidden md:flex">
+          <ul class="flex items-center gap-3 text-sm font-medium">
+            <li>
+              <a
+                href="/dashboard"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Dashboard
+              </a>
+            </li>
+            <li>
+              <a
+                href="/clinics"
+                class="rounded-2xl border border-[#7aa2f7]/30 bg-[#7aa2f7]/12 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
+              >
+                Find Clinics
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <button
+          id="logoutButton"
+          type="button"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:bg-[#2a2f45]"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <main class="relative z-10">
+      <section class="mx-auto max-w-7xl px-6 pb-10 pt-6 md:px-8 lg:px-10">
+        <div class="grid gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:items-center">
+          <section class="animate-fade-up max-w-3xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+              Appointment tracker
+            </p>
+
+            <h1 class="mt-5 text-4xl font-bold leading-[1.04] text-[#e0e5ff] sm:text-5xl lg:text-6xl">
+              Track your bookings.
+              <span class="block text-[#7aa2f7]">Stay ready for visits.</span>
+            </h1>
+
+            <p class="mt-6 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+              Review booked clinic appointments, check dates and times, and keep an eye on the current status of each visit in one clear place.
+            </p>
+
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+              <a
+                href="/clinics"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Find a clinic
+              </a>
+
+              <a
+                href="/dashboard"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Return to dashboard
+              </a>
+            </div>
+          </section>
+
+          <section class="animate-fade-up-delay relative hidden lg:block">
+            <div class="relative mx-auto flex max-w-[30rem] flex-col gap-5">
+              <div class="absolute -left-8 top-10 h-40 w-40 rounded-full bg-[#7aa2f7]/10 blur-3xl"></div>
+              <div class="absolute -right-6 bottom-8 h-36 w-36 rounded-full bg-[#bb9af7]/10 blur-3xl"></div>
+
+              <article class="relative rounded-[2rem] border border-[#414868] bg-[#1f2335]/82 p-6 shadow-2xl shadow-black/20 backdrop-blur-md">
+                <p class="text-sm font-medium text-[#7dcfff]">Appointment history</p>
+                <h2 class="mt-2 text-2xl font-semibold leading-tight text-[#e0e5ff]">
+                  See what is booked and what is next
+                </h2>
+                <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                  Each appointment shows the clinic, booking status, visit date, time range, and when it was created.
+                </p>
+              </article>
+
+              <article class="relative rounded-[2rem] border border-[#414868] bg-[#24283b]/85 p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
+                <p class="text-sm font-medium text-[#bb9af7]">Status guide</p>
+                <ul class="mt-3 space-y-3 text-sm text-[#c0caf5]">
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">Booked appointments are upcoming.</li>
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">Completed visits have already taken place.</li>
+                  <li class="rounded-2xl bg-[#1f2335]/90 px-4 py-3">Cancelled appointments are no longer active.</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
+        <section class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Appointment history
+              </p>
+              <h2 class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                My Appointments
+              </h2>
+            </div>
+
+            <p id="appointmentsCount" class="text-sm text-[#8b93b8]">Loading appointments...</p>
+          </div>
+
+          <section
+            id="loadingState"
+            class="mt-6 rounded-3xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-6 py-5 text-[#b8ecff]"
+            aria-live="polite"
           >
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <a
-            href="/clinics"
-            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-slate-200 transition hover:bg-white/10"
+            Loading your appointments...
+          </section>
+
+          <section
+            id="errorState"
+            class="mt-6 hidden rounded-3xl border border-[#f7768e]/20 bg-[#f7768e]/10 px-6 py-5 text-[#f4b5c0]"
+            aria-live="polite"
+          ></section>
+
+          <section
+            id="emptyState"
+            class="mt-6 hidden rounded-3xl border border-[#414868] bg-[#24283b]/70 px-6 py-8 text-center backdrop-blur-sm"
+            aria-live="polite"
           >
-            Find Clinics
-          </a>
-        </li>
-        <li>
-          <button
-            id="logoutButton"
-            type="button"
-            class="rounded-full border border-red-300/30 bg-red-400/15 px-4 py-2 text-red-200 transition hover:bg-red-400/25"
-          >
-            Logout
-          </button>
-        </li>
-      </ul>
-    </nav>
-  </header>
+            <h3 class="text-xl font-semibold text-[#e0e5ff]">No appointments yet</h3>
+            <p class="mt-2 text-[#a9b1d6]">
+              You have not booked any appointments yet. Search for a clinic to get started.
+            </p>
+            <a
+              href="/clinics"
+              class="mt-6 inline-flex rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+            >
+              Find a Clinic
+            </a>
+          </section>
 
-  <main class="mx-auto max-w-6xl px-6 py-10">
-    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-8 py-10 shadow-2xl shadow-cyan-950/30">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-blue-300">
-        Appointment Tracker
-      </p>
+          <section id="appointmentsList" class="mt-6 grid gap-5" aria-label="Patient appointments"></section>
+        </section>
+      </section>
+    </main>
 
-      <h1 class="text-4xl font-bold tracking-tight text-white">
-        My Appointments
-      </h1>
-
-      <p class="mt-3 max-w-3xl text-slate-300">
-        View your booked clinic appointments, check their date and time, and keep track of the current status of each visit.
-      </p>
-    </section>
-
-    <section class="mt-8 flex items-center justify-between">
-      <h2 class="text-2xl font-semibold text-white">Appointment History</h2>
-      <p id="appointmentsCount" class="text-sm text-slate-400">Loading appointments...</p>
-    </section>
-
-    <section
-      id="loadingState"
-      class="mt-6 rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/10 px-6 py-5 text-cyan-200"
-      aria-live="polite"
-    >
-      Loading your appointments...
-    </section>
-
-    <section
-      id="errorState"
-      class="mt-6 hidden rounded-[1.75rem] border border-red-400/20 bg-red-400/10 px-6 py-5 text-red-200"
-      aria-live="polite"
-    ></section>
-
-    <section
-      id="emptyState"
-      class="mt-6 hidden rounded-[1.75rem] border border-white/10 bg-white/5 px-6 py-8 text-center"
-      aria-live="polite"
-    >
-      <h3 class="text-xl font-semibold text-white">No appointments yet</h3>
-      <p class="mt-2 text-slate-400">
-        You have not booked any appointments yet. Search for a clinic to get started.
-      </p>
-      <a
-        href="/clinics"
-        class="mt-6 inline-flex rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-      >
-        Find a Clinic
-      </a>
-    </section>
-
-    <section id="appointmentsList" class="mt-6 grid gap-5" aria-label="Patient appointments"></section>
-  </main>
-
-  <footer class="border-t border-white/10 bg-slate-950/90">
-    <p class="mx-auto max-w-6xl px-6 py-5 text-center text-sm text-slate-400">
-      Community Clinic Appointment &amp; Queue System
-    </p>
-  </footer>
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/lib/supabaseClient.js"></script>

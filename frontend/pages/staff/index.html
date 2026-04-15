@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Dashboard | VitaQ</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+  <link rel="stylesheet" href="/assets/css/output.css" />
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 0.9; }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-pulse-glow {
+      animation: pulseGlow 5.5s ease-in-out infinite;
+    }
+
+    .animate-fade-up {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .animate-fade-up-delay {
+      animation: fadeUp 1s ease-out both;
+    }
+  </style>
+</head>
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
+  <div class="relative min-h-screen">
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(122,162,247,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(187,154,247,0.14),transparent_30%),linear-gradient(180deg,#1a1b26_0%,#16161e_100%)]"></div>
+
+      <div class="absolute left-[6%] top-[10%] h-60 w-60 rounded-full bg-[#7aa2f7]/10 blur-3xl animate-pulse-glow"></div>
+      <div class="absolute bottom-[8%] left-[24%] h-44 w-44 rounded-full bg-[#7dcfff]/10 blur-3xl animate-pulse-glow" style="animation-delay: 1200ms;"></div>
+      <div class="absolute right-[8%] top-[15%] h-72 w-72 rounded-full bg-[#bb9af7]/10 blur-3xl animate-pulse-glow" style="animation-delay: 600ms;"></div>
+    </div>
+
+    <header class="relative z-20">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+        <a href="/staff" aria-label="Go to staff dashboard" class="vitaq-logo-link">
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="vitaq-logo-image"
+          />
+        </a>
+
+        <nav aria-label="Staff dashboard navigation" class="hidden md:flex">
+          <ul class="flex items-center gap-3 text-sm font-medium">
+            <li>
+              <a
+                href="/staff"
+                aria-current="page"
+                class="rounded-2xl border border-[#7aa2f7]/30 bg-[#7aa2f7]/12 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
+              >
+                Staff Dashboard
+              </a>
+            </li>
+            <li>
+              <a
+                href="/admin"
+                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Admin Dashboard
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <button
+          id="logoutButton"
+          type="button"
+          class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:bg-[#2a2f45]"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <main class="relative z-10">
+      <section class="mx-auto max-w-7xl px-6 pb-8 pt-4 md:px-8 lg:px-10">
+        <div class="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+          <section class="animate-fade-up rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.14),rgba(187,154,247,0.10),rgba(36,40,59,0.92))] p-8 shadow-2xl shadow-black/10 md:p-10">
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dcfff]">
+              Staff portal
+            </p>
+
+            <h1 class="mt-5 text-4xl font-bold leading-tight text-[#e0e5ff] sm:text-5xl">
+              Manage today&apos;s queue,
+              <span id="staffName" class="text-[#7aa2f7]">Staff</span>.
+            </h1>
+
+            <p class="mt-5 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
+              Keep patient flow moving from one clear dashboard. Review the queue, update each patient&apos;s progress, and add walk-in patients without leaving the page.
+            </p>
+
+            <div id="staffActionFeedback" class="mt-8 hidden" aria-live="polite"></div>
+
+            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+              <a
+                href="#staff-queue-management"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Manage queue
+              </a>
+
+              <a
+                href="#staff-walk-in-form"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Add walk-in
+              </a>
+            </div>
+          </section>
+
+          <aside class="animate-fade-up-delay rounded-[2rem] border border-[#414868] bg-[#1f2335]/80 p-6 shadow-2xl shadow-black/10 backdrop-blur-md md:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+              Clinic snapshot
+            </p>
+
+            <div class="mt-6 grid gap-4">
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#7dcfff]">Clinic</p>
+                <h2 id="staffClinicName" class="mt-2 text-lg font-semibold text-[#e0e5ff]">-</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Queue operations currently loaded for today&apos;s clinic session.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#7aa2f7]">Next waiting patient</p>
+                <h2 id="nextWaitingPatient" class="mt-2 text-lg font-semibold text-[#e0e5ff]">-</h2>
+                <p id="nextWaitingSummary" class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Queue details will appear once the staff list has loaded.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#24283b]/90 p-5">
+                <p class="text-sm font-medium text-[#9ece6a]">Walk-ins today</p>
+                <h2 id="walkInTodayCount" class="mt-2 text-lg font-semibold text-[#e0e5ff]">0</h2>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  New walk-in patients added from this dashboard during the current session.
+                </p>
+              </article>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section
+        id="staff-queue-management"
+        class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10"
+        aria-labelledby="staff-queue-management-heading"
+      >
+        <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Queue management
+              </p>
+              <h2 id="staff-queue-management-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Today&apos;s patient queue
+              </h2>
+            </div>
+
+            <p id="queueManagementSummary" class="text-sm text-[#8b93b8]">Loading queue data...</p>
+          </div>
+
+          <section class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Total in queue</p>
+              <p id="queueTotalCount" class="mt-3 text-3xl font-semibold text-[#e0e5ff]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Waiting</p>
+              <p id="queueWaitingCount" class="mt-3 text-3xl font-semibold text-[#7dcfff]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">In consultation</p>
+              <p id="queueInConsultationCount" class="mt-3 text-3xl font-semibold text-[#7aa2f7]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Completed</p>
+              <p id="queueCompletedCount" class="mt-3 text-3xl font-semibold text-[#9ece6a]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Walk-ins in queue</p>
+              <p id="queueWalkInCount" class="mt-3 text-3xl font-semibold text-[#bb9af7]">0</p>
+            </article>
+          </section>
+
+          <section id="staffQueueTable" class="mt-8 overflow-hidden rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/85 shadow-lg shadow-black/10">
+            <div class="hidden border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#8b93b8] lg:grid lg:grid-cols-[0.9fr_1.25fr_0.95fr_0.95fr_0.95fr_1.35fr] lg:gap-5">
+              <p>Queue no.</p>
+              <p>Patient</p>
+              <p>Arrival type</p>
+              <p>Time</p>
+              <p>Status</p>
+              <p class="text-right">Actions</p>
+            </div>
+
+            <div id="staffQueueTableBody" class="divide-y divide-[#414868]"></div>
+          </section>
+
+          <section
+            id="staffQueueEmptyState"
+            class="hidden mt-8 rounded-[1.75rem] border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-12 text-center shadow-lg shadow-black/10"
+          >
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+              Queue clear
+            </p>
+            <h3 class="mt-4 text-3xl font-bold text-[#e0e5ff]">
+              No patients are currently in the queue
+            </h3>
+            <p class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+              Add a walk-in patient or return later when new bookings arrive for the clinic.
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
+        <div class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <section
+            id="staff-walk-in-form"
+            class="rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8"
+            aria-labelledby="walk-in-form-heading"
+          >
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+              Walk-in intake
+            </p>
+            <h2 id="walk-in-form-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+              Add a walk-in patient
+            </h2>
+            <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+              Capture a patient name and visit type, then place them at the end of the queue for staff review.
+            </p>
+
+            <form id="walkInForm" class="mt-8 grid gap-5">
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-[#c0caf5]">Patient name</span>
+                <input
+                  id="walkInPatientName"
+                  name="patientName"
+                  type="text"
+                  maxlength="80"
+                  required
+                  placeholder="Enter patient full name"
+                  class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition placeholder:text-[#8b93b8] focus:border-[#7aa2f7]"
+                />
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-[#c0caf5]">Time</span>
+                <input
+                  id="walkInTime"
+                  name="time"
+                  type="time"
+                  required
+                  class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                />
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-[#c0caf5]">Visit type</span>
+                <select
+                  id="walkInVisitType"
+                  name="visitType"
+                  class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                >
+                  <option value="General consultation">General consultation</option>
+                  <option value="Medication collection">Medication collection</option>
+                  <option value="Immunisation">Immunisation</option>
+                  <option value="Follow-up review">Follow-up review</option>
+                </select>
+              </label>
+
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Add to queue
+              </button>
+            </form>
+          </section>
+
+          <section class="rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+              Staff workflow guide
+            </p>
+            <div class="mt-6 grid gap-4">
+              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/90 p-5">
+                <p class="text-sm font-medium text-[#7dcfff]">Manage the live queue</p>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Review booked and walk-in patients together so the clinic has one visible patient flow for the day.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/90 p-5">
+                <p class="text-sm font-medium text-[#7aa2f7]">Update patient progress</p>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Move patients through waiting, consultation, completion, or cancellation as staff attend to them.
+                </p>
+              </article>
+
+              <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/90 p-5">
+                <p class="text-sm font-medium text-[#9ece6a]">Sprint 2 demo support</p>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  This staff dashboard is frontend-ready for queue management demos and can be connected to backend queue data later without replacing the page layout.
+                </p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="relative z-10 border-t border-[#2a2f45]">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm text-[#8b93b8] md:flex-row md:items-center md:justify-between md:px-8 lg:px-10">
+        <p>Community Clinic Appointment &amp; Queue System</p>
+        <p>© Gradient Ascent</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/staff.js"></script>
+</body>
+</html>

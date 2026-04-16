@@ -1,6 +1,8 @@
 const {
   joinQueueFromAppointment,
-  fetchPatientQueueStatus
+  fetchPatientQueueStatus,
+  fetchStaffQueue,
+  updateQueueEntryStatus
 } = require('./queue.service');
 
 /**
@@ -61,7 +63,65 @@ async function getMyQueueStatus(req, res) {
   }
 }
 
+/**
+ * Handles GET /api/queue/staff.
+ * Returns the clinic queue for a staff member using clinic_id and date filters.
+ */
+async function getStaffQueue(req, res) {
+  try {
+    // Staff queue is filtered by clinic and queue date.
+    const { clinic_id: clinicId, date: queueDate } = req.query;
+
+    const result = await fetchStaffQueue({
+      clinicId,
+      queueDate
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to fetch staff queue.'
+    });
+  }
+}
+
+/**
+ * Handles PATCH /api/queue/staff/:entryId/status.
+ * Allows staff to move a patient through the queue.
+ */
+async function updateStaffQueueStatus(req, res) {
+  try {
+    // The queue entry id comes from the route parameter.
+    const { entryId } = req.params;
+
+    // The new status comes from the request body.
+    const { status } = req.body;
+
+    const result = await updateQueueEntryStatus({
+      entryId,
+      status
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Queue status updated successfully.',
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to update queue status.'
+    });
+  }
+}
+
 module.exports = {
   joinQueue,
-  getMyQueueStatus
+  getMyQueueStatus,
+  getStaffQueue,
+  updateStaffQueueStatus
 };

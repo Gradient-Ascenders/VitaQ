@@ -4,9 +4,12 @@ jest.mock('../src/lib/supabaseClient', () => ({
 }));
 
 const supabase = require('../src/lib/supabaseClient');
+
 const {
   joinQueueFromAppointment,
-  fetchPatientQueueStatus
+  fetchPatientQueueStatus,
+  fetchStaffQueue,
+  updateQueueEntryStatus
 } = require('../src/modules/queue/queue.service');
 
 /**
@@ -20,6 +23,7 @@ function createMockQuery(result) {
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
     insert: jest.fn(() => query),
+    update: jest.fn(() => query),
     single: jest.fn(() => Promise.resolve(result)),
     then: (resolve, reject) => Promise.resolve(result).then(resolve, reject)
   };
@@ -377,6 +381,205 @@ describe('fetchPatientQueueStatus', () => {
       })
     ).rejects.toMatchObject({
       message: 'Failed to fetch queue status.',
+      statusCode: 500
+    });
+  });
+});
+
+describe('fetchStaffQueue', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('throws an error when clinic_id or date is missing', async () => {
+    await expect(
+      fetchStaffQueue({
+        clinicId: 'clinic-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'clinic_id and date are required.',
+      statusCode: 400
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('returns staff queue entries filtered by clinic and date', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-1',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-1',
+            queue_number: 1,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            created_at: '2026-04-16T08:00:00Z',
+            updated_at: '2026-04-16T08:00:00Z',
+            appointment: {
+              slot: {
+                start_time: '08:00:00',
+                end_time: '08:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-2',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-2',
+            appointment_id: 'appointment-2',
+            queue_number: 2,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'in_consultation',
+            estimated_wait_minutes: 0,
+            created_at: '2026-04-16T08:05:00Z',
+            updated_at: '2026-04-16T08:05:00Z',
+            appointment: {
+              slot: {
+                start_time: '08:30:00',
+                end_time: '09:00:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchStaffQueue({
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.clinic_id).toBe('clinic-1');
+    expect(result.queue_date).toBe('2026-04-16');
+    expect(result.queue_summary).toEqual({
+      total: 2,
+      waiting: 1,
+      in_consultation: 1,
+      complete: 0
+    });
+
+    expect(result.queue_entries[0]).toMatchObject({
+      id: 'queue-1',
+      queue_number: 1,
+      status: 'waiting',
+      live_position: 1,
+      appointment_time: '08:00:00'
+    });
+
+    expect(result.queue_entries[1]).toMatchObject({
+      id: 'queue-2',
+      queue_number: 2,
+      status: 'in_consultation',
+      live_position: null,
+      appointment_time: '08:30:00'
+    });
+  });
+
+  test('throws an error when the staff queue query fails', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { message: 'Database unavailable' }
+      })
+    );
+
+    await expect(
+      fetchStaffQueue({
+        clinicId: 'clinic-1',
+        queueDate: '2026-04-16'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to fetch staff queue.',
+      statusCode: 500
+    });
+  });
+});
+
+describe('updateQueueEntryStatus', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('throws an error when queue entry id or status is missing', async () => {
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'queue entry id and status are required.',
+      statusCode: 400
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('rejects invalid queue statuses', async () => {
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'paused'
+      })
+    ).rejects.toMatchObject({
+      message: 'Invalid queue status.',
+      statusCode: 400
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('updates and returns a queue entry status', async () => {
+    const updatedEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'in_consultation',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:15:00Z'
+    };
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: updatedEntry,
+        error: null
+      })
+    );
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'in_consultation'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(result.status).toBe('in_consultation');
+  });
+
+  test('throws an error when the status update fails', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { message: 'Update failed' }
+      })
+    );
+
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'complete'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to update queue status.',
       statusCode: 500
     });
   });

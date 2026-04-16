@@ -90,7 +90,7 @@
             </p>
 
             <h1 class="mt-5 text-4xl font-bold leading-tight text-[#e0e5ff] sm:text-5xl">
-              Welcome back,
+              Welcome,
               <span id="patientName" class="text-[#7aa2f7]">Patient</span>.
             </h1>
 
@@ -241,6 +241,12 @@
         }
       } catch (error) {
         console.error('Dashboard role check failed:', error);
+      }
+
+      const patientName = document.getElementById('patientName');
+
+      if (patientName) {
+        patientName.textContent = session.user?.user_metadata?.full_name || session.user?.email || 'Patient';
       }
 
       initialiseLogoutButton('logoutButton');

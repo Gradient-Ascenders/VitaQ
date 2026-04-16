@@ -1,5 +1,6 @@
 const supabase = require('../../lib/supabaseClient');
 const WAIT_MINUTES_PER_PATIENT = 15;
+const ALLOWED_QUEUE_STATUSES = ['waiting', 'in_consultation', 'complete'];
 
 /**
  * Creates a standard service error with an HTTP status code.
@@ -307,7 +308,126 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   };
 }
 
+function mapQueueEntriesForStaff(entries) {
+  return entries.map((entry) => {
+    const livePosition = entry.status === 'waiting'
+      ? calculateLivePosition(entries, entry.id)
+      : null;
+
+    return {
+      id: entry.id,
+      clinic_id: entry.clinic_id,
+      patient_id: entry.patient_id,
+      appointment_id: entry.appointment_id,
+      queue_number: entry.queue_number,
+      queue_date: entry.queue_date,
+      source: entry.source,
+      status: entry.status,
+      estimated_wait_minutes: entry.status === 'waiting' && livePosition !== null
+        ? (livePosition - 1) * WAIT_MINUTES_PER_PATIENT
+        : 0,
+      live_position: livePosition,
+      appointment_time: entry.appointment?.slot?.start_time || null,
+      appointment_end_time: entry.appointment?.slot?.end_time || null,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at
+    };
+  });
+}
+
+/**
+ * Returns the clinic queue for staff users.
+ * This is used by the staff queue management page.
+ */
+async function fetchStaffQueue({ clinicId, queueDate }) {
+  if (!clinicId || !queueDate) {
+    throw createServiceError('clinic_id and date are required.', 400);
+  }
+
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at,
+      appointment:appointments (
+        id,
+        slot:appointment_slots (
+          start_time,
+          end_time
+        )
+      )
+    `)
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', queueDate)
+    .order('queue_number', { ascending: true });
+
+  if (error) {
+    throw createServiceError('Failed to fetch staff queue.', 500);
+  }
+
+  const queueEntries = Array.isArray(data) ? data : [];
+
+  return {
+    clinic_id: clinicId,
+    queue_date: queueDate,
+    queue_summary: buildQueueSummary(queueEntries),
+    queue_entries: mapQueueEntriesForStaff(queueEntries)
+  };
+}
+
+/**
+ * Updates a queue entry status.
+ * Staff can use this to move patients through the queue.
+ */
+async function updateQueueEntryStatus({ entryId, status }) {
+  if (!entryId || !status) {
+    throw createServiceError('queue entry id and status are required.', 400);
+  }
+
+  if (!ALLOWED_QUEUE_STATUSES.includes(status)) {
+    throw createServiceError('Invalid queue status.', 400);
+  }
+
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .update({
+      status
+    })
+    .eq('id', entryId)
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  if (error || !data) {
+    throw createServiceError('Failed to update queue status.', 500);
+  }
+
+  return data;
+}
+
 module.exports = {
   joinQueueFromAppointment,
-  fetchPatientQueueStatus
+  fetchPatientQueueStatus,
+  fetchStaffQueue,
+  updateQueueEntryStatus
 };

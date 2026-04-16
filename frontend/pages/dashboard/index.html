@@ -256,9 +256,27 @@
   <script src="/lib/supabaseClient.js"></script>
   <script src="/js/shared/auth.js"></script>
   <script>
-    requireAuthenticatedUser();
-    initialiseLogoutButton('logoutButton');
-    initialiseLogoutButton('logoutCardButton');
+    document.addEventListener('DOMContentLoaded', async function () {
+      const session = await requireAuthenticatedUser();
+
+      if (!session) {
+        return;
+      }
+
+      try {
+        const profile = await getCurrentUserProfile(session);
+
+        if (profile && (profile.role === 'admin' || profile.role === 'staff')) {
+          window.location.href = getHomeRouteForRole(profile.role);
+          return;
+        }
+      } catch (error) {
+        console.error('Dashboard role check failed:', error);
+      }
+
+      initialiseLogoutButton('logoutButton');
+      initialiseLogoutButton('logoutCardButton');
+    });
   </script>
 </body>
 </html>

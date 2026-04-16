@@ -152,6 +152,55 @@ async function requireAuthenticatedUser() {
   }
 }
 
+function getHomeRouteForRole(role) {
+  if (role === "admin") {
+    return "/admin";
+  }
+
+  if (role === "staff") {
+    return "/staff";
+  }
+
+  return "/dashboard";
+}
+
+async function getCurrentUserProfile(session = null) {
+  const activeSession = session || await getCurrentSession(true);
+
+  if (!activeSession?.user?.id) {
+    return null;
+  }
+
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available.");
+  }
+
+  const { data, error } = await window.supabaseClient
+    .from("profiles")
+    .select("role")
+    .eq("user_id", activeSession.user.id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data || null;
+}
+
+async function redirectToRoleHome(session = null) {
+  try {
+    const profile = await getCurrentUserProfile(session);
+    const destination = getHomeRouteForRole(profile?.role);
+    window.location.href = destination;
+    return destination;
+  } catch (error) {
+    console.error("Role-based redirect failed:", error);
+    window.location.href = "/dashboard";
+    return "/dashboard";
+  }
+}
+
 // Use this on public auth pages like /login and /register.
 // If a session already exists, redirect to /dashboard.
 async function redirectIfAuthenticated() {
@@ -159,7 +208,7 @@ async function redirectIfAuthenticated() {
     const session = await getCurrentSession(false);
 
     if (session) {
-      window.location.href = "/dashboard";
+      await redirectToRoleHome(session);
       return session;
     }
 

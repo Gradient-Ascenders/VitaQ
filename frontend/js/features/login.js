@@ -114,20 +114,11 @@ function initialisePasswordToggle() {
 // If the user already has an active session, there is no reason to keep
 // them on the login page. We redirect them straight to the dashboard.
 async function redirectAuthenticatedUser() {
-  if (!window.supabaseClient) {
-    return;
-  }
-
   try {
-    const { data, error } = await window.supabaseClient.auth.getSession();
+    const session = await getCurrentSession(false);
 
-    if (error) {
-      console.error("Session check error:", error);
-      return;
-    }
-
-    if (data.session) {
-      window.location.href = "/dashboard";
+    if (session) {
+      await redirectToRoleHome(session);
     }
   } catch (error) {
     console.error("Unexpected session check error:", error);
@@ -238,7 +229,7 @@ async function handleValidatedLogin(email, password) {
   // If sign-in succeeds and a session is returned, move the patient into
   // the protected area of the system.
   if (data.session) {
-    window.location.href = "/dashboard";
+    await redirectToRoleHome(data.session);
     return;
   }
 

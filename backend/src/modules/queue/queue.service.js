@@ -29,8 +29,46 @@ function isActiveQueueStatus(status) {
   return ACTIVE_QUEUE_STATUSES.includes(status);
 }
 
+function getQueueStatusPriority(status) {
+  if (status === 'in_consultation') {
+    return 0;
+  }
+
+  if (status === 'waiting') {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getEntryAppointmentStartTime(entry) {
+  return entry?.appointment?.slot?.start_time || null;
+}
+
 function sortQueueEntries(entries) {
   return [...entries].sort((leftEntry, rightEntry) => {
+    const leftStatusPriority = getQueueStatusPriority(leftEntry.status);
+    const rightStatusPriority = getQueueStatusPriority(rightEntry.status);
+
+    if (leftStatusPriority !== rightStatusPriority) {
+      return leftStatusPriority - rightStatusPriority;
+    }
+
+    const leftAppointmentStartTime = getEntryAppointmentStartTime(leftEntry);
+    const rightAppointmentStartTime = getEntryAppointmentStartTime(rightEntry);
+
+    if (leftAppointmentStartTime && rightAppointmentStartTime && leftAppointmentStartTime !== rightAppointmentStartTime) {
+      return leftAppointmentStartTime.localeCompare(rightAppointmentStartTime);
+    }
+
+    if (leftAppointmentStartTime && !rightAppointmentStartTime) {
+      return -1;
+    }
+
+    if (!leftAppointmentStartTime && rightAppointmentStartTime) {
+      return 1;
+    }
+
     const leftQueueNumber = Number(leftEntry.queue_number || 0);
     const rightQueueNumber = Number(rightEntry.queue_number || 0);
 
@@ -135,29 +173,29 @@ async function generateQueueNumber(clinicId, queueDate) {
   return highestQueueNumber + 1;
 }
 
-/**
- * Calculates the patient's queue position before inserting them.
- * Only active waiting patients are counted.
- */
-async function calculateQueuePosition(clinicId, queueDate) {
-  const { count, error } = await supabase
-    .from('queue_entries')
-    .select('id', { count: 'exact', head: true })
-    .eq('clinic_id', clinicId)
-    .eq('queue_date', queueDate)
-    .in('status', ACTIVE_QUEUE_STATUSES);
-
-  if (error) {
-    throw createServiceError('Failed to calculate queue position.', 500);
-  }
-
-  return (count || 0) + 1;
-}
-
 async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
   const { data, error } = await supabase
     .from('queue_entries')
-    .select('id, clinic_id, patient_id, appointment_id, queue_number, queue_date, source, status, estimated_wait_minutes, created_at, updated_at')
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at,
+      appointment:appointments (
+        id,
+        slot:appointment_slots (
+          start_time,
+          end_time
+        )
+      )
+    `)
     .eq('clinic_id', clinicId)
     .eq('queue_date', queueDate)
     .order('queue_number', { ascending: true });
@@ -166,7 +204,7 @@ async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
     throw createServiceError('Failed to fetch queue status.', 500);
   }
 
-  return Array.isArray(data) ? data : [];
+  return sortQueueEntries(Array.isArray(data) ? data : []);
 }
 
 function buildQueueEntryResponse(entry, estimatedWaitMinutes) {
@@ -282,7 +320,26 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
 
   const queueDate = appointment.slot?.date || getTodayDateString();
   const queueNumber = await generateQueueNumber(appointment.clinic_id, queueDate);
-  const position = await calculateQueuePosition(appointment.clinic_id, queueDate);
+  const queueEntries = await fetchQueueEntriesForClinicDate(appointment.clinic_id, queueDate);
+  const provisionalEntry = {
+    id: '__pending_queue_entry__',
+    clinic_id: appointment.clinic_id,
+    patient_id: patientId,
+    appointment_id: appointmentId,
+    queue_number: queueNumber,
+    queue_date: queueDate,
+    source: 'appointment',
+    status: 'waiting',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    appointment: {
+      slot: {
+        start_time: appointment.slot?.start_time || null,
+        end_time: appointment.slot?.end_time || null
+      }
+    }
+  };
+  const position = calculateLivePosition([...queueEntries, provisionalEntry], provisionalEntry.id);
 
   // Simple estimate: each waiting patient ahead adds about 15 minutes.
   const estimatedWaitMinutes = (position - 1) * 15;

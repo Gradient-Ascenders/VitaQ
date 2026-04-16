@@ -16,7 +16,7 @@ let patientAppointmentsResult;
 let queueAppointmentFetchResult;
 let queueExistingEntriesResult;
 let queueNumberCountResult;
-let queuePositionCountResult;
+let queueOrderedEntriesResult;
 let queueEntryInsertResult;
 let appointmentDeleteResult;
 
@@ -175,7 +175,7 @@ describe('appointments.service', () => {
         };
         queueExistingEntriesResult = { data: [], error: null };
         queueNumberCountResult = { data: [], error: null };
-        queuePositionCountResult = { count: 0, error: null };
+        queueOrderedEntriesResult = { data: [], error: null };
         queueEntryInsertResult = {
             data: {
                 id: 'queue-1',
@@ -244,7 +244,7 @@ describe('appointments.service', () => {
         mockQueueEntriesSelect
             .mockImplementationOnce(() => createQueueEntriesSelectChain(queueExistingEntriesResult))
             .mockImplementationOnce(() => createQueueEntriesSelectChain(queueNumberCountResult))
-            .mockImplementationOnce(() => createQueueEntriesSelectChain(queuePositionCountResult));
+            .mockImplementationOnce(() => createQueueEntriesSelectChain(queueOrderedEntriesResult));
         mockQueueEntriesInsert.mockReturnValue(queueEntriesInsertChain);
         queueEntriesInsertSingleChain.single.mockImplementation(() =>
             Promise.resolve(queueEntryInsertResult)

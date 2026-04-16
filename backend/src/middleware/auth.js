@@ -11,10 +11,7 @@ const supabase = require('../lib/supabaseClient');
  */
 async function authMiddleware(req, res, next) {
   try {
-    // Read the Authorization header from the incoming request.
     const authHeader = req.headers.authorization;
-
-    // Stop early if the header is missing or badly formatted.
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -22,13 +19,8 @@ async function authMiddleware(req, res, next) {
       });
     }
 
-    // Extract the token after the word "Bearer".
     const token = authHeader.split(' ')[1];
-
-    // Ask Supabase to validate the token and return the logged-in user.
     const { data, error } = await supabase.auth.getUser(token);
-
-    // If Supabase cannot verify the token, reject the request.
     if (error || !data || !data.user) {
       return res.status(401).json({
         success: false,
@@ -36,10 +28,7 @@ async function authMiddleware(req, res, next) {
       });
     }
 
-    // Attach the authenticated user to the request object.
     req.user = data.user;
-
-    // Continue to the protected route.
     next();
   } catch (error) {
     return res.status(500).json({
@@ -51,13 +40,31 @@ async function authMiddleware(req, res, next) {
 }
 
 /**
+ * Helper that loads the logged-in user's profile role.
+ * Role checks use the shared profiles table so staff/admin access stays
+ * consistent across backend routes.
+ */
+async function fetchProfileRole(userId) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !profile) {
+    return null;
+  }
+
+  return profile.role;
+}
+
+/**
  * Middleware that allows only staff users through.
  *
  * This must run after authMiddleware, because it depends on req.user.id.
  */
 async function requireStaff(req, res, next) {
   try {
-    // If authMiddleware did not attach a user, block the request.
     if (!req.user || !req.user.id) {
       return res.status(401).json({
         success: false,
@@ -65,32 +72,16 @@ async function requireStaff(req, res, next) {
       });
     }
 
-    // Look up the logged-in user's role from the profiles table.
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', req.user.id)
-      .single();
+    const role = await fetchProfileRole(req.user.id);
 
-    // If there is no valid profile, the user cannot access staff tools.
-    if (error || !profile) {
+    if (role !== 'staff') {
       return res.status(403).json({
         success: false,
         message: 'Staff access is required.'
       });
     }
 
-    // Only users with the staff role may manage the staff queue.
-    if (profile.role !== 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff access is required.'
-      });
-    }
-
-    // Store the role on the request in case controllers need it later.
-    req.userRole = profile.role;
-
+    req.userRole = role;
     next();
   } catch (error) {
     return res.status(500).json({
@@ -101,8 +92,41 @@ async function requireStaff(req, res, next) {
   }
 }
 
-// Keep the existing default export working.
-module.exports = authMiddleware;
+/**
+ * Middleware that allows only admin users through.
+ *
+ * Admin routes are used for reviewing staff registration requests,
+ * so normal patients and staff must not be able to call them.
+ */
+async function requireAdmin(req, res, next) {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication is required before checking admin access.'
+      });
+    }
 
-// Add role-check middleware as a property of the same export.
+    const role = await fetchProfileRole(req.user.id);
+
+    if (role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access is required.'
+      });
+    }
+
+    req.userRole = role;
+    next();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Admin access check failed.',
+      error: error.message
+    });
+  }
+}
+
+module.exports = authMiddleware;
 module.exports.requireStaff = requireStaff;
+module.exports.requireAdmin = requireAdmin;

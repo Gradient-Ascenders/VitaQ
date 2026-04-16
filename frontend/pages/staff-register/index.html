@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register | VitaQ</title>
+  <title>Staff Register | VitaQ</title>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
   <link rel="stylesheet" href="/assets/css/output.css" />
 </head>
@@ -27,19 +27,19 @@
       </section>
     </section>
 
-    <!-- Main patient register section -->
+    <!-- Staff registration form section -->
     <section class="relative flex min-h-screen items-center justify-center bg-[#1a1b26] px-6 py-12 lg:px-12">
-      <section class="w-full max-w-md" aria-labelledby="register-heading">
+      <section class="w-full max-w-md" aria-labelledby="staff-register-heading">
         <header class="mb-8 text-center">
-          <h1 id="register-heading" class="text-4xl font-bold tracking-tight text-[#e0e5ff]">
-            Create your account
+          <h1 id="staff-register-heading" class="text-4xl font-bold tracking-tight text-[#e0e5ff]">
+            Register as Staff
           </h1>
           <p class="mt-3 text-base leading-6 text-[#a9b1d6]">
-            Book clinic appointments, manage visits, and stay updated with VitaQ.
+            Submit your staff registration request for admin review and approval.
           </p>
         </header>
 
-        <!-- Shared message box for success or error messages -->
+        <!-- Shared message box for general success or error feedback -->
         <p
           id="messageBox"
           class="hidden mb-4 rounded-2xl px-4 py-3 text-sm"
@@ -47,8 +47,23 @@
           aria-live="polite"
         ></p>
 
-        <!-- Patient registration form -->
-        <form id="registerForm" class="space-y-4" novalidate>
+        <!-- Status card for pending / approved / rejected -->
+        <section
+          id="statusCard"
+          class="hidden mb-4 rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4"
+          aria-live="polite"
+        >
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-[#7aa2f7]">
+            Registration status
+          </h2>
+          <p id="statusValue" class="mt-2 text-lg font-semibold text-[#e0e5ff]">Pending</p>
+          <p id="statusDescription" class="mt-2 text-sm leading-6 text-[#a9b1d6]">
+            Your request is awaiting admin review.
+          </p>
+        </section>
+
+        <!-- Staff registration form -->
+        <form id="staffRegisterForm" class="space-y-4" novalidate>
           <section class="grid gap-4 sm:grid-cols-2">
             <section>
               <label for="firstName" class="mb-2 block text-sm font-medium text-[#c0caf5]">
@@ -59,7 +74,7 @@
                 id="firstName"
                 name="firstName"
                 autocomplete="given-name"
-                placeholder="Enter first name"
+                placeholder="Enter your first name"
                 class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
                 aria-describedby="firstNameError"
               />
@@ -75,7 +90,7 @@
                 id="lastName"
                 name="lastName"
                 autocomplete="family-name"
-                placeholder="Enter last name"
+                placeholder="Enter your last name"
                 class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
                 aria-describedby="lastNameError"
               />
@@ -92,7 +107,7 @@
               id="email"
               name="email"
               autocomplete="email"
-              placeholder="Enter email address"
+              placeholder="Enter your work email"
               class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
               aria-describedby="emailError"
             />
@@ -149,82 +164,66 @@
             <p id="confirmPasswordError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
           </section>
 
+          <section>
+            <label for="clinicSelection" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+              Clinic selection
+            </label>
+            <select
+              id="clinicSelection"
+              name="clinicSelection"
+              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+              aria-describedby="clinicSelectionError"
+            >
+              <option value="">Loading clinics...</option>
+            </select>
+            <p id="clinicSelectionError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
+          </section>
+
+          <section>
+            <label for="staffId" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+              Staff ID
+            </label>
+            <input
+              type="text"
+              id="staffId"
+              name="staffId"
+              placeholder="Enter your staff ID"
+              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+              aria-describedby="staffIdError"
+            />
+            <p id="staffIdError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
+          </section>
+
           <button
             type="submit"
-            id="registerButton"
+            id="staffRegisterButton"
             class="mt-2 w-full rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-4 py-3 text-base font-semibold text-[#1a1b26] transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#7aa2f7]/40"
           >
-            Continue
+            Submit Staff Registration Request
           </button>
         </form>
 
-        <!-- Staff registration entry point -->
-        <section class="mt-5 rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4 text-center">
-          <h2 class="text-base font-semibold text-[#e0e5ff]">Registering as clinic staff?</h2>
-          <p class="mt-2 text-sm leading-6 text-[#a9b1d6]">
-            Use the staff registration page to submit your clinic details and staff ID for admin approval.
-          </p>
-          <a
-            href="/staff-register"
-            class="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[#7aa2f7] px-4 py-3 text-base font-semibold text-[#7aa2f7] transition hover:bg-[#7aa2f7]/10 focus:outline-none focus:ring-2 focus:ring-[#7aa2f7]/40"
-          >
-            Register as Staff
-          </a>
-        </section>
-
-        <section class="my-8 flex items-center gap-4" aria-hidden="true">
-          <hr class="flex-1 border-[#414868]" />
-          <p class="text-sm text-[#7f85a3]">or sign up with</p>
-          <hr class="flex-1 border-[#414868]" />
-        </section>
-
-        <!-- OAuth buttons -->
-        <section class="flex gap-3">
-          <button
-            type="button"
-            id="googleRegisterButton"
-            data-oauth-provider="google"
-            data-provider-label="Google"
-            aria-label="Sign up with Google"
-            class="group min-w-0 flex-1 rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] shadow-sm transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
-          >
-            <section class="flex flex-col items-center gap-3">
-              <section class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition group-hover:scale-105">
-                <img
-                  src="https://www.google.com/favicon.ico"
-                  alt=""
-                  class="h-6 w-6 object-contain"
-                />
-              </section>
-              <p class="text-sm font-semibold text-[#e0e5ff]">Google</p>
-            </section>
-          </button>
-
-          <button
-            type="button"
-            id="microsoftRegisterButton"
-            data-oauth-provider="azure"
-            data-provider-label="Microsoft"
-            aria-label="Sign up with Microsoft"
-            class="group min-w-0 flex-1 rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-4 text-sm font-medium text-[#c0caf5] shadow-sm transition hover:-translate-y-0.5 hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
-          >
-            <section class="flex flex-col items-center gap-3">
-              <section class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition group-hover:scale-105">
-                <img
-                  src="https://www.microsoft.com/favicon.ico"
-                  alt=""
-                  class="h-6 w-6 object-contain"
-                />
-              </section>
-              <p class="text-sm font-semibold text-[#e0e5ff]">Microsoft</p>
-            </section>
-          </button>
+        <!-- Quick status guide -->
+        <section class="mt-5 rounded-3xl border border-[#414868] bg-[#24283b]/70 p-4">
+          <h2 class="text-base font-semibold text-[#e0e5ff]">Approval status guide</h2>
+          <ul class="mt-3 space-y-2 text-sm leading-6 text-[#a9b1d6]">
+            <li><strong class="text-[#e0e5ff]">Pending:</strong> your request is waiting for admin review.</li>
+            <li><strong class="text-[#e0e5ff]">Approved:</strong> your staff account can access staff tools.</li>
+            <li><strong class="text-[#e0e5ff]">Rejected:</strong> your request was not approved.</li>
+          </ul>
         </section>
 
         <p class="mt-6 text-center text-sm text-[#8b93b8]">
           Already have an account?
           <a href="/login" class="font-medium text-[#7aa2f7] underline underline-offset-2 hover:text-[#bb9af7]">
             Sign in
+          </a>
+        </p>
+
+        <p class="mt-3 text-center text-sm text-[#8b93b8]">
+          Want to create a patient account instead?
+          <a href="/register" class="font-medium text-[#7aa2f7] underline underline-offset-2 hover:text-[#bb9af7]">
+            Back to patient register
           </a>
         </p>
       </section>
@@ -239,18 +238,17 @@
         <section class="flex flex-1 items-center justify-center">
           <img
             src="/assets/images/clinic_pic.png"
-            alt="Clinic booking illustration"
+            alt="Clinic staff registration illustration"
             class="mx-auto h-auto w-[1024px] max-w-none object-contain"
           />
         </section>
 
         <section class="mt-auto w-full max-w-xl self-center rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
           <h2 class="mt-3 text-3xl font-semibold leading-tight text-[#e0e5ff]">
-            Smarter clinic bookings for patients and staff.
+            Secure staff onboarding for trusted clinic access.
           </h2>
           <p class="mt-3 max-w-md text-sm leading-6 text-[#a9b1d6]">
-            Create your account to manage appointments, reduce waiting time,
-            and keep your care journey organized.
+            Submit your clinic details, wait for approval, and gain access to VitaQ staff queue tools.
           </p>
         </section>
       </section>
@@ -260,7 +258,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/lib/supabaseClient.js"></script>
   <script src="/js/shared/auth.js"></script>
-  <script src="/js/features/register.js"></script>
+  <script src="/js/features/staff-register.js"></script>
   <script>
     redirectIfAuthenticated();
   </script>

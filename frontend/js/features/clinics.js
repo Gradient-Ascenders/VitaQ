@@ -88,6 +88,19 @@ function formatAvailableSlotsLabel(count) {
   return `${numericCount} slot${numericCount === 1 ? "" : "s"} available`;
 }
 
+function sortClinicsByAvailability(clinics) {
+  return [...clinics].sort((leftClinic, rightClinic) => {
+    const leftAvailableSlots = Math.max(Number(leftClinic?.available_slots_count) || 0, 0);
+    const rightAvailableSlots = Math.max(Number(rightClinic?.available_slots_count) || 0, 0);
+
+    if (leftAvailableSlots !== rightAvailableSlots) {
+      return rightAvailableSlots - leftAvailableSlots;
+    }
+
+    return String(leftClinic?.name || "").localeCompare(String(rightClinic?.name || ""));
+  });
+}
+
 function renderClinics(clinics) {
   clinicsList.innerHTML = "";
 
@@ -186,7 +199,7 @@ function applyFilters() {
     return matchesSearch && matchesProvince && matchesDistrict && matchesFacilityType;
   });
 
-  renderClinics(filteredClinics);
+  renderClinics(sortClinicsByAvailability(filteredClinics));
 }
 
 function initialiseFilters(clinics) {
@@ -220,7 +233,7 @@ async function loadClinics() {
     }
 
     const payload = await response.json();
-    allClinics = normaliseClinicResponse(payload);
+    allClinics = sortClinicsByAvailability(normaliseClinicResponse(payload));
 
     initialiseFilters(allClinics);
     renderClinics(allClinics);

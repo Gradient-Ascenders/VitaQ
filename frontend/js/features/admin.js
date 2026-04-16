@@ -320,6 +320,24 @@ async function initialiseAdminPage() {
     return;
   }
 
+  try {
+    const profile = await getCurrentUserProfile(session);
+
+    if (!profile) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    if (profile.role !== 'admin') {
+      window.location.href = getHomeRouteForRole(profile.role);
+      return;
+    }
+  } catch (error) {
+    console.error('Admin role check failed:', error);
+    window.location.href = '/dashboard';
+    return;
+  }
+
   const userName = session.user?.user_metadata?.full_name || session.user?.email || 'Admin';
   setTextContent('adminName', userName);
 

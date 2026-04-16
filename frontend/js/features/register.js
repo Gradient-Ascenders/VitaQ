@@ -2,10 +2,15 @@
 const registerForm = document.getElementById("registerForm");
 const messageBox = document.getElementById("messageBox");
 
+const firstNameInput = document.getElementById("firstName");
+const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
+const passwordToggleButtons = Array.from(document.querySelectorAll("[data-password-toggle]"));
 
+const firstNameError = document.getElementById("firstNameError");
+const lastNameError = document.getElementById("lastNameError");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
@@ -13,6 +18,10 @@ const oauthButtons = Array.from(document.querySelectorAll("[data-oauth-provider]
 
 // Existing shared Supabase client
 const supabaseClient = window.supabaseClient;
+
+// Note:
+// The new "Register as Staff" button on the register page is a normal link in the HTML,
+// so this patient register script does not need any extra click-handling logic for it.
 
 // Show a top-level message
 function showMessage(message, type = "error") {
@@ -42,6 +51,27 @@ function showFieldError(element, message) {
 function hideFieldError(element) {
   element.textContent = "";
   element.classList.add("hidden");
+}
+
+function buildFullName(firstName, lastName) {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
+function initialisePasswordToggles() {
+  passwordToggleButtons.forEach(function (button) {
+    const targetId = button.dataset.passwordToggle;
+    const targetInput = document.getElementById(targetId);
+
+    if (!targetInput) {
+      return;
+    }
+
+    button.addEventListener("click", function () {
+      const passwordIsHidden = targetInput.type === "password";
+      targetInput.type = passwordIsHidden ? "text" : "password";
+      button.textContent = passwordIsHidden ? "Hide" : "Show";
+    });
+  });
 }
 
 // Update the social signup buttons while an OAuth redirect is being started.
@@ -106,6 +136,8 @@ function initialiseOAuthButtons() {
       const providerLabel = button.dataset.providerLabel || "that provider";
 
       hideMessage();
+      hideFieldError(firstNameError);
+      hideFieldError(lastNameError);
       hideFieldError(emailError);
       hideFieldError(passwordError);
       hideFieldError(confirmPasswordError);
@@ -123,21 +155,36 @@ function initialiseOAuthButtons() {
 }
 
 initialiseOAuthButtons();
+initialisePasswordToggles();
 
 // Handle form submission
 registerForm.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   hideMessage();
+  hideFieldError(firstNameError);
+  hideFieldError(lastNameError);
   hideFieldError(emailError);
   hideFieldError(passwordError);
   hideFieldError(confirmPasswordError);
 
+  const firstName = firstNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
 
   let isValid = true;
+
+  if (!firstName) {
+    showFieldError(firstNameError, "First name is required.");
+    isValid = false;
+  }
+
+  if (!lastName) {
+    showFieldError(lastNameError, "Last name is required.");
+    isValid = false;
+  }
 
   if (!email) {
     showFieldError(emailError, "Email is required.");
@@ -172,9 +219,16 @@ registerForm.addEventListener("submit", async function (e) {
   registerButton.disabled = true;
   registerButton.textContent = "Creating account...";
 
+  const fullName = buildFullName(firstName, lastName);
+
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        full_name: fullName
+      }
+    }
   });
 
   registerButton.disabled = false;

@@ -7,7 +7,7 @@
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
   <link rel="stylesheet" href="/assets/css/output.css" />
 </head>
-<body class="min-h-screen overflow-hidden bg-[#1a1b26] text-[#c0caf5]">
+<body class="min-h-screen overflow-x-hidden bg-[#1a1b26] text-[#c0caf5]">
   <main class="relative flex min-h-screen items-center justify-center px-6 py-12">
     <section
       aria-hidden="true"
@@ -25,6 +25,7 @@
         <a
           href="/"
           aria-label="Go to home page"
+          title="Go to home page"
           class="pointer-events-auto w-fit vitaq-logo-link"
         >
           <img
@@ -109,6 +110,16 @@
             </button>
           </section>
         </section>
+
+        <label class="flex items-center gap-3 text-sm text-[#a9b1d6]">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            name="rememberMe"
+            class="h-4 w-4 rounded border border-[#414868] bg-[#24283b] text-[#7aa2f7] accent-[#7aa2f7]"
+          />
+          <span>Remember me</span>
+        </label>
 
         <button
           type="submit"

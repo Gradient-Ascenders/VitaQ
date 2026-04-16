@@ -1,4 +1,5 @@
 // Mock the Supabase client before importing the queue service.
+// This keeps the tests fast and prevents real database calls.
 jest.mock('../src/lib/supabaseClient', () => ({
   from: jest.fn()
 }));
@@ -20,6 +21,7 @@ function createMockQuery(result) {
   const query = {
     select: jest.fn(() => query),
     eq: jest.fn(() => query),
+    in: jest.fn(() => query),
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
     insert: jest.fn(() => query),
@@ -89,7 +91,33 @@ describe('joinQueueFromAppointment', () => {
     });
   });
 
-  test('blocks duplicate queue entries for the same appointment', async () => {
+  test('blocks appointments that are not booked', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: {
+          id: 'appointment-1',
+          patient_id: 'patient-1',
+          clinic_id: 'clinic-1',
+          status: 'cancelled',
+          slot: { date: '2026-04-16' },
+          clinic: { name: 'Test Clinic' }
+        },
+        error: null
+      })
+    );
+
+    await expect(
+      joinQueueFromAppointment({
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Only booked appointments can join the queue.',
+      statusCode: 409
+    });
+  });
+
+  test('blocks duplicate queue entries for the same appointment when the entry belongs to another patient', async () => {
     supabase.from
       .mockReturnValueOnce(
         createMockQuery({
@@ -106,7 +134,19 @@ describe('joinQueueFromAppointment', () => {
       )
       .mockReturnValueOnce(
         createMockQuery({
-          data: [{ id: 'queue-1' }],
+          data: [
+            {
+              id: 'queue-1',
+              clinic_id: 'clinic-1',
+              patient_id: 'different-patient',
+              appointment_id: 'appointment-1',
+              queue_number: 1,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'waiting',
+              estimated_wait_minutes: 0
+            }
+          ],
           error: null
         })
       );
@@ -117,8 +157,109 @@ describe('joinQueueFromAppointment', () => {
         appointmentId: 'appointment-1'
       })
     ).rejects.toMatchObject({
-      message: 'This appointment has already joined the queue.',
-      statusCode: 409
+      message: 'You cannot join the queue for another patient.',
+      statusCode: 403
+    });
+  });
+
+  test('throws an error when duplicate-check query fails', async () => {
+    supabase.from
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: {
+            id: 'appointment-1',
+            patient_id: 'patient-1',
+            clinic_id: 'clinic-1',
+            status: 'booked',
+            slot: { date: '2026-04-16' },
+            clinic: { name: 'Test Clinic' }
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Database unavailable' }
+        })
+      );
+
+    await expect(
+      joinQueueFromAppointment({
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to check existing queue entry.',
+      statusCode: 500
+    });
+  });
+
+  test('throws an error when queue number generation fails', async () => {
+    supabase.from
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: {
+            id: 'appointment-1',
+            patient_id: 'patient-1',
+            clinic_id: 'clinic-1',
+            status: 'booked',
+            slot: { date: '2026-04-16' },
+            clinic: { name: 'Test Clinic' }
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ count: null, error: { message: 'DB error' } }));
+
+    await expect(
+      joinQueueFromAppointment({
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to generate queue number.',
+      statusCode: 500
+    });
+  });
+
+  test('throws an error when queue entry insertion fails', async () => {
+    const appointment = {
+      id: 'appointment-1',
+      patient_id: 'patient-1',
+      clinic_id: 'clinic-1',
+      status: 'booked',
+      slot: {
+        date: '2026-04-16',
+        start_time: '11:30:00',
+        end_time: '12:00:00'
+      },
+      clinic: {
+        name: 'Test Clinic'
+      }
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Insert failed' }
+        })
+      );
+
+    await expect(
+      joinQueueFromAppointment({
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to join the queue.',
+      statusCode: 500
     });
   });
 
@@ -153,7 +294,291 @@ describe('joinQueueFromAppointment', () => {
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
       .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
-      .mockReturnValueOnce(createMockQuery({ count: 0, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: queueEntry, error: null }));
+
+    const result = await joinQueueFromAppointment({
+      patientId: 'patient-1',
+      appointmentId: 'appointment-1'
+    });
+
+    expect(result.queue_entry).toMatchObject(queueEntry);
+    expect(result.position).toBe(1);
+    expect(result.queue_entry.status).toBe('waiting');
+    expect(result.queue_entry.source).toBe('appointment');
+  });
+
+  test('returns the existing queue entry for a duplicate join by the same patient', async () => {
+    const appointment = {
+      id: 'appointment-1',
+      patient_id: 'patient-1',
+      clinic_id: 'clinic-1',
+      status: 'booked',
+      slot: {
+        date: '2026-04-16',
+        start_time: '11:30:00',
+        end_time: '12:00:00'
+      },
+      clinic: {
+        name: 'Test Clinic'
+      }
+    };
+
+    const existingEntry = {
+      id: 'queue-2',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 2,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 90,
+      created_at: '2026-04-16T08:30:00.000Z',
+      updated_at: '2026-04-16T08:30:00.000Z'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [existingEntry], error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: [
+            {
+              id: 'queue-1',
+              clinic_id: 'clinic-1',
+              patient_id: 'patient-a',
+              appointment_id: 'appointment-a',
+              queue_number: 1,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'in_consultation',
+              estimated_wait_minutes: 0
+            },
+            existingEntry
+          ],
+          error: null
+        })
+      );
+
+    const result = await joinQueueFromAppointment({
+      patientId: 'patient-1',
+      appointmentId: 'appointment-1'
+    });
+
+    expect(result.position).toBe(2);
+    expect(result.queue_entry).toMatchObject({
+      id: 'queue-2',
+      queue_number: 2,
+      status: 'waiting',
+      estimated_wait_minutes: 15
+    });
+  });
+
+  test('uses the highest existing queue number when creating a new queue entry', async () => {
+    const appointment = {
+      id: 'appointment-1',
+      patient_id: 'patient-1',
+      clinic_id: 'clinic-1',
+      status: 'booked',
+      slot: {
+        date: '2026-04-16',
+        start_time: '11:30:00',
+        end_time: '12:00:00'
+      },
+      clinic: {
+        name: 'Test Clinic'
+      }
+    };
+
+    const queueEntry = {
+      id: 'queue-9',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 9,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 30
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [{ queue_number: 8 }], error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: [
+            {
+              id: 'queue-4',
+              clinic_id: 'clinic-1',
+              patient_id: 'patient-a',
+              appointment_id: 'appointment-a',
+              queue_number: 4,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'waiting',
+              estimated_wait_minutes: 0,
+              appointment: {
+                slot: {
+                  start_time: '08:00:00',
+                  end_time: '08:30:00'
+                }
+              }
+            },
+            {
+              id: 'queue-8',
+              clinic_id: 'clinic-1',
+              patient_id: 'patient-b',
+              appointment_id: 'appointment-b',
+              queue_number: 8,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'waiting',
+              estimated_wait_minutes: 15,
+              appointment: {
+                slot: {
+                  start_time: '09:00:00',
+                  end_time: '09:30:00'
+                }
+              }
+            }
+          ],
+          error: null
+        })
+      )
+      .mockReturnValueOnce(createMockQuery({ data: queueEntry, error: null }));
+
+    const result = await joinQueueFromAppointment({
+      patientId: 'patient-1',
+      appointmentId: 'appointment-1'
+    });
+
+    expect(result.position).toBe(3);
+    expect(result.queue_entry.queue_number).toBe(9);
+    expect(result.queue_entry.estimated_wait_minutes).toBe(30);
+  });
+
+  test('calculates live position from appointment time instead of queue number', async () => {
+    const appointment = {
+      id: 'appointment-1',
+      patient_id: 'patient-1',
+      clinic_id: 'clinic-1',
+      status: 'booked',
+      slot: {
+        date: '2026-04-16',
+        start_time: '09:30:00',
+        end_time: '10:00:00'
+      },
+      clinic: {
+        name: 'Test Clinic'
+      }
+    };
+
+    const queueEntry = {
+      id: 'queue-3',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 3,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 15
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [{ queue_number: 2 }], error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: [
+            {
+              id: 'queue-1',
+              clinic_id: 'clinic-1',
+              patient_id: 'patient-a',
+              appointment_id: 'appointment-a',
+              queue_number: 1,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'waiting',
+              estimated_wait_minutes: 0,
+              appointment: {
+                slot: {
+                  start_time: '08:00:00',
+                  end_time: '08:30:00'
+                }
+              }
+            },
+            {
+              id: 'queue-2',
+              clinic_id: 'clinic-1',
+              patient_id: 'patient-b',
+              appointment_id: 'appointment-b',
+              queue_number: 2,
+              queue_date: '2026-04-16',
+              source: 'appointment',
+              status: 'waiting',
+              estimated_wait_minutes: 15,
+              appointment: {
+                slot: {
+                  start_time: '11:00:00',
+                  end_time: '11:30:00'
+                }
+              }
+            }
+          ],
+          error: null
+        })
+      )
+      .mockReturnValueOnce(createMockQuery({ data: queueEntry, error: null }));
+
+    const result = await joinQueueFromAppointment({
+      patientId: 'patient-1',
+      appointmentId: 'appointment-1'
+    });
+
+    expect(result.queue_entry.queue_number).toBe(3);
+    expect(result.position).toBe(2);
+    expect(result.queue_entry.estimated_wait_minutes).toBe(15);
+  });
+
+  test('falls back to the local current date when the appointment slot date is missing', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 3, 16, 10, 30, 0).getTime());
+
+    const appointment = {
+      id: 'appointment-1',
+      patient_id: 'patient-1',
+      clinic_id: 'clinic-1',
+      status: 'booked',
+      slot: {
+        start_time: '11:30:00',
+        end_time: '12:00:00'
+      },
+      clinic: {
+        name: 'Test Clinic'
+      }
+    };
+
+    const queueEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
       .mockReturnValueOnce(createMockQuery({ count: 0, error: null }))
       .mockReturnValueOnce(createMockQuery({ data: queueEntry, error: null }));
 
@@ -162,10 +587,15 @@ describe('joinQueueFromAppointment', () => {
       appointmentId: 'appointment-1'
     });
 
-    expect(result.queue_entry).toEqual(queueEntry);
+    expect(result.queue_entry.queue_date).toBe('2026-04-16');
+    expect(result.queue_entry).toMatchObject(queueEntry);
     expect(result.position).toBe(1);
     expect(result.queue_entry.status).toBe('waiting');
     expect(result.queue_entry.source).toBe('appointment');
+    expect(result.clinic).toEqual(appointment.clinic);
+    expect(result.slot).toEqual(appointment.slot);
+
+    jest.useRealTimers();
   });
 });
 
@@ -188,7 +618,7 @@ describe('fetchPatientQueueStatus', () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  test('returns waiting queue status with live position and wait time', async () => {
+  test('returns waiting queue status with live position and wait time when consultation is ahead', async () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: [
@@ -200,7 +630,7 @@ describe('fetchPatientQueueStatus', () => {
             queue_number: 1,
             queue_date: '2026-04-16',
             source: 'appointment',
-            status: 'waiting',
+            status: 'in_consultation',
             estimated_wait_minutes: 0,
             appointment: {
               slot: {
@@ -229,12 +659,12 @@ describe('fetchPatientQueueStatus', () => {
           {
             id: 'queue-3',
             clinic_id: 'clinic-1',
-            patient_id: 'patient-c',
+            patient_id: 'patient-b',
             appointment_id: 'appointment-c',
             queue_number: 3,
             queue_date: '2026-04-16',
             source: 'appointment',
-            status: 'in_consultation',
+            status: 'waiting',
             estimated_wait_minutes: 0,
             appointment: {
               slot: {
@@ -264,10 +694,102 @@ describe('fetchPatientQueueStatus', () => {
       in_consultation: 1,
       complete: 0
     });
+    expect(result.queue_entries[0]).toMatchObject({
+      id: 'queue-1',
+      position: 1,
+      status: 'in_consultation'
+    });
     expect(result.queue_entries[1]).toMatchObject({
       position: 2,
       queue_number: 2,
       appointment_time: '08:30',
+      is_current_patient: true
+    });
+    expect(result.queue_entries[2]).toMatchObject({
+      id: 'queue-3',
+      position: 3,
+      status: 'waiting'
+    });
+  });
+
+  test('orders waiting patients by appointment time while keeping queue number as a reference', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-1',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-a',
+            appointment_id: 'appointment-a',
+            queue_number: 1,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:00:00',
+                end_time: '08:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-2',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-b',
+            appointment_id: 'appointment-b',
+            queue_number: 2,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 15,
+            appointment: {
+              slot: {
+                start_time: '11:00:00',
+                end_time: '11:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-3',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-1',
+            queue_number: 3,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 30,
+            appointment: {
+              slot: {
+                start_time: '09:30:00',
+                end_time: '10:00:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.position).toBe(2);
+    expect(result.queue_entry.queue_number).toBe(3);
+    expect(result.queue_entries.map((entry) => entry.id)).toEqual([
+      'queue-1',
+      'queue-3',
+      'queue-2'
+    ]);
+    expect(result.queue_entries[1]).toMatchObject({
+      id: 'queue-3',
+      position: 2,
+      queue_number: 3,
+      appointment_time: '09:30',
       is_current_patient: true
     });
   });
@@ -307,6 +829,46 @@ describe('fetchPatientQueueStatus', () => {
     expect(result.is_in_queue).toBe(true);
     expect(result.position).toBeNull();
     expect(result.queue_entry.status).toBe('in_consultation');
+    expect(result.queue_entry.estimated_wait_minutes).toBe(0);
+    expect(result.queue_entry.appointment_time).toBe('08:30:00');
+    expect(result.queue_entry.appointment_end_time).toBe('09:00:00');
+  });
+
+  test('returns complete status without a waiting position', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-5',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-5',
+            queue_number: 5,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'complete',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '10:30:00',
+                end_time: '11:00:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.is_in_queue).toBe(true);
+    expect(result.position).toBeNull();
+    expect(result.queue_entry.status).toBe('complete');
     expect(result.queue_entry.estimated_wait_minutes).toBe(0);
   });
 
@@ -362,6 +924,101 @@ describe('fetchPatientQueueStatus', () => {
           is_current_patient: false
         }
       ]
+    });
+  });
+
+  test('omits live position for completed queue entries in the queue list', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-1',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-a',
+            appointment_id: 'appointment-a',
+            queue_number: 1,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'complete',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:00:00',
+                end_time: '08:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-2',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-1',
+            queue_number: 2,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:30:00',
+                end_time: '09:00:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.position).toBe(1);
+    expect(result.queue_entries[0]).toMatchObject({
+      id: 'queue-2',
+      position: 1,
+      status: 'waiting'
+    });
+    expect(result.queue_entries[1]).toMatchObject({
+      id: 'queue-1',
+      position: null,
+      status: 'complete'
+    });
+  });
+
+  test('returns walk-in label when an entry has no appointment slot time', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-7',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: null,
+            queue_number: 7,
+            queue_date: '2026-04-16',
+            source: 'walk_in',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: null
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.queue_entries[0]).toMatchObject({
+      appointment_time: 'Walk-in',
+      is_current_patient: true
     });
   });
 
@@ -466,19 +1123,19 @@ describe('fetchStaffQueue', () => {
     });
 
     expect(result.queue_entries[0]).toMatchObject({
-      id: 'queue-1',
-      queue_number: 1,
-      status: 'waiting',
-      live_position: 1,
-      appointment_time: '08:00:00'
-    });
-
-    expect(result.queue_entries[1]).toMatchObject({
       id: 'queue-2',
       queue_number: 2,
       status: 'in_consultation',
       live_position: null,
       appointment_time: '08:30:00'
+    });
+
+    expect(result.queue_entries[1]).toMatchObject({
+      id: 'queue-1',
+      queue_number: 1,
+      status: 'waiting',
+      live_position: 2,
+      appointment_time: '08:00:00'
     });
   });
 

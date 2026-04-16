@@ -189,6 +189,86 @@ describe("fetchClinics", () => {
     expect(result[0].available_slots_count).toBe(1);
   });
 
+  test("sorts clinics by available slots and uses clinic name as tie breaker", async () => {
+    clinicQueryResult = {
+      data: [
+        {
+          id: "clinic-2",
+          name: "Zulu Clinic",
+          province: "Gauteng",
+          district: "Johannesburg",
+          area: "Soweto",
+          facility_type: "Clinic",
+          address: "2 Example St",
+          services_offered: "General",
+          latitude: null,
+          longitude: null,
+        },
+        {
+          id: "clinic-1",
+          name: "Alpha Clinic",
+          province: "Gauteng",
+          district: "Johannesburg",
+          area: "Randburg",
+          facility_type: "Clinic",
+          address: "1 Example St",
+          services_offered: "General",
+          latitude: null,
+          longitude: null,
+        },
+        {
+          id: "clinic-3",
+          name: "Beta Clinic",
+          province: "Gauteng",
+          district: "Johannesburg",
+          area: "Roodepoort",
+          facility_type: "Clinic",
+          address: "3 Example St",
+          services_offered: "General",
+          latitude: null,
+          longitude: null,
+        },
+      ],
+      error: null,
+    };
+
+    slotQueryResult = {
+      data: [
+        {
+          clinic_id: "clinic-1",
+          date: "2099-06-01",
+          end_time: "09:00:00",
+          capacity: 5,
+          booked_count: 4,
+        },
+        {
+          clinic_id: "clinic-2",
+          date: "2099-06-01",
+          end_time: "10:00:00",
+          capacity: 5,
+          booked_count: 4,
+        },
+        {
+          clinic_id: "clinic-3",
+          date: "2099-06-02",
+          end_time: "11:00:00",
+          capacity: 5,
+          booked_count: 5,
+        },
+      ],
+      error: null,
+    };
+
+    const result = await fetchClinics();
+
+    expect(result.map((clinic) => clinic.name)).toEqual([
+      "Alpha Clinic",
+      "Zulu Clinic",
+      "Beta Clinic",
+    ]);
+    expect(result.map((clinic) => clinic.available_slots_count)).toEqual([1, 1, 0]);
+  });
+
   test("throws a clean error when supabase returns an error", async () => {
     clinicQueryResult = {
       data: null,

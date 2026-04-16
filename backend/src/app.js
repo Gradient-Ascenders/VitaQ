@@ -7,6 +7,8 @@ const clinicsRoutes = require('./modules/clinics/clinics.routes');
 const slotRoutes = require('./modules/slots/slot.routes');
 const appointmentsRoutes = require('./modules/appointments/appointments.routes');
 const queueRoutes = require('./modules/queue/queue.routes');
+const staffRoutes = require('./modules/staff/staff.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 
 // Create the Express application
 const app = express();
@@ -39,6 +41,8 @@ app.use('/api/clinics', clinicsRoutes);
 app.use('/api/clinics', slotRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/queue', queueRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Helper to serve page files
 function sendPage(pageFolder) {
@@ -54,6 +58,7 @@ app.get('/login', sendPage('login'));
 app.get('/dashboard', sendPage('dashboard'));
 app.get('/admin', sendPage('admin'));
 app.get('/staff', sendPage('staff'));
+app.get('/staff-register', sendPage('staff-register'));
 app.get('/clinics', sendPage('clinics'));
 app.get('/clinic/:id', sendPage('clinic'));
 app.get('/booking-confirmation', sendPage('booking-confirmation'));

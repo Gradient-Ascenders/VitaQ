@@ -510,12 +510,28 @@ function initialiseWalkInForm() {
 async function initialiseStaffPage() {
   initialiseLogoutButton('logoutButton');
 
-  let session = null;
+  const session = await requireAuthenticatedUser();
+
+  if (!session) {
+    return;
+  }
 
   try {
-    session = await getCurrentSession(true);
+    const profile = await getCurrentUserProfile(session);
+
+    if (!profile) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    if (profile.role !== 'staff') {
+      window.location.href = getHomeRouteForRole(profile.role);
+      return;
+    }
   } catch (error) {
-    console.error('Staff page session check failed:', error);
+    console.error('Staff role check failed:', error);
+    window.location.href = '/dashboard';
+    return;
   }
 
   const userName = session?.user?.user_metadata?.full_name || session?.user?.email || 'Staff';

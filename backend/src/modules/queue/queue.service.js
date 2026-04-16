@@ -1,6 +1,15 @@
 const supabase = require('../../lib/supabaseClient');
 const WAIT_MINUTES_PER_PATIENT = 15;
-const ALLOWED_QUEUE_STATUSES = ['waiting', 'in_consultation', 'complete'];
+const ALLOWED_QUEUE_STATUSES = ['waiting', 'in_consultation', 'complete', 'cancelled'];
+
+// This keeps status movement controlled.
+// complete and cancelled are terminal states, so they cannot be reopened.
+const ALLOWED_STATUS_TRANSITIONS = {
+  waiting: ['in_consultation', 'cancelled'],
+  in_consultation: ['complete', 'cancelled'],
+  complete: [],
+  cancelled: []
+};
 
 /**
  * Creates a standard service error with an HTTP status code.
@@ -385,16 +394,106 @@ async function fetchStaffQueue({ clinicId, queueDate }) {
 }
 
 /**
+ * Checks whether a status value is part of the queue workflow.
+ */
+function isAllowedQueueStatus(status) {
+  return ALLOWED_QUEUE_STATUSES.includes(status);
+}
+
+/**
+ * Checks whether staff may move a queue entry from its current status to the new status.
+ * This prevents completed/cancelled queue entries from being reopened.
+ */
+function isAllowedStatusTransition(currentStatus, nextStatus) {
+  const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || [];
+  return allowedNextStatuses.includes(nextStatus);
+}
+
+/**
+ * Fetches the approved staff request for a user.
+ * We use this to find which clinic the staff member belongs to.
+ */
+async function fetchApprovedStaffRequest(staffUserId) {
+  const { data: staffRequest, error } = await supabase
+    .from('staff_requests')
+    .select('id, user_id, clinic_id, status')
+    .eq('user_id', staffUserId)
+    .eq('status', 'approved')
+    .single();
+
+  if (error || !staffRequest) {
+    throw createServiceError('Approved staff access is required.', 403);
+  }
+
+  return staffRequest;
+}
+
+/**
+ * Fetches one queue entry before updating it.
+ * We need the existing clinic_id and status before deciding whether the update is allowed.
+ */
+async function fetchQueueEntryById(entryId) {
+  const { data: queueEntry, error } = await supabase
+    .from('queue_entries')
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at
+    `)
+    .eq('id', entryId)
+    .single();
+
+  if (error || !queueEntry) {
+    throw createServiceError('Queue entry not found.', 404);
+  }
+
+  return queueEntry;
+}
+
+/**
  * Updates a queue entry status.
  * Staff can use this to move patients through the queue.
  */
-async function updateQueueEntryStatus({ entryId, status }) {
-  if (!entryId || !status) {
-    throw createServiceError('queue entry id and status are required.', 400);
+async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
+  if (!entryId || !status || !staffUserId) {
+    throw createServiceError('queue entry id, status, and staff user id are required.', 400);
   }
 
-  if (!ALLOWED_QUEUE_STATUSES.includes(status)) {
+  // Make sure the requested status is one of the statuses supported by the system.
+  if (!isAllowedQueueStatus(status)) {
     throw createServiceError('Invalid queue status.', 400);
+  }
+
+  // Fetch the queue entry first so we can check its clinic and current status.
+  const existingEntry = await fetchQueueEntryById(entryId);
+
+  // Fetch the approved staff request so we know which clinic this staff member belongs to.
+  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
+
+  // Staff should only update queue entries for their own clinic.
+  if (String(staffRequest.clinic_id) !== String(existingEntry.clinic_id)) {
+    throw createServiceError('You can only update queue entries for your assigned clinic.', 403);
+  }
+
+  // No need to update if the status is already the same.
+  if (existingEntry.status === status) {
+    return existingEntry;
+  }
+
+  // Prevent invalid workflow jumps such as complete -> waiting.
+  if (!isAllowedStatusTransition(existingEntry.status, status)) {
+    throw createServiceError(
+      `Cannot change queue status from ${existingEntry.status} to ${status}.`,
+      409
+    );
   }
 
   const { data, error } = await supabase

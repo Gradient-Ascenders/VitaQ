@@ -102,15 +102,24 @@
             <label for="password" class="mb-2 block text-sm font-medium text-[#c0caf5]">
               Password
             </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              autocomplete="new-password"
-              placeholder="Enter password"
-              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
-              aria-describedby="passwordError"
-            />
+            <section class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="new-password"
+                placeholder="Enter password"
+                class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 pr-16 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+                aria-describedby="passwordError"
+              />
+              <button
+                type="button"
+                data-password-toggle="password"
+                class="absolute inset-y-0 right-4 flex items-center text-sm font-medium text-[#7aa2f7] transition hover:text-[#bb9af7]"
+              >
+                Show
+              </button>
+            </section>
             <p id="passwordError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
           </section>
 
@@ -118,15 +127,24 @@
             <label for="confirmPassword" class="mb-2 block text-sm font-medium text-[#c0caf5]">
               Confirm password
             </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              autocomplete="new-password"
-              placeholder="Confirm password"
-              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
-              aria-describedby="confirmPasswordError"
-            />
+            <section class="relative">
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                autocomplete="new-password"
+                placeholder="Confirm password"
+                class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 pr-16 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+                aria-describedby="confirmPasswordError"
+              />
+              <button
+                type="button"
+                data-password-toggle="confirmPassword"
+                class="absolute inset-y-0 right-4 flex items-center text-sm font-medium text-[#7aa2f7] transition hover:text-[#bb9af7]"
+              >
+                Show
+              </button>
+            </section>
             <p id="confirmPasswordError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
           </section>
 

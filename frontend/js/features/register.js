@@ -7,6 +7,7 @@ const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
+const passwordToggleButtons = Array.from(document.querySelectorAll("[data-password-toggle]"));
 
 const firstNameError = document.getElementById("firstNameError");
 const lastNameError = document.getElementById("lastNameError");
@@ -54,6 +55,23 @@ function hideFieldError(element) {
 
 function buildFullName(firstName, lastName) {
   return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
+function initialisePasswordToggles() {
+  passwordToggleButtons.forEach(function (button) {
+    const targetId = button.dataset.passwordToggle;
+    const targetInput = document.getElementById(targetId);
+
+    if (!targetInput) {
+      return;
+    }
+
+    button.addEventListener("click", function () {
+      const passwordIsHidden = targetInput.type === "password";
+      targetInput.type = passwordIsHidden ? "text" : "password";
+      button.textContent = passwordIsHidden ? "Hide" : "Show";
+    });
+  });
 }
 
 // Update the social signup buttons while an OAuth redirect is being started.
@@ -137,6 +155,7 @@ function initialiseOAuthButtons() {
 }
 
 initialiseOAuthButtons();
+initialisePasswordToggles();
 
 // Handle form submission
 registerForm.addEventListener("submit", async function (e) {

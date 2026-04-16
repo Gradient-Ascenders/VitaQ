@@ -228,7 +228,11 @@ function buildPatientLabel(entry) {
     return 'You';
   }
 
-  return `Patient ${String(entry.position).padStart(2, '0')}`;
+  if (typeof entry.position === 'number') {
+    return `Patient ${String(entry.position).padStart(2, '0')}`;
+  }
+
+  return 'Patient';
 }
 
 function renderQueueList(entries, summaryCounts) {
@@ -276,8 +280,9 @@ function renderQueueList(entries, summaryCounts) {
 
   entries.forEach((entry) => {
     const item = document.createElement('article');
-    item.className = 'grid gap-4 px-5 py-4 md:grid-cols-[0.7fr_1.2fr_1fr_1fr_1.1fr] md:items-center';
+    item.className = 'grid gap-4 px-5 py-4 md:grid-cols-[0.7fr_1.2fr_1fr_1.1fr] md:items-center';
     const patientLabel = buildPatientLabel(entry);
+    const positionLabel = typeof entry.position === 'number' ? String(entry.position) : '--';
 
     const highlightClass = entry.is_current_patient
       ? 'border border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]'
@@ -286,7 +291,7 @@ function renderQueueList(entries, summaryCounts) {
     item.innerHTML = `
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Position</p>
-        <p class="text-base font-semibold text-[#e0e5ff]">${entry.position}</p>
+        <p class="text-base font-semibold text-[#e0e5ff]">${positionLabel}</p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">
@@ -299,11 +304,6 @@ function renderQueueList(entries, summaryCounts) {
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Appointment</p>
         <p class="text-sm font-medium text-[#c0caf5]">${entry.appointment_time}</p>
-      </section>
-
-      <section class="flex items-center justify-between gap-3 md:block">
-        <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Queue Number</p>
-        <p class="text-sm font-medium text-[#c0caf5]">${entry.queue_number}</p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">

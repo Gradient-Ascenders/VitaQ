@@ -14,6 +14,10 @@ const oauthButtons = Array.from(document.querySelectorAll("[data-oauth-provider]
 // Existing shared Supabase client
 const supabaseClient = window.supabaseClient;
 
+// Note:
+// The new "Register as Staff" button on the register page is a normal link in the HTML,
+// so this patient register script does not need any extra click-handling logic for it.
+
 // Show a top-level message
 function showMessage(message, type = "error") {
   messageBox.textContent = message;

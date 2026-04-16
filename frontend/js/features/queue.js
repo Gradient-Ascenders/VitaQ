@@ -280,7 +280,7 @@ function renderQueueList(entries, summaryCounts) {
 
   entries.forEach((entry) => {
     const item = document.createElement('article');
-    item.className = 'grid gap-4 px-5 py-4 md:grid-cols-[0.7fr_1.2fr_1fr_1fr_1.1fr] md:items-center';
+    item.className = 'grid gap-4 px-5 py-4 md:grid-cols-[0.7fr_1.2fr_1fr_1.1fr] md:items-center';
     const patientLabel = buildPatientLabel(entry);
     const positionLabel = typeof entry.position === 'number' ? String(entry.position) : '--';
 
@@ -304,11 +304,6 @@ function renderQueueList(entries, summaryCounts) {
       <section class="flex items-center justify-between gap-3 md:block">
         <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Appointment</p>
         <p class="text-sm font-medium text-[#c0caf5]">${entry.appointment_time}</p>
-      </section>
-
-      <section class="flex items-center justify-between gap-3 md:block">
-        <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Queue Number</p>
-        <p class="text-sm font-medium text-[#c0caf5]">${entry.queue_number}</p>
       </section>
 
       <section class="flex items-center justify-between gap-3 md:block">

@@ -86,6 +86,8 @@ const appointmentsDeleteChain = {
 function createQueueEntriesSelectChain(result) {
     const chain = {
         eq: jest.fn(() => chain),
+        in: jest.fn(() => chain),
+        order: jest.fn(() => chain),
         limit: jest.fn(() => Promise.resolve(result)),
         then(resolve, reject) {
             return Promise.resolve(result).then(resolve, reject);
@@ -172,7 +174,7 @@ describe('appointments.service', () => {
             error: null,
         };
         queueExistingEntriesResult = { data: [], error: null };
-        queueNumberCountResult = { count: 0, error: null };
+        queueNumberCountResult = { data: [], error: null };
         queuePositionCountResult = { count: 0, error: null };
         queueEntryInsertResult = {
             data: {

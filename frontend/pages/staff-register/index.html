@@ -63,20 +63,38 @@
 
         <!-- Staff registration form -->
         <form id="staffRegisterForm" class="space-y-4" novalidate>
-          <section>
-            <label for="fullName" class="mb-2 block text-sm font-medium text-[#c0caf5]">
-              Full name
-            </label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              autocomplete="name"
-              placeholder="Enter your full name"
-              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
-              aria-describedby="fullNameError"
-            />
-            <p id="fullNameError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
+          <section class="grid gap-4 sm:grid-cols-2">
+            <section>
+              <label for="firstName" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                First name
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                autocomplete="given-name"
+                placeholder="Enter your first name"
+                class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+                aria-describedby="firstNameError"
+              />
+              <p id="firstNameError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
+            </section>
+
+            <section>
+              <label for="lastName" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+                Last name
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                autocomplete="family-name"
+                placeholder="Enter your last name"
+                class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+                aria-describedby="lastNameError"
+              />
+              <p id="lastNameError" class="mt-2 hidden text-sm text-[#f7768e]"></p>
+            </section>
           </section>
 
           <section>

@@ -9,7 +9,8 @@ const statusValue = document.getElementById("statusValue");
 const statusDescription = document.getElementById("statusDescription");
 
 // Input elements
-const fullNameInput = document.getElementById("fullName");
+const firstNameInput = document.getElementById("firstName");
+const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
@@ -17,7 +18,8 @@ const clinicSelectionInput = document.getElementById("clinicSelection");
 const staffIdInput = document.getElementById("staffId");
 
 // Field error elements
-const fullNameError = document.getElementById("fullNameError");
+const firstNameError = document.getElementById("firstNameError");
+const lastNameError = document.getElementById("lastNameError");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
@@ -58,9 +60,14 @@ function hideFieldError(element) {
   element.classList.add("hidden");
 }
 
+function buildFullName(firstName, lastName) {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
 // Hide every field error before validating again
 function hideAllFieldErrors() {
-  hideFieldError(fullNameError);
+  hideFieldError(firstNameError);
+  hideFieldError(lastNameError);
   hideFieldError(emailError);
   hideFieldError(passwordError);
   hideFieldError(confirmPasswordError);
@@ -126,7 +133,8 @@ staffRegisterForm.addEventListener("submit", async function (event) {
   hideMessage();
   hideAllFieldErrors();
 
-  const fullName = fullNameInput.value.trim();
+  const firstName = firstNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
@@ -135,8 +143,13 @@ staffRegisterForm.addEventListener("submit", async function (event) {
 
   let isValid = true;
 
-  if (!fullName) {
-    showFieldError(fullNameError, "Full name is required.");
+  if (!firstName) {
+    showFieldError(firstNameError, "First name is required.");
+    isValid = false;
+  }
+
+  if (!lastName) {
+    showFieldError(lastNameError, "Last name is required.");
     isValid = false;
   }
 
@@ -181,6 +194,8 @@ staffRegisterForm.addEventListener("submit", async function (event) {
 
   staffRegisterButton.disabled = true;
   staffRegisterButton.textContent = "Submitting request...";
+
+  const fullName = buildFullName(firstName, lastName);
 
   try {
     // Send the frontend form data to the backend route.

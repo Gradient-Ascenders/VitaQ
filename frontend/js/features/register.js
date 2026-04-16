@@ -2,10 +2,14 @@
 const registerForm = document.getElementById("registerForm");
 const messageBox = document.getElementById("messageBox");
 
+const firstNameInput = document.getElementById("firstName");
+const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 
+const firstNameError = document.getElementById("firstNameError");
+const lastNameError = document.getElementById("lastNameError");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
@@ -46,6 +50,10 @@ function showFieldError(element, message) {
 function hideFieldError(element) {
   element.textContent = "";
   element.classList.add("hidden");
+}
+
+function buildFullName(firstName, lastName) {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
 }
 
 // Update the social signup buttons while an OAuth redirect is being started.
@@ -110,6 +118,8 @@ function initialiseOAuthButtons() {
       const providerLabel = button.dataset.providerLabel || "that provider";
 
       hideMessage();
+      hideFieldError(firstNameError);
+      hideFieldError(lastNameError);
       hideFieldError(emailError);
       hideFieldError(passwordError);
       hideFieldError(confirmPasswordError);
@@ -133,15 +143,29 @@ registerForm.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   hideMessage();
+  hideFieldError(firstNameError);
+  hideFieldError(lastNameError);
   hideFieldError(emailError);
   hideFieldError(passwordError);
   hideFieldError(confirmPasswordError);
 
+  const firstName = firstNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
 
   let isValid = true;
+
+  if (!firstName) {
+    showFieldError(firstNameError, "First name is required.");
+    isValid = false;
+  }
+
+  if (!lastName) {
+    showFieldError(lastNameError, "Last name is required.");
+    isValid = false;
+  }
 
   if (!email) {
     showFieldError(emailError, "Email is required.");
@@ -176,9 +200,16 @@ registerForm.addEventListener("submit", async function (e) {
   registerButton.disabled = true;
   registerButton.textContent = "Creating account...";
 
+  const fullName = buildFullName(firstName, lastName);
+
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        full_name: fullName
+      }
+    }
   });
 
   registerButton.disabled = false;

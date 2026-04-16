@@ -9,15 +9,18 @@ const statusValue = document.getElementById("statusValue");
 const statusDescription = document.getElementById("statusDescription");
 
 // Input elements
-const fullNameInput = document.getElementById("fullName");
+const firstNameInput = document.getElementById("firstName");
+const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 const clinicSelectionInput = document.getElementById("clinicSelection");
 const staffIdInput = document.getElementById("staffId");
+const passwordToggleButtons = Array.from(document.querySelectorAll("[data-password-toggle]"));
 
 // Field error elements
-const fullNameError = document.getElementById("fullNameError");
+const firstNameError = document.getElementById("firstNameError");
+const lastNameError = document.getElementById("lastNameError");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const confirmPasswordError = document.getElementById("confirmPasswordError");
@@ -58,9 +61,31 @@ function hideFieldError(element) {
   element.classList.add("hidden");
 }
 
+function buildFullName(firstName, lastName) {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
+function initialisePasswordToggles() {
+  passwordToggleButtons.forEach(function (button) {
+    const targetId = button.dataset.passwordToggle;
+    const targetInput = document.getElementById(targetId);
+
+    if (!targetInput) {
+      return;
+    }
+
+    button.addEventListener("click", function () {
+      const passwordIsHidden = targetInput.type === "password";
+      targetInput.type = passwordIsHidden ? "text" : "password";
+      button.textContent = passwordIsHidden ? "Hide" : "Show";
+    });
+  });
+}
+
 // Hide every field error before validating again
 function hideAllFieldErrors() {
-  hideFieldError(fullNameError);
+  hideFieldError(firstNameError);
+  hideFieldError(lastNameError);
   hideFieldError(emailError);
   hideFieldError(passwordError);
   hideFieldError(confirmPasswordError);
@@ -102,6 +127,8 @@ function showStatus(status) {
   statusDescription.textContent = "Your request is awaiting admin review.";
 }
 
+initialisePasswordToggles();
+
 // Safely read JSON from a fetch response.
 // This avoids crashes if the backend returns an empty body.
 async function readJsonSafely(response) {
@@ -126,7 +153,8 @@ staffRegisterForm.addEventListener("submit", async function (event) {
   hideMessage();
   hideAllFieldErrors();
 
-  const fullName = fullNameInput.value.trim();
+  const firstName = firstNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
@@ -135,8 +163,13 @@ staffRegisterForm.addEventListener("submit", async function (event) {
 
   let isValid = true;
 
-  if (!fullName) {
-    showFieldError(fullNameError, "Full name is required.");
+  if (!firstName) {
+    showFieldError(firstNameError, "First name is required.");
+    isValid = false;
+  }
+
+  if (!lastName) {
+    showFieldError(lastNameError, "Last name is required.");
     isValid = false;
   }
 
@@ -181,6 +214,8 @@ staffRegisterForm.addEventListener("submit", async function (event) {
 
   staffRegisterButton.disabled = true;
   staffRegisterButton.textContent = "Submitting request...";
+
+  const fullName = buildFullName(firstName, lastName);
 
   try {
     // Send the frontend form data to the backend route.

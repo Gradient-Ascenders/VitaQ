@@ -49,7 +49,7 @@
 
     <header class="relative z-20">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
-        <a href="/dashboard" aria-label="Go to dashboard" class="vitaq-logo-link">
+        <a href="/dashboard" aria-label="Go to dashboard" title="Go to dashboard" class="vitaq-logo-link">
           <img
             src="/assets/images/vitaq-logo.png"
             alt="VitaQ logo"
@@ -66,22 +66,6 @@
                 class="rounded-2xl border border-[#7aa2f7]/30 bg-[#7aa2f7]/12 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#7aa2f7]/18"
               >
                 Dashboard
-              </a>
-            </li>
-            <li>
-              <a
-                href="/clinics"
-                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
-              >
-                Search Clinics
-              </a>
-            </li>
-            <li>
-              <a
-                href="/appointments"
-                class="rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
-              >
-                My Appointments
               </a>
             </li>
           </ul>
@@ -106,7 +90,7 @@
             </p>
 
             <h1 class="mt-5 text-4xl font-bold leading-tight text-[#e0e5ff] sm:text-5xl">
-              Welcome back,
+              Welcome,
               <span id="patientName" class="text-[#7aa2f7]">Patient</span>.
             </h1>
 
@@ -115,21 +99,6 @@
               review your bookings, and stay on top of your healthcare journey in one place.
             </p>
 
-            <div class="mt-8 flex flex-col gap-4 sm:flex-row">
-              <a
-                href="/clinics"
-                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
-              >
-                Search clinics
-              </a>
-
-              <a
-                href="/appointments"
-                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
-              >
-                View appointments
-              </a>
-            </div>
           </section>
 
           <aside class="animate-fade-up-delay rounded-[2rem] border border-[#414868] bg-[#1f2335]/80 p-6 shadow-2xl shadow-black/10 backdrop-blur-md md:p-8">
@@ -256,9 +225,33 @@
   <script src="/lib/supabaseClient.js"></script>
   <script src="/js/shared/auth.js"></script>
   <script>
-    requireAuthenticatedUser();
-    initialiseLogoutButton('logoutButton');
-    initialiseLogoutButton('logoutCardButton');
+    document.addEventListener('DOMContentLoaded', async function () {
+      const session = await requireAuthenticatedUser();
+
+      if (!session) {
+        return;
+      }
+
+      try {
+        const profile = await getCurrentUserProfile(session);
+
+        if (profile && (profile.role === 'admin' || profile.role === 'staff')) {
+          window.location.href = getHomeRouteForRole(profile.role);
+          return;
+        }
+      } catch (error) {
+        console.error('Dashboard role check failed:', error);
+      }
+
+      const patientName = document.getElementById('patientName');
+
+      if (patientName) {
+        patientName.textContent = session.user?.user_metadata?.full_name || session.user?.email || 'Patient';
+      }
+
+      initialiseLogoutButton('logoutButton');
+      initialiseLogoutButton('logoutCardButton');
+    });
   </script>
 </body>
 </html>

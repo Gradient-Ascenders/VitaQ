@@ -5,6 +5,7 @@
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const rememberMeCheckbox = document.getElementById("rememberMe");
 const errorMessage = document.getElementById("errorMessage");
 const loginButton = document.getElementById("loginButton");
 const togglePasswordButton = document.getElementById("togglePassword");
@@ -31,7 +32,7 @@ function setLoadingState(isLoading) {
     loginButton.textContent = "Logging in...";
     loginButton.classList.add("opacity-70", "cursor-not-allowed");
   } else {
-    loginButton.textContent = "Login";
+    loginButton.textContent = "Continue";
     loginButton.classList.remove("opacity-70", "cursor-not-allowed");
   }
 }
@@ -114,20 +115,11 @@ function initialisePasswordToggle() {
 // If the user already has an active session, there is no reason to keep
 // them on the login page. We redirect them straight to the dashboard.
 async function redirectAuthenticatedUser() {
-  if (!window.supabaseClient) {
-    return;
-  }
-
   try {
-    const { data, error } = await window.supabaseClient.auth.getSession();
+    const session = await getCurrentSession(false);
 
-    if (error) {
-      console.error("Session check error:", error);
-      return;
-    }
-
-    if (data.session) {
-      window.location.href = "/dashboard";
+    if (session) {
+      await redirectToRoleHome(session);
     }
   } catch (error) {
     console.error("Unexpected session check error:", error);
@@ -192,9 +184,13 @@ function initialiseOAuthButtons() {
 
 // This sends the validated credentials to Supabase Auth and handles
 // the different outcomes in a user-friendly way.
-async function handleValidatedLogin(email, password) {
+async function handleValidatedLogin(email, password, rememberUser) {
   if (!window.supabaseClient) {
     throw new Error("Supabase client is not available on the page.");
+  }
+
+  if (typeof window.prepareAuthStorageForLogin === "function") {
+    window.prepareAuthStorageForLogin(rememberUser);
   }
 
   const { data, error } = await window.supabaseClient.auth.signInWithPassword({
@@ -238,7 +234,7 @@ async function handleValidatedLogin(email, password) {
   // If sign-in succeeds and a session is returned, move the patient into
   // the protected area of the system.
   if (data.session) {
-    window.location.href = "/dashboard";
+    await redirectToRoleHome(data.session);
     return;
   }
 
@@ -262,6 +258,7 @@ if (loginForm) {
 
     const email = emailInput.value;
     const password = passwordInput.value;
+    const rememberUser = Boolean(rememberMeCheckbox?.checked);
 
     const validationResult = validateLoginForm(email, password);
 
@@ -272,7 +269,7 @@ if (loginForm) {
 
     try {
       setLoadingState(true);
-      await handleValidatedLogin(email, password);
+      await handleValidatedLogin(email, password, rememberUser);
     } catch (error) {
       console.error("Unexpected login handling error:", error);
 

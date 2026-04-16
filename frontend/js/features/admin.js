@@ -320,6 +320,28 @@ async function initialiseAdminPage() {
     return;
   }
 
+  try {
+    const { data: profile, error } = await window.supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (error || !profile) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    if (profile.role !== 'admin') {
+      window.location.href = profile.role === 'staff' ? '/staff' : '/dashboard';
+      return;
+    }
+  } catch (error) {
+    console.error('Admin role check failed:', error);
+    window.location.href = '/dashboard';
+    return;
+  }
+
   const userName = session.user?.user_metadata?.full_name || session.user?.email || 'Admin';
   setTextContent('adminName', userName);
 

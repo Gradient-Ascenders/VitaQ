@@ -27,9 +27,11 @@ const confirmPasswordError = document.getElementById("confirmPasswordError");
 const clinicSelectionError = document.getElementById("clinicSelectionError");
 const staffIdError = document.getElementById("staffIdError");
 
-// Backend route note:
-// Change this only if your teammate used a different backend endpoint.
-const STAFF_REGISTER_ENDPOINT = "/api/staff/register";
+// Backend endpoints
+const STAFF_REGISTER_ENDPOINT = "/api/staff/requests";
+const CLINICS_ENDPOINT = "/api/clinics";
+
+let clinicsLoaded = false;
 
 // Show a top-level message
 function showMessage(message, type = "error") {
@@ -109,7 +111,8 @@ function showStatus(status) {
     statusCard.classList.add("border-[#9ece6a]/40", "bg-[#1f3d2e]/70");
     statusValue.textContent = "Approved";
     statusValue.className = "mt-2 text-lg font-semibold text-[#9ece6a]";
-    statusDescription.textContent = "Your request has been approved. You can now use staff tools.";
+    statusDescription.textContent =
+      "Your request has been approved. You can now use staff tools.";
     return;
   }
 
@@ -117,7 +120,8 @@ function showStatus(status) {
     statusCard.classList.add("border-[#f7768e]/40", "bg-[#3b1f2b]/70");
     statusValue.textContent = "Rejected";
     statusValue.className = "mt-2 text-lg font-semibold text-[#f7768e]";
-    statusDescription.textContent = "Your request was not approved. Please contact an admin if needed.";
+    statusDescription.textContent =
+      "Your request was not approved. Please contact an admin if needed.";
     return;
   }
 
@@ -130,7 +134,6 @@ function showStatus(status) {
 initialisePasswordToggles();
 
 // Safely read JSON from a fetch response.
-// This avoids crashes if the backend returns an empty body.
 async function readJsonSafely(response) {
   const text = await response.text();
 
@@ -141,10 +144,114 @@ async function readJsonSafely(response) {
   try {
     return JSON.parse(text);
   } catch (error) {
-    console.error("Failed to parse staff register response JSON:", error);
+    console.error("Failed to parse response JSON:", error);
     return {};
   }
 }
+
+// Creates the Supabase auth account and returns a session for the protected backend call.
+async function createAccountAndGetSession(email, password) {
+  if (!window.supabaseClient) {
+    throw new Error("Supabase client is not available.");
+  }
+
+  const { data: signUpData, error: signUpError } =
+    await window.supabaseClient.auth.signUp({
+      email,
+      password
+    });
+
+  if (signUpError) {
+    throw new Error(signUpError.message || "Failed to create staff account.");
+  }
+
+  if (signUpData?.session) {
+    return signUpData.session;
+  }
+
+  const { data: signInData, error: signInError } =
+    await window.supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if (signInError || !signInData?.session) {
+    throw new Error(
+      "Account was created, but no active session is available. Please log in and submit the request again."
+    );
+  }
+
+  return signInData.session;
+}
+
+// Extracts a clinics array from common backend response shapes.
+// This makes the page more tolerant if the clinics route returns either
+// an array directly or an object with a data field.
+function extractClinics(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+
+  return [];
+}
+
+// Builds the visible clinic label shown in the dropdown.
+function buildClinicLabel(clinic) {
+  const name = clinic?.name || "Unnamed clinic";
+  const district = clinic?.district ? ` - ${clinic.district}` : "";
+  return `${name}${district}`;
+}
+
+// Loads all clinics from the backend and fills the dropdown with real UUID values.
+async function loadClinicOptions() {
+  clinicSelectionInput.innerHTML = '<option value="">Loading clinics...</option>';
+  clinicSelectionInput.disabled = true;
+
+  try {
+    const response = await fetch(CLINICS_ENDPOINT);
+    const result = await readJsonSafely(response);
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to load clinics.");
+    }
+
+    const clinics = extractClinics(result);
+
+    if (!clinics.length) {
+      clinicSelectionInput.innerHTML =
+        '<option value="">No clinics available</option>';
+      return;
+    }
+
+    clinicSelectionInput.innerHTML = '<option value="">Select a clinic</option>';
+
+    clinics.forEach((clinic) => {
+      // The option value is the real clinic UUID.
+      const option = document.createElement("option");
+      option.value = clinic.id;
+      option.textContent = buildClinicLabel(clinic);
+      clinicSelectionInput.appendChild(option);
+    });
+
+    clinicsLoaded = true;
+  } catch (error) {
+    console.error("Failed to load clinic options:", error);
+    clinicSelectionInput.innerHTML =
+      '<option value="">Unable to load clinics</option>';
+    showMessage("Clinics could not be loaded right now.");
+  } finally {
+    clinicSelectionInput.disabled = false;
+  }
+}
+
+// Load clinics as soon as the page is ready.
+document.addEventListener("DOMContentLoaded", async function () {
+  await loadClinicOptions();
+});
 
 // Handle form submission
 staffRegisterForm.addEventListener("submit", async function (event) {
@@ -197,7 +304,10 @@ staffRegisterForm.addEventListener("submit", async function (event) {
     isValid = false;
   }
 
-  if (!clinicSelection) {
+  if (!clinicsLoaded) {
+    showFieldError(clinicSelectionError, "Clinics are still loading. Please wait a moment.");
+    isValid = false;
+  } else if (!clinicSelection) {
     showFieldError(clinicSelectionError, "Please select a clinic.");
     isValid = false;
   }
@@ -218,17 +328,23 @@ staffRegisterForm.addEventListener("submit", async function (event) {
   const fullName = buildFullName(firstName, lastName);
 
   try {
-    // Send the frontend form data to the backend route.
-    // The backend can handle Supabase Auth creation, profiles, and staff_requests.
+    // Step 1: create the auth account.
+    const session = await createAccountAndGetSession(email, password);
+    const accessToken = session?.access_token;
+
+    if (!accessToken) {
+      throw new Error("No access token is available for staff registration.");
+    }
+
+    // Step 2: create the pending staff request using the protected backend route.
     const response = await fetch(STAFF_REGISTER_ENDPOINT, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
       },
       body: JSON.stringify({
         full_name: fullName,
-        email: email,
-        password: password,
         clinic_id: clinicSelection,
         staff_id: staffId
       })
@@ -237,19 +353,25 @@ staffRegisterForm.addEventListener("submit", async function (event) {
     const result = await readJsonSafely(response);
 
     if (!response.ok) {
-      showMessage(result.message || "Staff registration could not be completed right now.");
+      showMessage(
+        result.message || "Staff registration could not be completed right now."
+      );
       return;
     }
 
     staffRegisterForm.reset();
-    showStatus(result.status || "pending");
+    showStatus(result.data?.status || "pending");
     showMessage(
-      result.message || "Staff registration submitted successfully. Your request is pending approval.",
+      result.message ||
+        "Staff registration submitted successfully. Your request is pending approval.",
       "success"
     );
   } catch (error) {
     console.error("Unexpected staff registration error:", error);
-    showMessage("Something went wrong while submitting your staff registration request.");
+    showMessage(
+      error.message ||
+        "Something went wrong while submitting your staff registration request."
+    );
   } finally {
     staffRegisterButton.disabled = false;
     staffRegisterButton.textContent = "Submit Staff Registration Request";

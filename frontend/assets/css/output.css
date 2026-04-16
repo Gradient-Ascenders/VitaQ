@@ -2013,6 +2013,46 @@
       padding-inline: calc(var(--spacing) * 10);
     }
   }
+  :where( button, input, select, textarea, a[href]:not(.vitaq-logo-link) ) {
+    transition-property: transform, box-shadow, border-color, background-color, color, opacity;
+    transition-duration: 180ms;
+    transition-timing-function: ease;
+  }
+  :where( button:not(:disabled), a[href]:not(.vitaq-logo-link) ) {
+    cursor: pointer;
+  }
+  :where( button:not(:disabled), a[href]:not(.vitaq-logo-link) )[class*="rounded"] {
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  :where( button:not(:disabled), a[href]:not(.vitaq-logo-link) )[class*="rounded"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(10, 14, 26, 0.22);
+  }
+  :where( button:not(:disabled), a[href]:not(.vitaq-logo-link) )[class*="rounded"]:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(10, 14, 26, 0.18);
+  }
+  :where(input, select, textarea):hover {
+    border-color: rgba(122, 162, 247, 0.45);
+    box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.08);
+  }
+  :where( button, input, select, textarea, a[href]:not(.vitaq-logo-link) ):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgba(125, 207, 255, 0.42), 0 0 0 4px rgba(122, 162, 247, 0.16);
+  }
+  :where(input, select, textarea):focus-visible {
+    border-color: rgba(122, 162, 247, 0.9);
+  }
+  :where( a[href]:not(.vitaq-logo-link):not([class*="rounded"]) ) {
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.18em;
+  }
+  :where( a[href]:not(.vitaq-logo-link):not([class*="rounded"]) ):hover {
+    color: #7dcfff;
+  }
+  :where(button:disabled, input:disabled, select:disabled, textarea:disabled) {
+    cursor: not-allowed;
+  }
 }
 @property --tw-rotate-x {
   syntax: "*";

@@ -21,6 +21,19 @@ function isFutureAvailableSlot(slot, now = new Date()) {
   return true;
 }
 
+function sortClinicsByAvailability(clinics) {
+  return [...clinics].sort((leftClinic, rightClinic) => {
+    const leftAvailableSlots = Math.max(Number(leftClinic?.available_slots_count) || 0, 0);
+    const rightAvailableSlots = Math.max(Number(rightClinic?.available_slots_count) || 0, 0);
+
+    if (leftAvailableSlots !== rightAvailableSlots) {
+      return rightAvailableSlots - leftAvailableSlots;
+    }
+
+    return String(leftClinic?.name || '').localeCompare(String(rightClinic?.name || ''));
+  });
+}
+
 async function fetchAvailableSlotCounts(clinicIds) {
   if (!Array.isArray(clinicIds) || clinicIds.length === 0) {
     return {};
@@ -126,7 +139,7 @@ async function fetchClinics(filters = {}) {
     );
 
     // Normalize the returned clinic objects so the frontend gets a consistent shape
-    return clinics.map((clinic) => ({
+    const normalizedClinics = clinics.map((clinic) => ({
       id: clinic.id,
       name: clinic.name || '',
       province: clinic.province || '',
@@ -139,6 +152,8 @@ async function fetchClinics(filters = {}) {
       longitude: clinic.longitude ?? null,
       available_slots_count: availableSlotCounts[clinic.id] || 0
     }));
+
+    return sortClinicsByAvailability(normalizedClinics);
   } catch (error) {
     // Re-throw a cleaner error message for the controller to catch
     throw new Error(`Clinic search failed: ${error.message}`);

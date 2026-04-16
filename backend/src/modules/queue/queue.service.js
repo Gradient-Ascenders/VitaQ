@@ -91,6 +91,10 @@ function getActiveQueueEntries(entries) {
   return sortQueueEntries(entries).filter((entry) => isActiveQueueStatus(entry.status));
 }
 
+/**
+ * Converts the appointment slot start time into a short HH:MM label.
+ * Walk-ins show a friendly label instead of a slot time.
+ */
 function formatAppointmentTimeLabel(entry) {
   const startTime = entry?.appointment?.slot?.start_time;
 
@@ -105,6 +109,10 @@ function formatAppointmentTimeLabel(entry) {
   return 'N/A';
 }
 
+/**
+ * Builds a lightweight queue summary for the patient view.
+ * This helps the frontend show totals by queue status.
+ */
 function buildQueueSummary(entries) {
   return entries.reduce(
     (summary, entry) => {
@@ -133,6 +141,10 @@ function buildQueueSummary(entries) {
   );
 }
 
+/**
+ * Calculates the patient's live position among waiting entries only.
+ * Patients already in consultation or complete should not have a waiting position.
+ */
 function calculateLivePosition(entries, patientEntryId) {
   const activeEntries = getActiveQueueEntries(entries);
   const positionIndex = activeEntries.findIndex((entry) => entry.id === patientEntryId);
@@ -140,6 +152,10 @@ function calculateLivePosition(entries, patientEntryId) {
   return positionIndex === -1 ? null : positionIndex + 1;
 }
 
+/**
+ * Maps raw queue entries into a simpler frontend-friendly structure.
+ * The `position` here is the display order in the returned queue list.
+ */
 function mapQueueEntriesForPatient(entries, patientId) {
   const orderedEntries = sortQueueEntries(entries);
   const activeEntries = getActiveQueueEntries(orderedEntries);
@@ -160,7 +176,7 @@ function mapQueueEntriesForPatient(entries, patientId) {
 
 /**
  * Creates the next queue number for a clinic on a specific day.
- * Example: A001, A002, A003.
+ * Example: 1, 2, 3.
  */
 async function generateQueueNumber(clinicId, queueDate) {
   const { data, error } = await supabase
@@ -349,7 +365,7 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
   const position = calculateLivePosition([...queueEntries, provisionalEntry], provisionalEntry.id);
 
   // Simple estimate: each waiting patient ahead adds about 15 minutes.
-  const estimatedWaitMinutes = (position - 1) * 15;
+  const estimatedWaitMinutes = (position - 1) * WAIT_MINUTES_PER_PATIENT;
 
   // Create the queue entry using the Sprint 2 queue structure.
   const { data: queueEntry, error: queueError } = await supabase
@@ -385,6 +401,8 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
     throw createServiceError('Failed to join the queue.', 500);
   }
 
+  // Return enough information for the controller/frontend to show
+  // the queue result together with appointment and clinic details.
   return {
     queue_entry: buildQueueEntryResponse(queueEntry, estimatedWaitMinutes),
     position,
@@ -437,6 +455,8 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   const queueSummary = buildQueueSummary(queueEntries);
   const mappedQueueEntries = mapQueueEntriesForPatient(queueEntries, patientId);
 
+  // If the patient is not currently in this queue, still return the queue list
+  // and summary so the page can render a useful empty state.
   if (!patientEntry) {
     return {
       is_in_queue: false,
@@ -531,7 +551,7 @@ async function fetchStaffQueue({ clinicId, queueDate }) {
     throw createServiceError('Failed to fetch staff queue.', 500);
   }
 
-  const queueEntries = Array.isArray(data) ? data : [];
+  const queueEntries = sortQueueEntries(Array.isArray(data) ? data : []);
 
   return {
     clinic_id: clinicId,

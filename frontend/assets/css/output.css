@@ -41,6 +41,7 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
     --tracking-tight: -0.025em;
+    --tracking-wide: 0.025em;
     --leading-tight: 1.25;
     --radius-2xl: 1rem;
     --radius-3xl: 1.5rem;
@@ -798,6 +799,9 @@
   .border-\[\#2a2f45\] {
     border-color: #2a2f45;
   }
+  .border-\[\#7aa2f7\] {
+    border-color: #7aa2f7;
+  }
   .border-\[\#7aa2f7\]\/20 {
     border-color: color-mix(in oklab, #7aa2f7 20%, transparent);
   }
@@ -810,6 +814,9 @@
   .border-\[\#7aa2f7\]\/35 {
     border-color: color-mix(in oklab, #7aa2f7 35%, transparent);
   }
+  .border-\[\#7aa2f7\]\/40 {
+    border-color: color-mix(in oklab, #7aa2f7 40%, transparent);
+  }
   .border-\[\#7dcfff\]\/20 {
     border-color: color-mix(in oklab, #7dcfff 20%, transparent);
   }
@@ -818,6 +825,9 @@
   }
   .border-\[\#9ece6a\]\/25 {
     border-color: color-mix(in oklab, #9ece6a 25%, transparent);
+  }
+  .border-\[\#9ece6a\]\/40 {
+    border-color: color-mix(in oklab, #9ece6a 40%, transparent);
   }
   .border-\[\#414868\] {
     border-color: #414868;
@@ -834,6 +844,9 @@
   .border-\[\#f7768e\]\/30 {
     border-color: color-mix(in oklab, #f7768e 30%, transparent);
   }
+  .border-\[\#f7768e\]\/40 {
+    border-color: color-mix(in oklab, #f7768e 40%, transparent);
+  }
   .border-white\/10 {
     border-color: color-mix(in srgb, #fff 10%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -848,6 +861,9 @@
   }
   .bg-\[\#1f3d2e\] {
     background-color: #1f3d2e;
+  }
+  .bg-\[\#1f3d2e\]\/70 {
+    background-color: color-mix(in oklab, #1f3d2e 70%, transparent);
   }
   .bg-\[\#1f2335\]\/55 {
     background-color: color-mix(in oklab, #1f2335 55%, transparent);
@@ -866,6 +882,9 @@
   }
   .bg-\[\#3b1f2b\] {
     background-color: #3b1f2b;
+  }
+  .bg-\[\#3b1f2b\]\/70 {
+    background-color: color-mix(in oklab, #3b1f2b 70%, transparent);
   }
   .bg-\[\#7aa2f7\]\/10 {
     background-color: color-mix(in oklab, #7aa2f7 10%, transparent);
@@ -1206,6 +1225,10 @@
     --tw-tracking: var(--tracking-tight);
     letter-spacing: var(--tracking-tight);
   }
+  .tracking-wide {
+    --tw-tracking: var(--tracking-wide);
+    letter-spacing: var(--tracking-wide);
+  }
   .break-words {
     overflow-wrap: break-word;
   }
@@ -1480,6 +1503,13 @@
     &:hover {
       @media (hover: hover) {
         background-color: #2a2f45;
+      }
+    }
+  }
+  .hover\:bg-\[\#7aa2f7\]\/10 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in oklab, #7aa2f7 10%, transparent);
       }
     }
   }

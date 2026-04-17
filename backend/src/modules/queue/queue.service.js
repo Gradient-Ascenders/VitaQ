@@ -1,4 +1,5 @@
 const supabase = require('../../lib/supabaseClient');
+
 const WAIT_MINUTES_PER_PATIENT = 15;
 const ALLOWED_QUEUE_STATUSES = ['waiting', 'in_consultation', 'complete', 'cancelled'];
 
@@ -11,6 +12,7 @@ const ALLOWED_STATUS_TRANSITIONS = {
   cancelled: []
 };
 
+// Only these statuses should count in the live queue position.
 const ACTIVE_QUEUE_STATUSES = ['waiting', 'in_consultation'];
 
 /**
@@ -36,63 +38,43 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Returns true when an entry is still part of the active queue.
+ * Completed and cancelled entries should not affect live position.
+ */
 function isActiveQueueStatus(status) {
   return ACTIVE_QUEUE_STATUSES.includes(status);
 }
 
-function getQueueStatusPriority(status) {
-  if (status === 'in_consultation') {
-    return 0;
-  }
-
-  if (status === 'waiting') {
-    return 1;
-  }
-
-  return 2;
-}
-
-function getEntryAppointmentStartTime(entry) {
-  return entry?.appointment?.slot?.start_time || null;
-}
-
-function sortQueueEntries(entries) {
+/**
+ * Sorts queue entries by queue number only.
+ * This matches the Sprint 2 rule that queue position is derived from:
+ * clinic_id + queue_date + queue_number + active-status filtering.
+ */
+function sortQueueEntriesByQueueNumber(entries) {
   return [...entries].sort((leftEntry, rightEntry) => {
-    const leftStatusPriority = getQueueStatusPriority(leftEntry.status);
-    const rightStatusPriority = getQueueStatusPriority(rightEntry.status);
-
-    if (leftStatusPriority !== rightStatusPriority) {
-      return leftStatusPriority - rightStatusPriority;
-    }
-
-    const leftAppointmentStartTime = getEntryAppointmentStartTime(leftEntry);
-    const rightAppointmentStartTime = getEntryAppointmentStartTime(rightEntry);
-
-    if (leftAppointmentStartTime && rightAppointmentStartTime && leftAppointmentStartTime !== rightAppointmentStartTime) {
-      return leftAppointmentStartTime.localeCompare(rightAppointmentStartTime);
-    }
-
-    if (leftAppointmentStartTime && !rightAppointmentStartTime) {
-      return -1;
-    }
-
-    if (!leftAppointmentStartTime && rightAppointmentStartTime) {
-      return 1;
-    }
-
-    const leftQueueNumber = Number(leftEntry.queue_number || 0);
-    const rightQueueNumber = Number(rightEntry.queue_number || 0);
+    const leftQueueNumber = Number(leftEntry?.queue_number || 0);
+    const rightQueueNumber = Number(rightEntry?.queue_number || 0);
 
     if (leftQueueNumber !== rightQueueNumber) {
       return leftQueueNumber - rightQueueNumber;
     }
 
-    return String(leftEntry.created_at || '').localeCompare(String(rightEntry.created_at || ''));
+    // Fallback for stable ordering if queue numbers ever match unexpectedly.
+    return String(leftEntry?.created_at || '').localeCompare(
+      String(rightEntry?.created_at || '')
+    );
   });
 }
 
+/**
+ * Returns active entries only, ordered by queue number.
+ * These are the only rows that should count when calculating live position.
+ */
 function getActiveQueueEntries(entries) {
-  return sortQueueEntries(entries).filter((entry) => isActiveQueueStatus(entry.status));
+  return sortQueueEntriesByQueueNumber(entries).filter((entry) =>
+    isActiveQueueStatus(entry.status)
+  );
 }
 
 /**
@@ -114,7 +96,7 @@ function formatAppointmentTimeLabel(entry) {
 }
 
 /**
- * Builds a lightweight queue summary for the patient view.
+ * Builds a lightweight queue summary for the patient/staff view.
  * This helps the frontend show totals by queue status.
  */
 function buildQueueSummary(entries) {
@@ -146,23 +128,31 @@ function buildQueueSummary(entries) {
 }
 
 /**
- * Calculates the patient's live position among waiting entries only.
- * Patients already in consultation or complete should not have a waiting position.
+ * Calculates a patient's live position from active same-clinic, same-date entries.
+ * The ordering rule is queue_number, not appointment time.
+ *
+ * Example:
+ * queue_number 1 = complete   -> ignored
+ * queue_number 2 = waiting    -> counts
+ * queue_number 3 = waiting    -> patient position = 2
  */
 function calculateLivePosition(entries, patientEntryId) {
   const activeEntries = getActiveQueueEntries(entries);
-  const positionIndex = activeEntries.findIndex((entry) => entry.id === patientEntryId);
+  const positionIndex = activeEntries.findIndex(
+    (entry) => String(entry.id) === String(patientEntryId)
+  );
 
   return positionIndex === -1 ? null : positionIndex + 1;
 }
 
 /**
  * Maps raw queue entries into a simpler frontend-friendly structure.
- * The `position` here is the display order in the returned queue list.
+ * Positions are only shown for active queue entries.
  */
 function mapQueueEntriesForPatient(entries, patientId) {
-  const orderedEntries = sortQueueEntries(entries);
+  const orderedEntries = sortQueueEntriesByQueueNumber(entries);
   const activeEntries = getActiveQueueEntries(orderedEntries);
+
   const activePositionsById = activeEntries.reduce((positions, entry, index) => {
     positions[entry.id] = index + 1;
     return positions;
@@ -200,6 +190,10 @@ async function generateQueueNumber(clinicId, queueDate) {
   return highestQueueNumber + 1;
 }
 
+/**
+ * Fetches all queue entries for a clinic and date.
+ * The returned array is ordered by queue_number for live position calculation.
+ */
 async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
   const { data, error } = await supabase
     .from('queue_entries')
@@ -231,7 +225,7 @@ async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
     throw createServiceError('Failed to fetch queue status.', 500);
   }
 
-  return sortQueueEntries(Array.isArray(data) ? data : []);
+  return sortQueueEntriesByQueueNumber(Array.isArray(data) ? data : []);
 }
 
 function buildQueueEntryResponse(entry, estimatedWaitMinutes) {
@@ -331,10 +325,14 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       appointment.clinic_id,
       existingEntry.queue_date
     );
+
     const position = existingEntry.status === 'waiting'
       ? calculateLivePosition(queueEntries, existingEntry.id)
       : null;
-    const estimatedWaitMinutes = position === null ? 0 : (position - 1) * WAIT_MINUTES_PER_PATIENT;
+
+    const estimatedWaitMinutes = position === null
+      ? 0
+      : (position - 1) * WAIT_MINUTES_PER_PATIENT;
 
     return {
       queue_entry: buildQueueEntryResponse(existingEntry, estimatedWaitMinutes),
@@ -348,6 +346,9 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
   const queueDate = appointment.slot?.date || getTodayDateString();
   const queueNumber = await generateQueueNumber(appointment.clinic_id, queueDate);
   const queueEntries = await fetchQueueEntriesForClinicDate(appointment.clinic_id, queueDate);
+
+  // Build a temporary version of the new entry so we can calculate its live position
+  // before inserting it into the database.
   const provisionalEntry = {
     id: '__pending_queue_entry__',
     clinic_id: appointment.clinic_id,
@@ -366,9 +367,13 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       }
     }
   };
-  const position = calculateLivePosition([...queueEntries, provisionalEntry], provisionalEntry.id);
 
-  // Simple estimate: each waiting patient ahead adds about 15 minutes.
+  const position = calculateLivePosition(
+    [...queueEntries, provisionalEntry],
+    provisionalEntry.id
+  );
+
+  // Simple estimate: each active patient ahead adds about 15 minutes.
   const estimatedWaitMinutes = (position - 1) * WAIT_MINUTES_PER_PATIENT;
 
   // Create the queue entry using the Sprint 2 queue structure.
@@ -454,8 +459,9 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
     throw createServiceError('Failed to fetch queue status.', 500);
   }
 
-  const queueEntries = sortQueueEntries(Array.isArray(data) ? data : []);
-  const patientEntry = queueEntries.find((entry) => String(entry.patient_id) === String(patientId)) || null;
+  const queueEntries = sortQueueEntriesByQueueNumber(Array.isArray(data) ? data : []);
+  const patientEntry =
+    queueEntries.find((entry) => String(entry.patient_id) === String(patientId)) || null;
   const queueSummary = buildQueueSummary(queueEntries);
   const mappedQueueEntries = mapQueueEntriesForPatient(queueEntries, patientId);
 
@@ -474,7 +480,10 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   const position = patientEntry.status === 'waiting'
     ? calculateLivePosition(queueEntries, patientEntry.id)
     : null;
-  const estimatedWaitMinutes = position === null ? 0 : (position - 1) * WAIT_MINUTES_PER_PATIENT;
+
+  const estimatedWaitMinutes = position === null
+    ? 0
+    : (position - 1) * WAIT_MINUTES_PER_PATIENT;
 
   return {
     is_in_queue: true,
@@ -489,6 +498,10 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   };
 }
 
+/**
+ * Maps queue entries for the staff queue page.
+ * Entries remain ordered by queue_number, and waiting entries get a live position.
+ */
 function mapQueueEntriesForStaff(entries) {
   return entries.map((entry) => {
     const livePosition = entry.status === 'waiting'
@@ -504,9 +517,10 @@ function mapQueueEntriesForStaff(entries) {
       queue_date: entry.queue_date,
       source: entry.source,
       status: entry.status,
-      estimated_wait_minutes: entry.status === 'waiting' && livePosition !== null
-        ? (livePosition - 1) * WAIT_MINUTES_PER_PATIENT
-        : 0,
+      estimated_wait_minutes:
+        entry.status === 'waiting' && livePosition !== null
+          ? (livePosition - 1) * WAIT_MINUTES_PER_PATIENT
+          : 0,
       live_position: livePosition,
       appointment_time: entry.appointment?.slot?.start_time || null,
       appointment_end_time: entry.appointment?.slot?.end_time || null,
@@ -555,7 +569,7 @@ async function fetchStaffQueue({ clinicId, queueDate }) {
     throw createServiceError('Failed to fetch staff queue.', 500);
   }
 
-  const queueEntries = sortQueueEntries(Array.isArray(data) ? data : []);
+  const queueEntries = sortQueueEntriesByQueueNumber(Array.isArray(data) ? data : []);
 
   return {
     clinic_id: clinicId,
@@ -667,6 +681,7 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
       409
     );
   }
+
   const { data, error } = await supabase
     .from('queue_entries')
     .update({

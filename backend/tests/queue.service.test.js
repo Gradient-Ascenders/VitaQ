@@ -461,7 +461,7 @@ describe('joinQueueFromAppointment', () => {
     expect(result.queue_entry.estimated_wait_minutes).toBe(30);
   });
 
-  test('calculates live position from appointment time instead of queue number', async () => {
+  test('calculates live position from queue number instead of appointment time', async () => {
     const appointment = {
       id: 'appointment-1',
       patient_id: 'patient-1',
@@ -542,8 +542,8 @@ describe('joinQueueFromAppointment', () => {
     });
 
     expect(result.queue_entry.queue_number).toBe(3);
-    expect(result.position).toBe(2);
-    expect(result.queue_entry.estimated_wait_minutes).toBe(15);
+    expect(result.position).toBe(3);
+    expect(result.queue_entry.estimated_wait_minutes).toBe(30);
   });
 
   test('falls back to the local current date when the appointment slot date is missing', async () => {
@@ -712,127 +712,227 @@ describe('fetchPatientQueueStatus', () => {
     });
   });
 
-  test('orders waiting patients by appointment time while keeping queue number as a reference', async () => {
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: [
-          {
-            id: 'queue-1',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-a',
-            appointment_id: 'appointment-a',
-            queue_number: 1,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 0,
-            appointment: {
-              slot: {
-                start_time: '08:00:00',
-                end_time: '08:30:00'
-              }
-            }
-          },
-          {
-            id: 'queue-2',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-b',
-            appointment_id: 'appointment-b',
-            queue_number: 2,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 15,
-            appointment: {
-              slot: {
-                start_time: '11:00:00',
-                end_time: '11:30:00'
-              }
-            }
-          },
-          {
-            id: 'queue-3',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-1',
-            appointment_id: 'appointment-1',
-            queue_number: 3,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 30,
-            appointment: {
-              slot: {
-                start_time: '09:30:00',
-                end_time: '10:00:00'
-              }
+ test('ignores completed entries ahead when calculating patient position', async () => {
+  supabase.from.mockReturnValueOnce(
+    createMockQuery({
+      data: [
+        {
+          id: 'queue-1',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-a',
+          appointment_id: 'appointment-a',
+          queue_number: 1,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'complete',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '08:00:00',
+              end_time: '08:30:00'
             }
           }
-        ],
-        error: null
-      })
-    );
-
-    const result = await fetchPatientQueueStatus({
-      patientId: 'patient-1',
-      clinicId: 'clinic-1',
-      queueDate: '2026-04-16'
-    });
-
-    expect(result.position).toBe(2);
-    expect(result.queue_entry.queue_number).toBe(3);
-    expect(result.queue_entries.map((entry) => entry.id)).toEqual([
-      'queue-1',
-      'queue-3',
-      'queue-2'
-    ]);
-    expect(result.queue_entries[1]).toMatchObject({
-      id: 'queue-3',
-      position: 2,
-      queue_number: 3,
-      appointment_time: '09:30',
-      is_current_patient: true
-    });
-  });
-
-  test('returns in consultation status without a waiting position', async () => {
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: [
-          {
-            id: 'queue-2',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-1',
-            appointment_id: 'appointment-1',
-            queue_number: 2,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'in_consultation',
-            estimated_wait_minutes: 15,
-            appointment: {
-              slot: {
-                start_time: '08:30:00',
-                end_time: '09:00:00'
-              }
+        },
+        {
+          id: 'queue-2',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-b',
+          appointment_id: 'appointment-b',
+          queue_number: 2,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '08:30:00',
+              end_time: '09:00:00'
             }
           }
-        ],
-        error: null
-      })
-    );
+        },
+        {
+          id: 'queue-3',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-1',
+          appointment_id: 'appointment-1',
+          queue_number: 3,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '09:00:00',
+              end_time: '09:30:00'
+            }
+          }
+        }
+      ],
+      error: null
+    })
+  );
 
-    const result = await fetchPatientQueueStatus({
-      patientId: 'patient-1',
-      clinicId: 'clinic-1',
-      queueDate: '2026-04-16'
-    });
-
-    expect(result.is_in_queue).toBe(true);
-    expect(result.position).toBeNull();
-    expect(result.queue_entry.status).toBe('in_consultation');
-    expect(result.queue_entry.estimated_wait_minutes).toBe(0);
-    expect(result.queue_entry.appointment_time).toBe('08:30:00');
-    expect(result.queue_entry.appointment_end_time).toBe('09:00:00');
+  const result = await fetchPatientQueueStatus({
+    patientId: 'patient-1',
+    clinicId: 'clinic-1',
+    queueDate: '2026-04-16'
   });
+
+  expect(result.position).toBe(2);
+  expect(result.queue_entry.estimated_wait_minutes).toBe(15);
+});
+
+test('ignores cancelled entries ahead when calculating patient position', async () => {
+  supabase.from.mockReturnValueOnce(
+    createMockQuery({
+      data: [
+        {
+          id: 'queue-1',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-a',
+          appointment_id: 'appointment-a',
+          queue_number: 1,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'cancelled',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '08:00:00',
+              end_time: '08:30:00'
+            }
+          }
+        },
+        {
+          id: 'queue-2',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-b',
+          appointment_id: 'appointment-b',
+          queue_number: 2,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '08:30:00',
+              end_time: '09:00:00'
+            }
+          }
+        },
+        {
+          id: 'queue-3',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-1',
+          appointment_id: 'appointment-1',
+          queue_number: 3,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '09:00:00',
+              end_time: '09:30:00'
+            }
+          }
+        }
+      ],
+      error: null
+    })
+  );
+
+  const result = await fetchPatientQueueStatus({
+    patientId: 'patient-1',
+    clinicId: 'clinic-1',
+    queueDate: '2026-04-16'
+  });
+
+  expect(result.position).toBe(2);
+  expect(result.queue_entry.estimated_wait_minutes).toBe(15);
+});
+
+test('orders live queue positions by queue number, not appointment time', async () => {
+  supabase.from.mockReturnValueOnce(
+    createMockQuery({
+      data: [
+        {
+          id: 'queue-1',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-a',
+          appointment_id: 'appointment-a',
+          queue_number: 1,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '11:00:00',
+              end_time: '11:30:00'
+            }
+          }
+        },
+        {
+          id: 'queue-2',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-b',
+          appointment_id: 'appointment-b',
+          queue_number: 2,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 15,
+          appointment: {
+            slot: {
+              start_time: '08:00:00',
+              end_time: '08:30:00'
+            }
+          }
+        },
+        {
+          id: 'queue-3',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-1',
+          appointment_id: 'appointment-1',
+          queue_number: 3,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 30,
+          appointment: {
+            slot: {
+              start_time: '09:30:00',
+              end_time: '10:00:00'
+            }
+          }
+        }
+      ],
+      error: null
+    })
+  );
+
+  const result = await fetchPatientQueueStatus({
+    patientId: 'patient-1',
+    clinicId: 'clinic-1',
+    queueDate: '2026-04-16'
+  });
+
+  expect(result.position).toBe(3);
+  expect(result.queue_entry.queue_number).toBe(3);
+  expect(result.queue_entries.map((entry) => entry.id)).toEqual([
+    'queue-1',
+    'queue-2',
+    'queue-3'
+  ]);
+  expect(result.queue_entries[2]).toMatchObject({
+    id: 'queue-3',
+    position: 3,
+    queue_number: 3,
+    appointment_time: '09:30',
+    is_current_patient: true
+  });
+});
 
   test('returns complete status without a waiting position', async () => {
     supabase.from.mockReturnValueOnce(
@@ -978,14 +1078,14 @@ describe('fetchPatientQueueStatus', () => {
 
     expect(result.position).toBe(1);
     expect(result.queue_entries[0]).toMatchObject({
-      id: 'queue-2',
-      position: 1,
-      status: 'waiting'
-    });
-    expect(result.queue_entries[1]).toMatchObject({
       id: 'queue-1',
       position: null,
       status: 'complete'
+    });
+    expect(result.queue_entries[1]).toMatchObject({
+      id: 'queue-2',
+      position: 1,
+      status: 'waiting'
     });
   });
 
@@ -1123,19 +1223,19 @@ describe('fetchStaffQueue', () => {
     });
 
     expect(result.queue_entries[0]).toMatchObject({
+      id: 'queue-1',
+      queue_number: 1,
+      status: 'waiting',
+      live_position: 1,
+      appointment_time: '08:00:00'
+    });
+
+    expect(result.queue_entries[1]).toMatchObject({
       id: 'queue-2',
       queue_number: 2,
       status: 'in_consultation',
       live_position: null,
       appointment_time: '08:30:00'
-    });
-
-    expect(result.queue_entries[1]).toMatchObject({
-      id: 'queue-1',
-      queue_number: 1,
-      status: 'waiting',
-      live_position: 2,
-      appointment_time: '08:00:00'
     });
   });
 

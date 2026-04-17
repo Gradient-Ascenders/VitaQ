@@ -1164,13 +1164,14 @@ describe('updateQueueEntryStatus', () => {
     jest.clearAllMocks();
   });
 
-  test('throws an error when queue entry id or status is missing', async () => {
+  test('throws an error when queue entry id, status, or staff user id is missing', async () => {
     await expect(
       updateQueueEntryStatus({
-        entryId: 'queue-1'
+        entryId: 'queue-1',
+        status: 'in_consultation'
       })
     ).rejects.toMatchObject({
-      message: 'queue entry id and status are required.',
+      message: 'queue entry id, status, and staff user id are required.',
       statusCode: 400
     });
 
@@ -1181,7 +1182,8 @@ describe('updateQueueEntryStatus', () => {
     await expect(
       updateQueueEntryStatus({
         entryId: 'queue-1',
-        status: 'paused'
+        status: 'paused',
+        staffUserId: 'staff-1'
       })
     ).rejects.toMatchObject({
       message: 'Invalid queue status.',
@@ -1191,8 +1193,217 @@ describe('updateQueueEntryStatus', () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  test('updates and returns a queue entry status', async () => {
+  test('updates and returns a queue entry status for staff assigned to the same clinic', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:00:00Z'
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
     const updatedEntry = {
+      ...existingEntry,
+      status: 'in_consultation',
+      updated_at: '2026-04-16T08:15:00Z'
+    };
+
+    supabase.from
+      // First query: fetch the existing queue entry.
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+
+      // Second query: fetch the approved staff request.
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+
+      // Third query: update and return the queue entry.
+      .mockReturnValueOnce(createMockQuery({ data: updatedEntry, error: null }));
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'in_consultation',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(result.status).toBe('in_consultation');
+    expect(supabase.from).toHaveBeenCalledWith('queue_entries');
+    expect(supabase.from).toHaveBeenCalledWith('staff_requests');
+  });
+
+  test('blocks staff from updating a queue entry for another clinic', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-2',
+      status: 'approved'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'in_consultation',
+        staffUserId: 'staff-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'You can only update queue entries for your assigned clinic.',
+      statusCode: 403
+    });
+  });
+
+  test('rejects invalid status transitions', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'complete',
+      estimated_wait_minutes: 0
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'waiting',
+        staffUserId: 'staff-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Cannot change queue status from complete to waiting.',
+      statusCode: 409
+    });
+  });
+
+  test('returns the existing entry when the requested status is already set', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'waiting',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(existingEntry);
+  });
+
+  test('throws an error when the queue entry does not exist', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { message: 'No rows found' }
+      })
+    );
+
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'in_consultation',
+        staffUserId: 'staff-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Queue entry not found.',
+      statusCode: 404
+    });
+  });
+
+  test('throws an error when the staff member is not approved', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'No approved staff request found' }
+        })
+      );
+
+    await expect(
+      updateQueueEntryStatus({
+        entryId: 'queue-1',
+        status: 'in_consultation',
+        staffUserId: 'staff-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'Approved staff access is required.',
+      statusCode: 403
+    });
+  });
+
+  test('throws an error when the status update fails', async () => {
+    const existingEntry = {
       id: 'queue-1',
       clinic_id: 'clinic-1',
       patient_id: 'patient-1',
@@ -1201,39 +1412,31 @@ describe('updateQueueEntryStatus', () => {
       queue_date: '2026-04-16',
       source: 'appointment',
       status: 'in_consultation',
-      estimated_wait_minutes: 0,
-      created_at: '2026-04-16T08:00:00Z',
-      updated_at: '2026-04-16T08:15:00Z'
+      estimated_wait_minutes: 0
     };
 
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: updatedEntry,
-        error: null
-      })
-    );
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
 
-    const result = await updateQueueEntryStatus({
-      entryId: 'queue-1',
-      status: 'in_consultation'
-    });
-
-    expect(result).toEqual(updatedEntry);
-    expect(result.status).toBe('in_consultation');
-  });
-
-  test('throws an error when the status update fails', async () => {
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: null,
-        error: { message: 'Update failed' }
-      })
-    );
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Update failed' }
+        })
+      );
 
     await expect(
       updateQueueEntryStatus({
         entryId: 'queue-1',
-        status: 'complete'
+        status: 'complete',
+        staffUserId: 'staff-1'
       })
     ).rejects.toMatchObject({
       message: 'Failed to update queue status.',

@@ -103,7 +103,8 @@ async function updateStaffQueueStatus(req, res) {
 
     const result = await updateQueueEntryStatus({
       entryId,
-      status
+      status,
+      staffUserId: req.user.id
     });
 
     return res.status(200).json({

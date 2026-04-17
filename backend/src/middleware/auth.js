@@ -12,7 +12,6 @@ const supabase = require('../lib/supabaseClient');
 async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -22,7 +21,6 @@ async function authMiddleware(req, res, next) {
 
     const token = authHeader.split(' ')[1];
     const { data, error } = await supabase.auth.getUser(token);
-
     if (error || !data || !data.user) {
       return res.status(401).json({
         success: false,

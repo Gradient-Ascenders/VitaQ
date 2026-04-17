@@ -140,6 +140,11 @@ function formatQueueNumber(queueNumber) {
 }
 
 // Format appointment time values returned by the backend.
+function formatTime(timeString) {
+  return timeString?.slice(0, 5) || '';
+}
+
+// Format appointment time values returned by the backend.
 function formatAppointmentTime(startTime, endTime, source) {
   if (startTime && endTime) {
     return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`;

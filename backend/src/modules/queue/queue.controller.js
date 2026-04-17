@@ -1,5 +1,6 @@
 const {
   joinQueueFromAppointment,
+  createWalkInQueueEntry,
   fetchPatientQueueStatus,
   fetchStaffQueue,
   updateQueueEntryStatus
@@ -32,6 +33,43 @@ async function joinQueue(req, res) {
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to join queue.'
+    });
+  }
+}
+
+/**
+ * Handles POST /api/queue/staff/walk-in.
+ * Allows approved staff to add a walk-in patient to their clinic queue
+ * without needing a linked appointment booking.
+ */
+async function addStaffWalkIn(req, res) {
+  try {
+    const staffUserId = req.user.id;
+
+    // clinic_id is accepted for compatibility with the frontend,
+    // but the service still enforces the staff member's assigned clinic.
+    const {
+      patient_id: patientId,
+      clinic_id: clinicId,
+      queue_date: queueDate
+    } = req.body;
+
+    const result = await createWalkInQueueEntry({
+      patientId,
+      clinicId,
+      queueDate,
+      staffUserId
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Walk-in patient added to queue successfully.',
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to add walk-in patient.'
     });
   }
 }
@@ -122,6 +160,7 @@ async function updateStaffQueueStatus(req, res) {
 
 module.exports = {
   joinQueue,
+  addStaffWalkIn,
   getMyQueueStatus,
   getStaffQueue,
   updateStaffQueueStatus

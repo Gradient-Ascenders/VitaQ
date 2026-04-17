@@ -301,6 +301,166 @@ function buildQueueEntryResponse(entry, estimatedWaitMinutes) {
 }
 
 /**
+ * Fetches the approved staff request for a user.
+ * We use this to find which clinic the staff member belongs to.
+ */
+async function fetchApprovedStaffRequest(staffUserId) {
+  const { data: staffRequest, error } = await supabase
+    .from('staff_requests')
+    .select('id, user_id, clinic_id, status')
+    .eq('user_id', staffUserId)
+    .eq('status', 'approved')
+    .single();
+
+  if (error || !staffRequest) {
+    throw createServiceError('Approved staff access is required.', 403);
+  }
+
+  return staffRequest;
+}
+
+/**
+ * Checks for an existing active queue entry for the same patient, clinic, and day.
+ * This prevents staff from accidentally creating duplicate active walk-in entries.
+ */
+async function fetchExistingActiveQueueEntry({ clinicId, patientId, queueDate }) {
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at
+    `)
+    .eq('clinic_id', clinicId)
+    .eq('patient_id', patientId)
+    .eq('queue_date', queueDate)
+    .in('status', ACTIVE_QUEUE_STATUSES)
+    .order('queue_number', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    throw createServiceError('Failed to check existing walk-in queue entry.', 500);
+  }
+
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
+}
+
+/**
+ * Allows approved staff to add a walk-in patient to their assigned clinic queue.
+ * No appointment booking is required for this flow.
+ */
+async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUserId }) {
+  if (!patientId || !staffUserId) {
+    throw createServiceError('patient_id and staff user id are required.', 400);
+  }
+
+  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
+  const assignedClinicId = staffRequest.clinic_id;
+  const resolvedQueueDate = queueDate || getTodayDateString();
+
+  // Allow the frontend to send clinic_id if it already has it,
+  // but never let staff create walk-ins for another clinic.
+  if (clinicId && String(clinicId) !== String(assignedClinicId)) {
+    throw createServiceError('You can only add walk-in patients for your assigned clinic.', 403);
+  }
+
+  // Patients are authenticated through Supabase Auth in this project.
+  // They are not required to have a row in the shared profiles table,
+  // so we accept the provided patient_id directly for walk-in intake.
+
+  const existingEntry = await fetchExistingActiveQueueEntry({
+    clinicId: assignedClinicId,
+    patientId,
+    queueDate: resolvedQueueDate
+  });
+
+  if (existingEntry) {
+    const queueEntries = await fetchQueueEntriesForClinicDate(assignedClinicId, resolvedQueueDate);
+    const position = calculateLivePosition(queueEntries, existingEntry.id);
+    const estimatedWaitMinutes = position === null
+      ? 0
+      : (position - 1) * WAIT_MINUTES_PER_PATIENT;
+
+    return {
+      queue_entry: buildQueueEntryResponse(existingEntry, estimatedWaitMinutes),
+      position
+    };
+  }
+
+  const queueNumber = await generateQueueNumber(assignedClinicId, resolvedQueueDate);
+  const queueEntries = await fetchQueueEntriesForClinicDate(assignedClinicId, resolvedQueueDate);
+
+  // Build a temporary entry so we can calculate the live position before insert.
+  const provisionalEntry = {
+    id: '__pending_walk_in_queue_entry__',
+    clinic_id: assignedClinicId,
+    patient_id: patientId,
+    appointment_id: null,
+    queue_number: queueNumber,
+    queue_date: resolvedQueueDate,
+    source: 'walk_in',
+    status: 'waiting',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const position = calculateLivePosition(
+    [...queueEntries, provisionalEntry],
+    provisionalEntry.id
+  );
+
+  const estimatedWaitMinutes = position === null
+    ? 0
+    : (position - 1) * WAIT_MINUTES_PER_PATIENT;
+
+  const { data: queueEntry, error: queueError } = await supabase
+    .from('queue_entries')
+    .insert([
+      {
+        clinic_id: assignedClinicId,
+        patient_id: patientId,
+        appointment_id: null,
+        queue_number: queueNumber,
+        queue_date: resolvedQueueDate,
+        source: 'walk_in',
+        status: 'waiting',
+        estimated_wait_minutes: estimatedWaitMinutes
+      }
+    ])
+    .select(`
+      id,
+      clinic_id,
+      patient_id,
+      appointment_id,
+      queue_number,
+      queue_date,
+      source,
+      status,
+      estimated_wait_minutes,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  if (queueError || !queueEntry) {
+    throw createServiceError('Failed to add walk-in patient to the queue.', 500);
+  }
+
+  return {
+    queue_entry: buildQueueEntryResponse(queueEntry, estimatedWaitMinutes),
+    position
+  };
+}
+
+/**
  * Allows a logged-in patient to join the queue using a booked appointment.
  */
 async function joinQueueFromAppointment({ patientId, appointmentId }) {
@@ -676,25 +836,6 @@ function isAllowedStatusTransition(currentStatus, nextStatus) {
 }
 
 /**
- * Fetches the approved staff request for a user.
- * We use this to find which clinic the staff member belongs to.
- */
-async function fetchApprovedStaffRequest(staffUserId) {
-  const { data: staffRequest, error } = await supabase
-    .from('staff_requests')
-    .select('id, user_id, clinic_id, status')
-    .eq('user_id', staffUserId)
-    .eq('status', 'approved')
-    .single();
-
-  if (error || !staffRequest) {
-    throw createServiceError('Approved staff access is required.', 403);
-  }
-
-  return staffRequest;
-}
-
-/**
  * Fetches one queue entry before updating it.
  * We need the existing clinic_id and status before deciding whether the update is allowed.
  */
@@ -792,6 +933,7 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
 
 module.exports = {
   joinQueueFromAppointment,
+  createWalkInQueueEntry,
   fetchPatientQueueStatus,
   fetchStaffQueue,
   updateQueueEntryStatus

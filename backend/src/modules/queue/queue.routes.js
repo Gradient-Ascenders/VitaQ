@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   joinQueue,
+  addStaffWalkIn,
   getMyQueueStatus,
   getStaffQueue,
   updateStaffQueueStatus
@@ -17,6 +18,15 @@ router.get('/my-status', authMiddleware, getMyQueueStatus);
 // POST /api/queue/join
 // Allows the logged-in patient to join the queue using an appointment.
 router.post('/join', authMiddleware, joinQueue);
+
+// POST /api/queue/staff/walk-in
+// Allows approved staff to add a walk-in patient to their assigned clinic queue.
+router.post(
+  '/staff/walk-in',
+  authMiddleware,
+  authMiddleware.requireStaff,
+  addStaffWalkIn
+);
 
 // GET /api/queue/staff?date=...
 // Allows staff to retrieve the queue for their assigned clinic and date.

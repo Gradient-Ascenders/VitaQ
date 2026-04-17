@@ -65,15 +65,15 @@ async function getMyQueueStatus(req, res) {
 
 /**
  * Handles GET /api/queue/staff.
- * Returns the clinic queue for a staff member using clinic_id and date filters.
+ * Returns the clinic queue for a staff member using their assigned clinic and queue date.
  */
 async function getStaffQueue(req, res) {
   try {
-    // Staff queue is filtered by clinic and queue date.
-    const { clinic_id: clinicId, date: queueDate } = req.query;
+    // The clinic is resolved from the logged-in approved staff user.
+    const { date: queueDate } = req.query;
 
     const result = await fetchStaffQueue({
-      clinicId,
+      staffUserId: req.user.id,
       queueDate
     });
 

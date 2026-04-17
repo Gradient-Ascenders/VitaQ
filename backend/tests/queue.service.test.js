@@ -1148,20 +1148,46 @@ describe('fetchStaffQueue', () => {
     jest.clearAllMocks();
   });
 
-  test('throws an error when clinic_id or date is missing', async () => {
+  test('throws an error when staff user id or date is missing', async () => {
     await expect(
       fetchStaffQueue({
-        clinicId: 'clinic-1'
+        staffUserId: 'staff-1'
       })
     ).rejects.toMatchObject({
-      message: 'clinic_id and date are required.',
+      message: 'staff user id and date are required.',
       statusCode: 400
     });
 
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  test('returns staff queue entries filtered by clinic and date', async () => {
+  test('returns staff queue entries filtered by the staff clinic and date', async () => {
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
+    const clinic = {
+      id: 'clinic-1',
+      name: 'Tembisa Community Clinic'
+    };
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: approvedStaffRequest,
+        error: null
+      })
+    );
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: clinic,
+        error: null
+      })
+    );
+
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: [
@@ -1209,10 +1235,11 @@ describe('fetchStaffQueue', () => {
     );
 
     const result = await fetchStaffQueue({
-      clinicId: 'clinic-1',
+      staffUserId: 'staff-1',
       queueDate: '2026-04-16'
     });
 
+    expect(result.clinic).toEqual(clinic);
     expect(result.clinic_id).toBe('clinic-1');
     expect(result.queue_date).toBe('2026-04-16');
     expect(result.queue_summary).toEqual({
@@ -1240,20 +1267,91 @@ describe('fetchStaffQueue', () => {
   });
 
   test('throws an error when the staff queue query fails', async () => {
+    supabase.from
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: {
+            id: 'staff-request-1',
+            user_id: 'staff-1',
+            clinic_id: 'clinic-1',
+            status: 'approved'
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: {
+            id: 'clinic-1',
+            name: 'Tembisa Community Clinic'
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Database unavailable' }
+        })
+      );
+
+    await expect(
+      fetchStaffQueue({
+        staffUserId: 'staff-1',
+        queueDate: '2026-04-16'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to fetch staff queue.',
+      statusCode: 500
+    });
+  });
+
+  test('throws an error when the staff member does not have approved access', async () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: null,
-        error: { message: 'Database unavailable' }
+        error: { message: 'No approved staff request found' }
       })
     );
 
     await expect(
       fetchStaffQueue({
-        clinicId: 'clinic-1',
+        staffUserId: 'staff-1',
         queueDate: '2026-04-16'
       })
     ).rejects.toMatchObject({
-      message: 'Failed to fetch staff queue.',
+      message: 'Approved staff access is required.',
+      statusCode: 403
+    });
+  });
+
+  test('throws an error when the assigned clinic cannot be loaded', async () => {
+    supabase.from
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: {
+            id: 'staff-request-1',
+            user_id: 'staff-1',
+            clinic_id: 'clinic-1',
+            status: 'approved'
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Clinic lookup failed' }
+        })
+      );
+
+    await expect(
+      fetchStaffQueue({
+        staffUserId: 'staff-1',
+        queueDate: '2026-04-16'
+      })
+    ).rejects.toMatchObject({
+      message: 'Failed to fetch assigned clinic.',
       statusCode: 500
     });
   });

@@ -10,6 +10,23 @@ const ARRIVAL_TYPES = {
   WALK_IN: 'walk_in'
 };
 
+const SLOT_TEMPLATE_STATUSES = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive'
+};
+
+const SLOT_TEMPLATE_GENERATION_DAYS = 14;
+
+const DAYS_OF_WEEK = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday'
+};
+
 // Keep the frontend status options aligned with the backend workflow.
 // Same-status is allowed in the UI so clicking save without a change does not break anything.
 const ALLOWED_STATUS_OPTIONS = {
@@ -31,6 +48,11 @@ const staffState = {
     complete: 0,
     cancelled: 0
   },
+  slotTemplates: [],
+  slotTemplateFeedback: null,
+  slotTemplateActionId: null,
+  slotTemplateGenerationInProgress: false,
+  editingSlotTemplateId: null,
   feedback: null,
   actionInProgressId: null
 };
@@ -115,6 +137,11 @@ function formatQueueNumber(queueNumber) {
   }
 
   return `Q${String(numericQueueNumber).padStart(3, '0')}`;
+}
+
+// Format appointment time values returned by the backend.
+function formatTime(timeString) {
+  return timeString?.slice(0, 5) || '';
 }
 
 // Format appointment time values returned by the backend.
@@ -204,6 +231,29 @@ function renderWalkInFormFeedback(type, message) {
 
   feedback.className = `mt-6 rounded-2xl border px-4 py-3 text-sm font-medium ${typeClasses[type] || typeClasses.error}`;
   feedback.textContent = message;
+}
+
+function renderSlotTemplateFeedback() {
+  const feedback = document.getElementById('slotTemplateFeedback');
+
+  if (!feedback) {
+    return;
+  }
+
+  if (!staffState.slotTemplateFeedback) {
+    feedback.className = 'mt-6 hidden';
+    feedback.textContent = '';
+    return;
+  }
+
+  const typeClasses = {
+    loading: 'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]',
+    success: 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]',
+    error: 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
+  };
+
+  feedback.className = `mt-6 rounded-2xl border px-4 py-3 text-sm font-medium ${typeClasses[staffState.slotTemplateFeedback.type] || typeClasses.loading}`;
+  feedback.textContent = staffState.slotTemplateFeedback.message;
 }
 
 // Render the clinic snapshot card on the right.
@@ -372,6 +422,244 @@ function renderQueueTable() {
   });
 }
 
+function formatDayOfWeekLabel(dayOfWeek) {
+  return DAYS_OF_WEEK[Number(dayOfWeek)] || 'Unknown day';
+}
+
+function formatTemplateTimeWindow(startTime, endTime) {
+  const formattedStartTime = formatTime(startTime);
+  const formattedEndTime = formatTime(endTime);
+
+  if (!formattedStartTime || !formattedEndTime) {
+    return 'Time unavailable';
+  }
+
+  return `${formattedStartTime} - ${formattedEndTime}`;
+}
+
+function getSlotTemplateStatusClasses(status) {
+  if (status === SLOT_TEMPLATE_STATUSES.INACTIVE) {
+    return 'border-[#414868] bg-[#1f2335]/85 text-[#8b93b8]';
+  }
+
+  return 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]';
+}
+
+function formatSlotTemplateStatusLabel(status) {
+  return status === SLOT_TEMPLATE_STATUSES.INACTIVE ? 'Inactive' : 'Active';
+}
+
+function getSlotTemplateById(templateId) {
+  return staffState.slotTemplates.find((template) => String(template.id) === String(templateId)) || null;
+}
+
+function renderSlotTemplateSummary() {
+  const totalTemplates = staffState.slotTemplates.length;
+  const activeTemplates = staffState.slotTemplates.filter(
+    (template) => template.status === SLOT_TEMPLATE_STATUSES.ACTIVE
+  ).length;
+  const clinicName = staffState.clinic?.name || 'your clinic';
+
+  setTextContent('slotTemplateActiveCount', String(activeTemplates));
+  setTextContent('slotTemplateTotalCount', String(totalTemplates));
+  setTextContent('slotTemplateHorizon', `${SLOT_TEMPLATE_GENERATION_DAYS} days`);
+  setTextContent(
+    'slotTemplateSummary',
+    totalTemplates === 0
+      ? `No recurring slot templates configured for ${clinicName}.`
+      : `${totalTemplates} template${totalTemplates === 1 ? '' : 's'} configured for ${clinicName}.`
+  );
+  setTextContent(
+    'slotTemplateListCaption',
+    totalTemplates === 0
+      ? 'Create your first template to automate slots.'
+      : `${activeTemplates} active template${activeTemplates === 1 ? '' : 's'} ready for generation.`
+  );
+
+  const generateButton = document.getElementById('generateSlotsButton');
+
+  if (generateButton) {
+    generateButton.disabled = staffState.slotTemplateGenerationInProgress;
+    generateButton.textContent = staffState.slotTemplateGenerationInProgress
+      ? 'Generating...'
+      : `Generate next ${SLOT_TEMPLATE_GENERATION_DAYS} days`;
+  }
+}
+
+function resetSlotTemplateForm() {
+  const form = document.getElementById('slotTemplateForm');
+  const formTitle = document.getElementById('slotTemplateFormTitle');
+  const submitButton = document.getElementById('slotTemplateSubmitButton');
+  const cancelButton = document.getElementById('slotTemplateCancelEditButton');
+  const dayField = document.getElementById('slotTemplateDayOfWeek');
+  const startField = document.getElementById('slotTemplateStartTime');
+  const endField = document.getElementById('slotTemplateEndTime');
+  const capacityField = document.getElementById('slotTemplateCapacity');
+  const statusField = document.getElementById('slotTemplateStatus');
+
+  staffState.editingSlotTemplateId = null;
+
+  if (form) {
+    form.reset();
+  }
+
+  if (dayField) {
+    dayField.value = '1';
+  }
+
+  if (capacityField) {
+    capacityField.value = '5';
+  }
+
+  if (statusField) {
+    statusField.value = SLOT_TEMPLATE_STATUSES.ACTIVE;
+  }
+
+  if (formTitle) {
+    formTitle.textContent = 'Add recurring slot template';
+  }
+
+  if (submitButton) {
+    submitButton.textContent = 'Save template';
+  }
+
+  if (cancelButton) {
+    cancelButton.classList.add('hidden');
+  }
+
+  if (startField) {
+    startField.value = '';
+  }
+
+  if (endField) {
+    endField.value = '';
+  }
+}
+
+function populateSlotTemplateForm(template) {
+  const formTitle = document.getElementById('slotTemplateFormTitle');
+  const submitButton = document.getElementById('slotTemplateSubmitButton');
+  const cancelButton = document.getElementById('slotTemplateCancelEditButton');
+  const dayField = document.getElementById('slotTemplateDayOfWeek');
+  const startField = document.getElementById('slotTemplateStartTime');
+  const endField = document.getElementById('slotTemplateEndTime');
+  const capacityField = document.getElementById('slotTemplateCapacity');
+  const statusField = document.getElementById('slotTemplateStatus');
+
+  staffState.editingSlotTemplateId = template.id;
+
+  if (dayField) {
+    dayField.value = String(template.day_of_week);
+  }
+
+  if (startField) {
+    startField.value = formatTime(template.start_time);
+  }
+
+  if (endField) {
+    endField.value = formatTime(template.end_time);
+  }
+
+  if (capacityField) {
+    capacityField.value = String(template.capacity);
+  }
+
+  if (statusField) {
+    statusField.value = template.status;
+  }
+
+  if (formTitle) {
+    formTitle.textContent = 'Edit recurring slot template';
+  }
+
+  if (submitButton) {
+    submitButton.textContent = 'Update template';
+  }
+
+  if (cancelButton) {
+    cancelButton.classList.remove('hidden');
+  }
+}
+
+function renderSlotTemplateList() {
+  const list = document.getElementById('slotTemplateList');
+  const emptyState = document.getElementById('slotTemplateEmptyState');
+
+  if (!list || !emptyState) {
+    return;
+  }
+
+  list.innerHTML = '';
+
+  if (staffState.slotTemplates.length === 0) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  emptyState.classList.add('hidden');
+
+  staffState.slotTemplates.forEach((template) => {
+    const isBusy = staffState.slotTemplateActionId === template.id;
+    const isEditing = staffState.editingSlotTemplateId === template.id;
+    const nextStatus = template.status === SLOT_TEMPLATE_STATUSES.ACTIVE
+      ? SLOT_TEMPLATE_STATUSES.INACTIVE
+      : SLOT_TEMPLATE_STATUSES.ACTIVE;
+    const statusActionLabel = nextStatus === SLOT_TEMPLATE_STATUSES.ACTIVE ? 'Activate' : 'Pause';
+    const templateCard = document.createElement('article');
+
+    templateCard.className = 'rounded-[1.5rem] border border-[#414868] bg-[#1f2335]/85 px-5 py-5 shadow-md shadow-black/10';
+    templateCard.innerHTML = `
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="grid gap-4 md:grid-cols-3 lg:flex-1">
+          <section>
+            <p class="text-xs uppercase tracking-[0.18em] text-[#8b93b8]">Day</p>
+            <p class="mt-2 text-base font-semibold text-[#e0e5ff]">${escapeHtml(formatDayOfWeekLabel(template.day_of_week))}</p>
+          </section>
+
+          <section>
+            <p class="text-xs uppercase tracking-[0.18em] text-[#8b93b8]">Time</p>
+            <p class="mt-2 text-base font-semibold text-[#e0e5ff]">${escapeHtml(formatTemplateTimeWindow(template.start_time, template.end_time))}</p>
+          </section>
+
+          <section>
+            <p class="text-xs uppercase tracking-[0.18em] text-[#8b93b8]">Capacity</p>
+            <p class="mt-2 text-base font-semibold text-[#e0e5ff]">${escapeHtml(String(template.capacity))} patients</p>
+          </section>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span class="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-semibold ${getSlotTemplateStatusClasses(template.status)}">
+            ${escapeHtml(formatSlotTemplateStatusLabel(template.status))}
+          </span>
+
+          <button
+            type="button"
+            data-action="edit-slot-template"
+            data-template-id="${template.id}"
+            class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/90 px-4 py-2.5 text-sm font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45] disabled:cursor-not-allowed disabled:opacity-60"
+            ${isBusy ? 'disabled' : ''}
+          >
+            ${isEditing ? 'Editing' : 'Edit'}
+          </button>
+
+          <button
+            type="button"
+            data-action="toggle-slot-template"
+            data-template-id="${template.id}"
+            data-next-status="${nextStatus}"
+            class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-4 py-2.5 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            ${isBusy ? 'disabled' : ''}
+          >
+            ${isBusy ? 'Saving...' : statusActionLabel}
+          </button>
+        </div>
+      </div>
+    `;
+
+    list.appendChild(templateCard);
+  });
+}
+
 // Re-render all live dashboard sections together.
 function refreshStaffDashboard() {
   renderFeedback();
@@ -379,6 +667,9 @@ function refreshStaffDashboard() {
   renderSummaryCards();
   renderEmptyState();
   renderQueueTable();
+  renderSlotTemplateFeedback();
+  renderSlotTemplateSummary();
+  renderSlotTemplateList();
 }
 
 // Safely parse JSON without crashing if the response body is empty.
@@ -457,6 +748,44 @@ async function loadStaffQueue(session, keepExistingFeedback = false) {
   return true;
 }
 
+async function loadSlotTemplates(session, keepExistingFeedback = false) {
+  const response = await fetch('/api/staff/slot-templates', {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`
+    }
+  });
+
+  const payload = await readJsonSafely(response);
+
+  if (response.status === 401) {
+    window.location.href = '/login';
+    return false;
+  }
+
+  if (response.status === 403) {
+    staffState.slotTemplates = [];
+    staffState.slotTemplateFeedback = {
+      type: 'error',
+      message: payload.message || 'Approved staff access is required to manage slot templates.'
+    };
+    refreshStaffDashboard();
+    return false;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload.message || 'Failed to load slot templates.');
+  }
+
+  staffState.slotTemplates = Array.isArray(payload.data) ? payload.data : [];
+
+  if (!keepExistingFeedback) {
+    staffState.slotTemplateFeedback = null;
+  }
+
+  refreshStaffDashboard();
+  return true;
+}
+
 // Update one queue entry status through the real backend endpoint.
 async function updateQueueEntryStatus(entryId, nextStatus, session) {
   const entry = staffState.queueEntries.find((item) => item.id === entryId);
@@ -514,6 +843,200 @@ async function updateQueueEntryStatus(entryId, nextStatus, session) {
   }
 }
 
+async function submitSlotTemplate(session) {
+  if (staffState.slotTemplateActionId || staffState.slotTemplateGenerationInProgress) {
+    return;
+  }
+
+  const dayField = document.getElementById('slotTemplateDayOfWeek');
+  const startField = document.getElementById('slotTemplateStartTime');
+  const endField = document.getElementById('slotTemplateEndTime');
+  const capacityField = document.getElementById('slotTemplateCapacity');
+  const statusField = document.getElementById('slotTemplateStatus');
+  const templateId = staffState.editingSlotTemplateId;
+  const payload = {
+    day_of_week: Number(dayField?.value || ''),
+    start_time: startField?.value || '',
+    end_time: endField?.value || '',
+    capacity: Number(capacityField?.value || ''),
+    status: statusField?.value || SLOT_TEMPLATE_STATUSES.ACTIVE
+  };
+
+  staffState.slotTemplateActionId = templateId || '__new__';
+  staffState.slotTemplateFeedback = {
+    type: 'loading',
+    message: templateId ? 'Updating slot template...' : 'Saving slot template...'
+  };
+  refreshStaffDashboard();
+
+  try {
+    const response = await fetch(
+      templateId
+        ? `/api/staff/slot-templates/${encodeURIComponent(templateId)}`
+        : '/api/staff/slot-templates',
+      {
+        method: templateId ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const responsePayload = await readJsonSafely(response);
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(responsePayload.message || 'Failed to save slot template.');
+    }
+
+    staffState.slotTemplateFeedback = {
+      type: 'success',
+      message: templateId
+        ? 'Recurring slot template updated successfully.'
+        : 'Recurring slot template created successfully.'
+    };
+
+    resetSlotTemplateForm();
+    await loadSlotTemplates(session, true);
+  } catch (error) {
+    console.error('Failed to save slot template:', error);
+    staffState.slotTemplateFeedback = {
+      type: 'error',
+      message: error.message || 'Slot template could not be saved.'
+    };
+    refreshStaffDashboard();
+  } finally {
+    staffState.slotTemplateActionId = null;
+    refreshStaffDashboard();
+  }
+}
+
+async function toggleSlotTemplateStatus(templateId, nextStatus, session) {
+  const template = getSlotTemplateById(templateId);
+
+  if (!template || staffState.slotTemplateActionId || staffState.slotTemplateGenerationInProgress) {
+    return;
+  }
+
+  staffState.slotTemplateActionId = templateId;
+  staffState.slotTemplateFeedback = {
+    type: 'loading',
+    message: `${nextStatus === SLOT_TEMPLATE_STATUSES.ACTIVE ? 'Activating' : 'Pausing'} ${formatDayOfWeekLabel(template.day_of_week)} template...`
+  };
+  refreshStaffDashboard();
+
+  try {
+    const response = await fetch(`/api/staff/slot-templates/${encodeURIComponent(templateId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        status: nextStatus
+      })
+    });
+
+    const payload = await readJsonSafely(response);
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to update slot template.');
+    }
+
+    staffState.slotTemplateFeedback = {
+      type: 'success',
+      message: `${formatDayOfWeekLabel(template.day_of_week)} template ${nextStatus === SLOT_TEMPLATE_STATUSES.ACTIVE ? 'activated' : 'paused'} successfully.`
+    };
+
+    if (staffState.editingSlotTemplateId === templateId) {
+      resetSlotTemplateForm();
+    }
+
+    await loadSlotTemplates(session, true);
+  } catch (error) {
+    console.error('Failed to update slot template status:', error);
+    staffState.slotTemplateFeedback = {
+      type: 'error',
+      message: error.message || 'Slot template status update failed.'
+    };
+    refreshStaffDashboard();
+  } finally {
+    staffState.slotTemplateActionId = null;
+    refreshStaffDashboard();
+  }
+}
+
+async function generateUpcomingSlots(session) {
+  if (staffState.slotTemplateGenerationInProgress || staffState.slotTemplateActionId) {
+    return;
+  }
+
+  staffState.slotTemplateGenerationInProgress = true;
+  staffState.slotTemplateFeedback = {
+    type: 'loading',
+    message: `Generating appointment slots for the next ${SLOT_TEMPLATE_GENERATION_DAYS} days...`
+  };
+  refreshStaffDashboard();
+
+  try {
+    const response = await fetch('/api/staff/slot-templates/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        days_ahead: SLOT_TEMPLATE_GENERATION_DAYS
+      })
+    });
+
+    const payload = await readJsonSafely(response);
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to generate appointment slots.');
+    }
+
+    const generationSummary = payload.data || {};
+    const createdCount = Number(generationSummary.created || 0);
+    const skippedCount = Number(generationSummary.skipped_existing || 0);
+
+    staffState.slotTemplateFeedback = {
+      type: 'success',
+      message: createdCount === 0 && skippedCount === 0
+        ? 'No active templates were available to generate future appointment slots.'
+        : `Generated ${createdCount} slot${createdCount === 1 ? '' : 's'} for the next ${SLOT_TEMPLATE_GENERATION_DAYS} days. ${skippedCount} existing slot${skippedCount === 1 ? ' was' : 's were'} left unchanged.`
+    };
+
+    await loadSlotTemplates(session, true);
+  } catch (error) {
+    console.error('Failed to generate upcoming slots:', error);
+    staffState.slotTemplateFeedback = {
+      type: 'error',
+      message: error.message || 'Appointment slot generation failed.'
+    };
+    refreshStaffDashboard();
+  } finally {
+    staffState.slotTemplateGenerationInProgress = false;
+    refreshStaffDashboard();
+  }
+}
+
 // Attach click handling for the status update buttons in the queue table.
 function initialiseQueueActions(session) {
   const tableBody = document.getElementById('staffQueueTableBody');
@@ -538,6 +1061,60 @@ function initialiseQueueActions(session) {
 
     await updateQueueEntryStatus(entryId, statusSelect.value, session);
   });
+}
+
+function initialiseSlotTemplateActions(session) {
+  const form = document.getElementById('slotTemplateForm');
+  const templateList = document.getElementById('slotTemplateList');
+  const generateButton = document.getElementById('generateSlotsButton');
+  const cancelEditButton = document.getElementById('slotTemplateCancelEditButton');
+
+  if (form) {
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      await submitSlotTemplate(session);
+    });
+  }
+
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener('click', function () {
+      resetSlotTemplateForm();
+      refreshStaffDashboard();
+    });
+  }
+
+  if (generateButton) {
+    generateButton.addEventListener('click', async function () {
+      await generateUpcomingSlots(session);
+    });
+  }
+
+  if (templateList) {
+    templateList.addEventListener('click', async function (event) {
+      const editButton = event.target.closest('button[data-action="edit-slot-template"]');
+      const toggleButton = event.target.closest('button[data-action="toggle-slot-template"]');
+
+      if (editButton) {
+        const template = getSlotTemplateById(editButton.dataset.templateId);
+
+        if (!template) {
+          return;
+        }
+
+        populateSlotTemplateForm(template);
+        refreshStaffDashboard();
+        return;
+      }
+
+      if (toggleButton) {
+        await toggleSlotTemplateStatus(
+          toggleButton.dataset.templateId,
+          toggleButton.dataset.nextStatus,
+          session
+        );
+      }
+    });
+  }
 }
 
 // Walk-in handling is a separate story.
@@ -589,6 +1166,8 @@ async function initialiseStaffPage() {
 
   const userName = session?.user?.user_metadata?.full_name || session?.user?.email || 'Staff';
   setTextContent('staffName', userName);
+  resetSlotTemplateForm();
+  refreshStaffDashboard();
 
   try {
     await loadStaffQueue(session);
@@ -601,7 +1180,19 @@ async function initialiseStaffPage() {
     refreshStaffDashboard();
   }
 
+  try {
+    await loadSlotTemplates(session);
+  } catch (error) {
+    console.error('Failed to load slot templates:', error);
+    staffState.slotTemplateFeedback = {
+      type: 'error',
+      message: error.message || 'Slot templates could not be loaded.'
+    };
+    refreshStaffDashboard();
+  }
+
   initialiseQueueActions(session);
+  initialiseSlotTemplateActions(session);
   initialiseWalkInFormPlaceholder();
 }
 

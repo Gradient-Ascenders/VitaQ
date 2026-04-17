@@ -18,8 +18,8 @@ router.get('/my-status', authMiddleware, getMyQueueStatus);
 // Allows the logged-in patient to join the queue using an appointment.
 router.post('/join', authMiddleware, joinQueue);
 
-// GET /api/queue/staff?clinic_id=...&date=...
-// Allows staff to retrieve the queue for a specific clinic and date.
+// GET /api/queue/staff?date=...
+// Allows staff to retrieve the queue for their assigned clinic and date.
 router.get(
   '/staff',
   authMiddleware,

@@ -534,9 +534,22 @@ function mapQueueEntriesForStaff(entries) {
  * Returns the clinic queue for staff users.
  * This is used by the staff queue management page.
  */
-async function fetchStaffQueue({ clinicId, queueDate }) {
-  if (!clinicId || !queueDate) {
-    throw createServiceError('clinic_id and date are required.', 400);
+async function fetchStaffQueue({ staffUserId, queueDate }) {
+  if (!staffUserId || !queueDate) {
+    throw createServiceError('staff user id and date are required.', 400);
+  }
+
+  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
+  const clinicId = staffRequest.clinic_id;
+
+  const { data: clinic, error: clinicError } = await supabase
+    .from('clinics')
+    .select('id, name')
+    .eq('id', clinicId)
+    .single();
+
+  if (clinicError || !clinic) {
+    throw createServiceError('Failed to fetch assigned clinic.', 500);
   }
 
   const { data, error } = await supabase
@@ -572,6 +585,7 @@ async function fetchStaffQueue({ clinicId, queueDate }) {
   const queueEntries = sortQueueEntriesByQueueNumber(Array.isArray(data) ? data : []);
 
   return {
+    clinic,
     clinic_id: clinicId,
     queue_date: queueDate,
     queue_summary: buildQueueSummary(queueEntries),

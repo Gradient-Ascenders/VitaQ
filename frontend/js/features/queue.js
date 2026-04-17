@@ -34,6 +34,7 @@ const QUEUE_EMPTY_STATES = {
   NOT_IN_QUEUE: 'not_in_queue',
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
+const NEAR_TURN_MAX_POSITION = 3;
 
 function getQueueBadgeClasses(state) {
   switch (state) {
@@ -128,6 +129,60 @@ function renderQueueState(state) {
   badge.textContent = config.label;
   badge.className = `inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${config.badgeClass}`;
   message.textContent = config.message;
+}
+
+function isNearTurnState(queueState, position) {
+  return (
+    queueState === QUEUE_STATES.WAITING
+    && typeof position === 'number'
+    && Number.isFinite(position)
+    && position >= 1
+    && position <= NEAR_TURN_MAX_POSITION
+  );
+}
+
+function getNearTurnAlertConfig(position) {
+  if (position === 1) {
+    return {
+      title: 'It is almost your turn',
+      message: 'You are next in the queue. Please stay ready now and watch for staff guidance.',
+      priority: 'high'
+    };
+  }
+
+  return {
+    title: 'Your turn is coming up soon',
+    message: 'You are close to the front of the queue. Please stay nearby and be ready to move when called.',
+    priority: 'normal'
+  };
+}
+
+function renderNearTurnAlert(queueState, position) {
+  const alert = document.getElementById('nearTurnAlert');
+  const title = document.getElementById('nearTurnAlertTitle');
+  const message = document.getElementById('nearTurnAlertMessage');
+  const positionBadge = document.getElementById('nearTurnAlertPosition');
+  const eyebrow = document.getElementById('nearTurnAlertEyebrow');
+
+  if (!alert || !title || !message || !positionBadge || !eyebrow) {
+    return;
+  }
+
+  if (!isNearTurnState(queueState, position)) {
+    alert.classList.add('hidden');
+    alert.setAttribute('data-priority', 'normal');
+    positionBadge.textContent = '';
+    return;
+  }
+
+  const config = getNearTurnAlertConfig(position);
+
+  eyebrow.textContent = position === 1 ? 'Immediate attention' : 'Near-turn alert';
+  title.textContent = config.title;
+  message.textContent = config.message;
+  positionBadge.textContent = `Position ${position}`;
+  alert.setAttribute('data-priority', config.priority);
+  alert.classList.remove('hidden');
 }
 
 function getQueueEmptyStateConfig(emptyState) {
@@ -348,6 +403,7 @@ async function loadQueuePage() {
   if (!clinicId || !date) {
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
+    renderNearTurnAlert(QUEUE_STATES.UNAVAILABLE, null);
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
     return;
   }
@@ -377,6 +433,7 @@ async function loadQueuePage() {
 
     renderQueueState(queueState);
     renderQueueMetrics(queueData.queue_entry, queueData.position, queueState);
+    renderNearTurnAlert(queueState, queueData.position);
 
     if (!queueData.is_in_queue) {
       renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_IN_QUEUE);
@@ -388,6 +445,7 @@ async function loadQueuePage() {
     console.error(error);
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
+    renderNearTurnAlert(QUEUE_STATES.UNAVAILABLE, null);
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
   }
 }

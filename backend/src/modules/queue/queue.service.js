@@ -1,6 +1,12 @@
 const supabase = require('../../lib/supabaseClient');
 
 const WAIT_MINUTES_PER_PATIENT = 15;
+
+// Near-turn is a simple Sprint 2 in-app rule.
+// A patient is considered near their turn when they are close in position
+// or their estimated wait is short enough to warn them to be ready.
+const NEAR_TURN_POSITION_THRESHOLD = 3;
+const NEAR_TURN_WAIT_MINUTES_THRESHOLD = 15;
 const ALLOWED_QUEUE_STATUSES = ['waiting', 'in_consultation', 'complete', 'cancelled'];
 
 // This keeps status movement controlled.
@@ -166,6 +172,56 @@ function mapQueueEntriesForPatient(entries, patientId) {
     appointment_time: formatAppointmentTimeLabel(entry),
     is_current_patient: String(entry.patient_id) === String(patientId)
   }));
+}
+
+/**
+ * Derives the simple Sprint 2 near-turn notification state.
+ * We do not store this in the database because the layout spec says
+ * near-turn should be derived from live queue data.
+ *
+ * Rules:
+ * - only waiting patients can be "near turn"
+ * - near turn becomes true when:
+ *   - live position is 3 or less, or
+ *   - estimated wait is 15 minutes or less
+ */
+function buildNearTurnStatus({ status, position, estimatedWaitMinutes }) {
+  // Once the patient is no longer waiting, the near-turn banner should not show.
+  if (status !== 'waiting') {
+    return {
+      near_turn: false,
+      near_turn_message: null
+    };
+  }
+
+  const hasNearPosition =
+    typeof position === 'number' && position > 0 && position <= NEAR_TURN_POSITION_THRESHOLD;
+
+  const hasNearWait =
+    typeof estimatedWaitMinutes === 'number' &&
+    estimatedWaitMinutes >= 0 &&
+    estimatedWaitMinutes <= NEAR_TURN_WAIT_MINUTES_THRESHOLD;
+
+  const isNearTurn = hasNearPosition || hasNearWait;
+
+  if (!isNearTurn) {
+    return {
+      near_turn: false,
+      near_turn_message: null
+    };
+  }
+
+  if (position === 1) {
+    return {
+      near_turn: true,
+      near_turn_message: 'It is almost your turn. Please be ready now.'
+    };
+  }
+
+  return {
+    near_turn: true,
+    near_turn_message: 'Your turn is coming up soon. Please stay nearby.'
+  };
 }
 
 /**
@@ -465,12 +521,13 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   const queueSummary = buildQueueSummary(queueEntries);
   const mappedQueueEntries = mapQueueEntriesForPatient(queueEntries, patientId);
 
-  // If the patient is not currently in this queue, still return the queue list
-  // and summary so the page can render a useful empty state.
+  // If the patient is not in the queue, return a clean empty state.
   if (!patientEntry) {
     return {
       is_in_queue: false,
       position: null,
+      near_turn: false,
+      near_turn_message: null,
       queue_entry: null,
       queue_summary: queueSummary,
       queue_entries: mappedQueueEntries
@@ -485,9 +542,18 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
     ? 0
     : (position - 1) * WAIT_MINUTES_PER_PATIENT;
 
+  // Derive the near-turn banner state from the live queue data.
+  const nearTurnStatus = buildNearTurnStatus({
+    status: patientEntry.status,
+    position,
+    estimatedWaitMinutes
+  });
+
   return {
     is_in_queue: true,
     position,
+    near_turn: nearTurnStatus.near_turn,
+    near_turn_message: nearTurnStatus.near_turn_message,
     queue_entry: {
       ...buildQueueEntryResponse(patientEntry, estimatedWaitMinutes),
       appointment_time: patientEntry.appointment?.slot?.start_time || null,

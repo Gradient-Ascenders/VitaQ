@@ -1,4 +1,5 @@
 const SOUTH_AFRICA_TIME_ZONE = 'Africa/Johannesburg';
+const SOUTH_AFRICA_UTC_OFFSET = '+02:00';
 
 function getSouthAfricaDateTimeParts(now = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -48,7 +49,44 @@ function isBookableSlot(slot, now = new Date()) {
   return true;
 }
 
+function parseDateString(dateString) {
+  const [year, month, day] = String(dateString || '')
+    .split('-')
+    .map((part) => Number(part));
+
+  if (!year || !month || !day) {
+    throw new Error('Invalid date string.');
+  }
+
+  return { year, month, day };
+}
+
+function addDaysToDateString(dateString, dayOffset) {
+  const { year, month, day } = parseDateString(dateString);
+  const utcDate = new Date(Date.UTC(year, month - 1, day + dayOffset));
+
+  return [
+    utcDate.getUTCFullYear(),
+    String(utcDate.getUTCMonth() + 1).padStart(2, '0'),
+    String(utcDate.getUTCDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function getDayOfWeekFromDateString(dateString) {
+  const { year, month, day } = parseDateString(dateString);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+function createSouthAfricaDateTime(dateString, timeString = '00:00:00') {
+  return new Date(`${dateString}T${timeString}${SOUTH_AFRICA_UTC_OFFSET}`);
+}
+
 module.exports = {
+  SOUTH_AFRICA_TIME_ZONE,
+  SOUTH_AFRICA_UTC_OFFSET,
+  addDaysToDateString,
+  createSouthAfricaDateTime,
+  getDayOfWeekFromDateString,
   getSouthAfricaDateTimeParts,
   isBookableSlot
 };

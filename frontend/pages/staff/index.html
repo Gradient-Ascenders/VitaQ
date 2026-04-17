@@ -109,10 +109,10 @@
               </a>
 
               <a
-                href="#staff-walk-in-form"
+                href="#staff-slot-scheduling"
                 class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
               >
-                Add walk-in
+                Schedule slots
               </a>
             </div>
           </section>
@@ -224,6 +224,190 @@
               Add a walk-in patient or return later when new bookings arrive for the clinic.
             </p>
           </section>
+        </div>
+      </section>
+
+      <section
+        id="staff-slot-scheduling"
+        class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10"
+        aria-labelledby="staff-slot-scheduling-heading"
+      >
+        <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="max-w-2xl">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Slot scheduling
+              </p>
+              <h2 id="staff-slot-scheduling-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Recurring appointment slots
+              </h2>
+              <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+                Create reusable clinic slot templates once, then generate the next 14 days of appointment availability when you are ready.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 lg:items-end">
+              <p id="slotTemplateSummary" class="text-sm text-[#8b93b8]">Loading slot templates...</p>
+              <button
+                id="generateSlotsButton"
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Generate next 14 days
+              </button>
+            </div>
+          </div>
+
+          <div id="slotTemplateFeedback" class="mt-6 hidden" aria-live="polite"></div>
+
+          <section class="mt-8 grid gap-4 md:grid-cols-3">
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Active templates</p>
+              <p id="slotTemplateActiveCount" class="mt-3 text-3xl font-semibold text-[#7dcfff]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Total templates</p>
+              <p id="slotTemplateTotalCount" class="mt-3 text-3xl font-semibold text-[#e0e5ff]">0</p>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-5 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Generation horizon</p>
+              <p id="slotTemplateHorizon" class="mt-3 text-3xl font-semibold text-[#bb9af7]">14 days</p>
+            </article>
+          </section>
+
+          <div class="mt-8 grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+            <section class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Template editor
+              </p>
+              <h3 id="slotTemplateFormTitle" class="mt-3 text-2xl font-bold text-[#e0e5ff]">
+                Add recurring slot template
+              </h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                Define a weekday, time range, capacity, and availability state for the clinic schedule.
+              </p>
+
+              <form id="slotTemplateForm" class="mt-8 grid gap-5">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-[#c0caf5]">Day of week</span>
+                  <select
+                    id="slotTemplateDayOfWeek"
+                    name="dayOfWeek"
+                    class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                  >
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                    <option value="0">Sunday</option>
+                  </select>
+                </label>
+
+                <div class="grid gap-5 md:grid-cols-2">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-[#c0caf5]">Start time</span>
+                    <input
+                      id="slotTemplateStartTime"
+                      name="startTime"
+                      type="time"
+                      required
+                      class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                    />
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-[#c0caf5]">End time</span>
+                    <input
+                      id="slotTemplateEndTime"
+                      name="endTime"
+                      type="time"
+                      required
+                      class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                    />
+                  </label>
+                </div>
+
+                <div class="grid gap-5 md:grid-cols-2">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-[#c0caf5]">Capacity</span>
+                    <input
+                      id="slotTemplateCapacity"
+                      name="capacity"
+                      type="number"
+                      min="1"
+                      step="1"
+                      required
+                      value="5"
+                      class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                    />
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-[#c0caf5]">Template status</span>
+                    <select
+                      id="slotTemplateStatus"
+                      name="status"
+                      class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7]"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    id="slotTemplateSubmitButton"
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
+                  >
+                    Save template
+                  </button>
+
+                  <button
+                    id="slotTemplateCancelEditButton"
+                    type="button"
+                    class="hidden inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+                  >
+                    Cancel edit
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#bb9af7]">
+                    Current templates
+                  </p>
+                  <h3 class="mt-3 text-2xl font-bold text-[#e0e5ff]">
+                    Weekly slot pattern
+                  </h3>
+                </div>
+
+                <p id="slotTemplateListCaption" class="text-sm text-[#8b93b8]">Loading templates...</p>
+              </div>
+
+              <section
+                id="slotTemplateEmptyState"
+                class="hidden mt-6 rounded-3xl border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-10 text-center"
+              >
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                  No templates yet
+                </p>
+                <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                  Create your first recurring slot template to automate clinic appointment availability.
+                </p>
+              </section>
+
+              <div id="slotTemplateList" class="mt-6 grid gap-4"></div>
+            </section>
+          </div>
         </div>
       </section>
 

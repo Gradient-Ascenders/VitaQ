@@ -1,6 +1,22 @@
 const supabase = require('../../lib/supabaseClient');
 
 const STAFF_REQUEST_STATUSES = ['approved', 'rejected'];
+const STAFF_REQUEST_SELECT_FIELDS = `
+  id,
+  user_id,
+  full_name,
+  clinic_id,
+  staff_id,
+  status,
+  reviewed_by,
+  reviewed_at,
+  created_at,
+  updated_at,
+  clinic:clinics (
+    id,
+    name
+  )
+`;
 
 /**
  * Creates a standard service error with an HTTP status code.
@@ -21,18 +37,7 @@ function createServiceError(message, statusCode = 400) {
 async function fetchPendingStaffRequests() {
   const { data, error } = await supabase
     .from('staff_requests')
-    .select(`
-      id,
-      user_id,
-      full_name,
-      clinic_id,
-      staff_id,
-      status,
-      reviewed_by,
-      reviewed_at,
-      created_at,
-      updated_at
-    `)
+    .select(STAFF_REQUEST_SELECT_FIELDS)
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
 
@@ -50,18 +55,7 @@ async function fetchPendingStaffRequests() {
 async function fetchStaffRequestById(requestId) {
   const { data, error } = await supabase
     .from('staff_requests')
-    .select(`
-      id,
-      user_id,
-      full_name,
-      clinic_id,
-      staff_id,
-      status,
-      reviewed_by,
-      reviewed_at,
-      created_at,
-      updated_at
-    `)
+    .select(STAFF_REQUEST_SELECT_FIELDS)
     .eq('id', requestId)
     .single();
 
@@ -109,6 +103,54 @@ async function approveUserProfile(staffRequest) {
 }
 
 /**
+ * Updates one staff request to the reviewed status selected by the admin.
+ * This is used for both approve and reject actions.
+ */
+async function updateReviewedStaffRequest({ requestId, adminId, status, reviewedAt }) {
+  const { data: updatedRequest, error: updateError } = await supabase
+    .from('staff_requests')
+    .update({
+      status,
+      reviewed_by: adminId,
+      reviewed_at: reviewedAt,
+      updated_at: reviewedAt
+    })
+    .eq('id', requestId)
+    .select(STAFF_REQUEST_SELECT_FIELDS)
+    .single();
+
+  if (updateError || !updatedRequest) {
+    throw createServiceError('Failed to update staff registration request.', 500);
+  }
+
+  return updatedRequest;
+}
+
+/**
+ * Restores a request back to pending if approval cannot finish safely.
+ * This keeps the request and profile data aligned for the current sprint.
+ */
+async function rollbackStaffRequestToPending(requestId) {
+  const rollbackTime = new Date().toISOString();
+  const { error } = await supabase
+    .from('staff_requests')
+    .update({
+      status: 'pending',
+      reviewed_by: null,
+      reviewed_at: null,
+      updated_at: rollbackTime
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw createServiceError(
+      'Failed to restore the staff registration request after approval failed.',
+      500
+    );
+  }
+}
+
+/**
  * Approves or rejects a staff registration request.
  *
  * On approval:
@@ -135,44 +177,47 @@ async function reviewStaffRequest({ requestId, adminId, status }) {
   }
 
   let approvedProfile = null;
-
-  // Only approval changes the user role.
-  // Rejection should not give the requester staff access.
-  if (status === 'approved') {
-    approvedProfile = await approveUserProfile(staffRequest);
-  }
-
   const reviewedAt = new Date().toISOString();
 
-  const { data: updatedRequest, error: updateError } = await supabase
-    .from('staff_requests')
-    .update({
+  if (status === 'rejected') {
+    const rejectedRequest = await updateReviewedStaffRequest({
+      requestId,
+      adminId,
       status,
-      reviewed_by: adminId,
-      reviewed_at: reviewedAt,
-      updated_at: reviewedAt
-    })
-    .eq('id', requestId)
-    .select(`
-      id,
-      user_id,
-      full_name,
-      clinic_id,
-      staff_id,
-      status,
-      reviewed_by,
-      reviewed_at,
-      created_at,
-      updated_at
-    `)
-    .single();
+      reviewedAt
+    });
 
-  if (updateError || !updatedRequest) {
-    throw createServiceError('Failed to update staff registration request.', 500);
+    return {
+      staff_request: rejectedRequest,
+      profile: null
+    };
+  }
+
+  const approvedRequest = await updateReviewedStaffRequest({
+    requestId,
+    adminId,
+    status,
+    reviewedAt
+  });
+
+  try {
+    // Only approval changes the user role.
+    approvedProfile = await approveUserProfile(staffRequest);
+  } catch (error) {
+    try {
+      await rollbackStaffRequestToPending(requestId);
+    } catch (rollbackError) {
+      throw createServiceError(
+        `${error.message} Rollback also failed: ${rollbackError.message}`,
+        500
+      );
+    }
+
+    throw error;
   }
 
   return {
-    staff_request: updatedRequest,
+    staff_request: approvedRequest,
     profile: approvedProfile
   };
 }

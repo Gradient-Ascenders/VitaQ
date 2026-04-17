@@ -41,6 +41,10 @@ describe('fetchPendingStaffRequests', () => {
         user_id: 'user-1',
         full_name: 'Tyron Test',
         clinic_id: 'clinic-1',
+        clinic: {
+          id: 'clinic-1',
+          name: 'Khayelitsha Community Day Centre'
+        },
         staff_id: 'STAFF-001',
         status: 'pending',
         reviewed_by: null,
@@ -189,7 +193,7 @@ describe('reviewStaffRequest', () => {
       updated_at: '2026-04-16T10:00:00Z'
     };
 
-    const updatedRequest = {
+    const approvedRequest = {
       ...pendingRequest,
       status: 'approved',
       reviewed_by: 'admin-1',
@@ -198,8 +202,8 @@ describe('reviewStaffRequest', () => {
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedProfile, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: updatedRequest, error: null }));
+      .mockReturnValueOnce(createMockQuery({ data: approvedRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedProfile, error: null }));
 
     const result = await reviewStaffRequest({
       requestId: 'request-1',
@@ -219,8 +223,9 @@ describe('reviewStaffRequest', () => {
       clinic_id: 'clinic-1'
     });
 
-    expect(supabase.from).toHaveBeenCalledWith('profiles');
     expect(supabase.from).toHaveBeenCalledWith('staff_requests');
+    expect(supabase.from).toHaveBeenCalledWith('profiles');
+    expect(supabase.from).toHaveBeenCalledTimes(3);
   });
 
   test('rejects a pending request without updating the user profile', async () => {
@@ -272,14 +277,25 @@ describe('reviewStaffRequest', () => {
       status: 'pending'
     };
 
+    const approvedRequest = {
+      ...pendingRequest,
+      status: 'approved',
+      reviewed_by: 'admin-1',
+      reviewed_at: '2026-04-16T10:00:00Z'
+    };
+
+    const approvedUpdateQuery = createMockQuery({ data: approvedRequest, error: null });
+    const failedProfileQuery = createMockQuery({
+      data: null,
+      error: { message: 'Profile update failed' }
+    });
+    const rollbackQuery = createMockQuery({ data: null, error: null });
+
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
-      .mockReturnValueOnce(
-        createMockQuery({
-          data: null,
-          error: { message: 'Profile update failed' }
-        })
-      );
+      .mockReturnValueOnce(approvedUpdateQuery)
+      .mockReturnValueOnce(failedProfileQuery)
+      .mockReturnValueOnce(rollbackQuery);
 
     await expect(
       reviewStaffRequest({
@@ -291,9 +307,17 @@ describe('reviewStaffRequest', () => {
       message: 'Failed to update approved staff profile.',
       statusCode: 500
     });
+
+    expect(rollbackQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'pending',
+        reviewed_by: null,
+        reviewed_at: null
+      })
+    );
   });
 
-  test('throws an error when staff request update fails', async () => {
+  test('throws an error when approving the staff request row fails', async () => {
     const pendingRequest = {
       id: 'request-1',
       user_id: 'user-1',
@@ -302,15 +326,8 @@ describe('reviewStaffRequest', () => {
       status: 'pending'
     };
 
-    const approvedProfile = {
-      user_id: 'user-1',
-      role: 'staff',
-      clinic_id: 'clinic-1'
-    };
-
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedProfile, error: null }))
       .mockReturnValueOnce(
         createMockQuery({
           data: null,
@@ -326,6 +343,54 @@ describe('reviewStaffRequest', () => {
       })
     ).rejects.toMatchObject({
       message: 'Failed to update staff registration request.',
+      statusCode: 500
+    });
+
+    expect(supabase.from).not.toHaveBeenCalledWith('profiles');
+    expect(supabase.from).toHaveBeenCalledTimes(2);
+  });
+
+  test('throws a combined error when profile update and rollback both fail', async () => {
+    const pendingRequest = {
+      id: 'request-1',
+      user_id: 'user-1',
+      clinic_id: 'clinic-1',
+      staff_id: 'STAFF-001',
+      status: 'pending'
+    };
+
+    const approvedRequest = {
+      ...pendingRequest,
+      status: 'approved',
+      reviewed_by: 'admin-1',
+      reviewed_at: '2026-04-16T10:00:00Z'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedRequest, error: null }))
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Profile update failed' }
+        })
+      )
+      .mockReturnValueOnce(
+        createMockQuery({
+          data: null,
+          error: { message: 'Rollback update failed' }
+        })
+      );
+
+    await expect(
+      reviewStaffRequest({
+        requestId: 'request-1',
+        adminId: 'admin-1',
+        status: 'approved'
+      })
+    ).rejects.toMatchObject({
+      message:
+        'Failed to update approved staff profile. Rollback also failed: Failed to restore the staff registration request after approval failed.',
       statusCode: 500
     });
   });

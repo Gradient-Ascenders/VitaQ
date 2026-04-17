@@ -1007,8 +1007,6 @@ test('orders live queue positions by queue number, not appointment time', async 
     expect(result).toEqual({
       is_in_queue: false,
       position: null,
-      near_turn: false,
-      near_turn_message: null,
       queue_entry: null,
       queue_summary: {
         total: 1,

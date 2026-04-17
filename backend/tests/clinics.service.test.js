@@ -269,6 +269,57 @@ describe("fetchClinics", () => {
     expect(result.map((clinic) => clinic.available_slots_count)).toEqual([1, 1, 0]);
   });
 
+  test("counts same-day slots using South Africa time consistently", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.parse("2026-04-17T22:30:00.000Z"));
+
+    try {
+      clinicQueryResult = {
+        data: [
+          {
+            id: "clinic-1",
+            name: "Berario Clinic",
+            province: "Gauteng",
+            district: "City of Johannesburg",
+            area: "Randburg",
+            facility_type: "Clinic",
+            address: "12 Example St",
+            services_offered: "General;Child health",
+            latitude: null,
+            longitude: null,
+          },
+        ],
+        error: null,
+      };
+
+      slotQueryResult = {
+        data: [
+          {
+            clinic_id: "clinic-1",
+            date: "2026-04-18",
+            end_time: "00:15:00",
+            capacity: 3,
+            booked_count: 0,
+          },
+          {
+            clinic_id: "clinic-1",
+            date: "2026-04-18",
+            end_time: "01:15:00",
+            capacity: 3,
+            booked_count: 0,
+          },
+        ],
+        error: null,
+      };
+
+      const result = await fetchClinics();
+
+      expect(result[0].available_slots_count).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test("throws a clean error when supabase returns an error", async () => {
     clinicQueryResult = {
       data: null,

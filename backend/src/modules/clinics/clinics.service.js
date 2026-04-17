@@ -1,25 +1,6 @@
 // Import the shared Supabase client
 const supabase = require('../../lib/supabaseClient');
-
-function isFutureAvailableSlot(slot, now = new Date()) {
-  const today = now.toISOString().split('T')[0];
-  const currentTime = now.toTimeString().split(' ')[0];
-  const remainingCapacity = (slot.capacity || 0) - (slot.booked_count || 0);
-
-  if (remainingCapacity <= 0) {
-    return false;
-  }
-
-  if (slot.date < today) {
-    return false;
-  }
-
-  if (slot.date === today && slot.end_time <= currentTime) {
-    return false;
-  }
-
-  return true;
-}
+const { isBookableSlot } = require('../slots/slotAvailability');
 
 function sortClinicsByAvailability(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
@@ -52,7 +33,7 @@ async function fetchAvailableSlotCounts(clinicIds) {
   const now = new Date();
 
   return (data || []).reduce((counts, slot) => {
-    if (!isFutureAvailableSlot(slot, now)) {
+    if (!isBookableSlot(slot, now)) {
       return counts;
     }
 

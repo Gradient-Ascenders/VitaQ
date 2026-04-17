@@ -10,65 +10,42 @@ const ARRIVAL_TYPES = {
   WALK_IN: 'walk_in'
 };
 
-const STAFF_CLINIC = {
-  name: 'Khayelitsha Community Day Centre'
+// Keep the frontend status options aligned with the backend workflow.
+// Same-status is allowed in the UI so clicking save without a change does not break anything.
+const ALLOWED_STATUS_OPTIONS = {
+  waiting: ['waiting', 'in_consultation', 'cancelled'],
+  in_consultation: ['in_consultation', 'complete', 'cancelled'],
+  complete: ['complete'],
+  cancelled: ['cancelled']
 };
 
-const MOCK_QUEUE_ENTRIES = [
-  {
-    id: 'queue-001',
-    queueNumber: 'Q001',
-    patientName: 'Anele Jacobs',
-    arrivalType: ARRIVAL_TYPES.APPOINTMENT,
-    visitType: 'General consultation',
-    timeLabel: '08:00',
-    status: STAFF_QUEUE_STATUSES.COMPLETE
-  },
-  {
-    id: 'queue-002',
-    queueNumber: 'Q002',
-    patientName: 'Lerato Maseko',
-    arrivalType: ARRIVAL_TYPES.APPOINTMENT,
-    visitType: 'Medication collection',
-    timeLabel: '08:30',
-    status: STAFF_QUEUE_STATUSES.IN_CONSULTATION
-  },
-  {
-    id: 'queue-003',
-    queueNumber: 'Q003',
-    patientName: 'Themba Ndlovu',
-    arrivalType: ARRIVAL_TYPES.APPOINTMENT,
-    visitType: 'Follow-up review',
-    timeLabel: '09:00',
-    status: STAFF_QUEUE_STATUSES.WAITING
-  },
-  {
-    id: 'queue-004',
-    queueNumber: 'Q004',
-    patientName: 'Nosipho Dlamini',
-    arrivalType: ARRIVAL_TYPES.APPOINTMENT,
-    visitType: 'Immunisation',
-    timeLabel: '09:30',
-    status: STAFF_QUEUE_STATUSES.WAITING
-  },
-  {
-    id: 'queue-005',
-    queueNumber: 'Q005',
-    patientName: 'Sipho Khumalo',
-    arrivalType: ARRIVAL_TYPES.WALK_IN,
-    visitType: 'General consultation',
-    timeLabel: '09:45',
-    status: STAFF_QUEUE_STATUSES.WAITING
-  }
-];
-
+// Shared page state for the live staff dashboard.
 const staffState = {
-  queueEntries: MOCK_QUEUE_ENTRIES.map((entry) => ({ ...entry })),
+  clinic: null,
+  queueDate: '',
+  queueEntries: [],
+  queueSummary: {
+    total: 0,
+    waiting: 0,
+    in_consultation: 0,
+    complete: 0,
+    cancelled: 0
+  },
   feedback: null,
-  actionInProgressId: null,
-  walkInsAdded: 0
+  actionInProgressId: null
 };
 
+// Build today's local date in YYYY-MM-DD format.
+function getTodayDateString() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+// Safely update text content when the element exists.
 function setTextContent(elementId, value) {
   const element = document.getElementById(elementId);
 
@@ -79,6 +56,7 @@ function setTextContent(elementId, value) {
   element.textContent = value;
 }
 
+// Escape untrusted text before injecting it into HTML strings.
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -120,32 +98,6 @@ function formatArrivalTypeLabel(arrivalType) {
   return arrivalType === ARRIVAL_TYPES.WALK_IN ? 'Walk-in' : 'Appointment';
 }
 
-function getTimeSortValue(timeLabel) {
-  if (!timeLabel) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  const [hours, minutes] = timeLabel.split(':').map(Number);
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  return (hours * 60) + minutes;
-}
-
-function getSortedQueueEntries() {
-  return [...staffState.queueEntries].sort((leftEntry, rightEntry) => {
-    const timeDifference = getTimeSortValue(leftEntry.timeLabel) - getTimeSortValue(rightEntry.timeLabel);
-
-    if (timeDifference !== 0) {
-      return timeDifference;
-    }
-
-    return leftEntry.queueNumber.localeCompare(rightEntry.queueNumber);
-  });
-}
-
 function getArrivalTypeClasses(arrivalType) {
   if (arrivalType === ARRIVAL_TYPES.WALK_IN) {
     return 'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]';
@@ -154,43 +106,59 @@ function getArrivalTypeClasses(arrivalType) {
   return 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]';
 }
 
-function getQueueSummaryCounts() {
-  return staffState.queueEntries.reduce(
-    (counts, entry) => {
-      counts.total += 1;
+// Format queue numbers consistently for the staff table.
+function formatQueueNumber(queueNumber) {
+  const numericQueueNumber = Number(queueNumber);
 
-      if (entry.status === STAFF_QUEUE_STATUSES.WAITING) {
-        counts.waiting += 1;
-      }
+  if (Number.isNaN(numericQueueNumber)) {
+    return String(queueNumber || 'N/A');
+  }
 
-      if (entry.status === STAFF_QUEUE_STATUSES.IN_CONSULTATION) {
-        counts.inConsultation += 1;
-      }
-
-      if (entry.status === STAFF_QUEUE_STATUSES.COMPLETE) {
-        counts.complete += 1;
-      }
-
-      if (entry.arrivalType === ARRIVAL_TYPES.WALK_IN) {
-        counts.walkIns += 1;
-      }
-
-      return counts;
-    },
-    {
-      total: 0,
-      waiting: 0,
-      inConsultation: 0,
-      complete: 0,
-      walkIns: 0
-    }
-  );
+  return `Q${String(numericQueueNumber).padStart(3, '0')}`;
 }
 
+// Format appointment time values returned by the backend.
+function formatAppointmentTime(startTime, endTime, source) {
+  if (startTime && endTime) {
+    return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`;
+  }
+
+  if (startTime) {
+    return startTime.slice(0, 5);
+  }
+
+  if (source === ARRIVAL_TYPES.WALK_IN) {
+    return 'Walk-in';
+  }
+
+  return 'N/A';
+}
+
+function formatQueueDate(dateString) {
+  if (!dateString) {
+    return 'today';
+  }
+
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-ZA', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+// Find the next patient who is still waiting.
 function getNextWaitingEntry() {
-  return getSortedQueueEntries().find((entry) => entry.status === STAFF_QUEUE_STATUSES.WAITING) || null;
+  return staffState.queueEntries.find((entry) => entry.status === STAFF_QUEUE_STATUSES.WAITING) || null;
 }
 
+// Count walk-ins from the current queue entries.
+function getWalkInCount(entries) {
+  return entries.filter((entry) => entry.source === ARRIVAL_TYPES.WALK_IN).length;
+}
+
+// Show or hide the main dashboard feedback card.
 function renderFeedback() {
   const feedback = document.getElementById('staffActionFeedback');
 
@@ -214,6 +182,8 @@ function renderFeedback() {
   feedback.textContent = staffState.feedback.message;
 }
 
+// Show or hide the walk-in feedback box.
+// Walk-in submission remains a placeholder until that story is connected.
 function renderWalkInFormFeedback(type, message) {
   const feedback = document.getElementById('walkInFormFeedback');
 
@@ -236,38 +206,57 @@ function renderWalkInFormFeedback(type, message) {
   feedback.textContent = message;
 }
 
+// Render the clinic snapshot card on the right.
 function renderClinicSnapshot() {
   const nextWaitingEntry = getNextWaitingEntry();
+  const clinicName = staffState.clinic?.name || 'Assigned clinic';
 
-  setTextContent('staffClinicName', STAFF_CLINIC.name);
-  setTextContent('walkInTodayCount', String(staffState.walkInsAdded));
+  setTextContent('staffClinicName', clinicName);
+  setTextContent('walkInTodayCount', String(getWalkInCount(staffState.queueEntries)));
 
   if (!nextWaitingEntry) {
     setTextContent('nextWaitingPatient', 'No one waiting');
-    setTextContent('nextWaitingSummary', 'All current patients have either been completed, cancelled, or are already in consultation.');
+    setTextContent(
+      'nextWaitingSummary',
+      'All current patients have either been completed, cancelled, or are already in consultation.'
+    );
     return;
   }
 
-  setTextContent('nextWaitingPatient', `${nextWaitingEntry.patientName} (${nextWaitingEntry.queueNumber})`);
-  setTextContent('nextWaitingSummary', `${nextWaitingEntry.visitType} at ${nextWaitingEntry.timeLabel} is next in the waiting queue.`);
-}
-
-function renderSummaryCards() {
-  const counts = getQueueSummaryCounts();
-
-  setTextContent('queueTotalCount', String(counts.total));
-  setTextContent('queueWaitingCount', String(counts.waiting));
-  setTextContent('queueInConsultationCount', String(counts.inConsultation));
-  setTextContent('queueCompletedCount', String(counts.complete));
-  setTextContent('queueWalkInCount', String(counts.walkIns));
   setTextContent(
-    'queueManagementSummary',
-    counts.total === 0
-      ? 'No patients are currently in the queue'
-      : `${counts.total} patient${counts.total === 1 ? '' : 's'} currently visible in today's queue`
+    'nextWaitingPatient',
+    `${buildPatientLabel(nextWaitingEntry)} (${formatQueueNumber(nextWaitingEntry.queue_number)})`
+  );
+  setTextContent(
+    'nextWaitingSummary',
+    `${formatArrivalTypeLabel(nextWaitingEntry.source)} patient at ${formatAppointmentTime(
+      nextWaitingEntry.appointment_time,
+      nextWaitingEntry.appointment_end_time,
+      nextWaitingEntry.source
+    )} is next in the waiting queue.`
   );
 }
 
+// Render the summary metric cards above the table.
+function renderSummaryCards() {
+  const counts = staffState.queueSummary;
+  const walkInCount = getWalkInCount(staffState.queueEntries);
+  const total = Number(counts?.total || 0);
+
+  setTextContent('queueTotalCount', String(total));
+  setTextContent('queueWaitingCount', String(counts?.waiting || 0));
+  setTextContent('queueInConsultationCount', String(counts?.in_consultation || 0));
+  setTextContent('queueCompletedCount', String(counts?.complete || 0));
+  setTextContent('queueWalkInCount', String(walkInCount));
+  setTextContent(
+    'queueManagementSummary',
+    total === 0
+      ? `No patients are currently in the queue for ${formatQueueDate(staffState.queueDate)}`
+      : `${total} patient${total === 1 ? '' : 's'} currently visible for ${formatQueueDate(staffState.queueDate)}`
+  );
+}
+
+// Toggle the empty-state section depending on whether queue entries exist.
 function renderEmptyState() {
   const emptyState = document.getElementById('staffQueueEmptyState');
   const table = document.getElementById('staffQueueTable');
@@ -281,12 +270,32 @@ function renderEmptyState() {
   table.classList.toggle('hidden', isEmpty);
 }
 
+// Limit the frontend status choices to sensible workflow options.
 function buildStatusOptions(currentStatus) {
-  return Object.values(STAFF_QUEUE_STATUSES)
-    .map((status) => `<option value="${status}" ${status === currentStatus ? 'selected' : ''}>${formatStatusLabel(status)}</option>`)
+  const allowedStatuses = ALLOWED_STATUS_OPTIONS[currentStatus] || [currentStatus];
+
+  return allowedStatuses
+    .map(
+      (status) =>
+        `<option value="${status}" ${status === currentStatus ? 'selected' : ''}>${formatStatusLabel(status)}</option>`
+    )
     .join('');
 }
 
+// Build a staff-friendly patient label from API data.
+function buildPatientLabel(entry) {
+  if (entry.patient_label) {
+    return entry.patient_label;
+  }
+
+  if (entry.patient_id) {
+    return `Patient ${String(entry.patient_id).slice(-6)}`;
+  }
+
+  return 'Patient';
+}
+
+// Render the main staff queue table from live backend data.
 function renderQueueTable() {
   const tableBody = document.getElementById('staffQueueTableBody');
 
@@ -296,35 +305,34 @@ function renderQueueTable() {
 
   tableBody.innerHTML = '';
 
-  getSortedQueueEntries().forEach((entry) => {
+  staffState.queueEntries.forEach((entry) => {
     const isBusy = staffState.actionInProgressId === entry.id;
-    const patientName = escapeHtml(entry.patientName);
-    const visitType = escapeHtml(entry.visitType);
+    const patientLabel = escapeHtml(buildPatientLabel(entry));
     const row = document.createElement('article');
 
     row.className = 'grid gap-5 px-5 py-5 lg:grid-cols-[0.9fr_1.25fr_0.95fr_0.95fr_0.95fr_1.35fr] lg:items-center';
     row.innerHTML = `
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Queue no.</p>
-        <p class="text-sm font-semibold text-[#e0e5ff]">${entry.queueNumber}</p>
+        <p class="text-sm font-semibold text-[#e0e5ff]">${formatQueueNumber(entry.queue_number)}</p>
       </section>
 
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Patient</p>
-        <p class="text-sm font-semibold text-[#e0e5ff]">${patientName}</p>
-        <p class="text-xs text-[#8b93b8]">${visitType}</p>
+        <p class="text-sm font-semibold text-[#e0e5ff]">${patientLabel}</p>
+        <p class="text-xs text-[#8b93b8]">${escapeHtml(entry.patient_id || 'Patient record')}</p>
       </section>
 
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Arrival type</p>
-        <p class="inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold ${getArrivalTypeClasses(entry.arrivalType)}">
-          ${formatArrivalTypeLabel(entry.arrivalType)}
+        <p class="inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold ${getArrivalTypeClasses(entry.source)}">
+          ${formatArrivalTypeLabel(entry.source)}
         </p>
       </section>
 
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Time</p>
-        <p class="text-sm text-[#c0caf5]">${entry.timeLabel}</p>
+        <p class="text-sm text-[#c0caf5]">${formatAppointmentTime(entry.appointment_time, entry.appointment_end_time, entry.source)}</p>
       </section>
 
       <section class="space-y-2">
@@ -364,6 +372,7 @@ function renderQueueTable() {
   });
 }
 
+// Re-render all live dashboard sections together.
 function refreshStaffDashboard() {
   renderFeedback();
   renderClinicSnapshot();
@@ -372,11 +381,84 @@ function refreshStaffDashboard() {
   renderQueueTable();
 }
 
-function createStatusChangeMessage(patientName, status) {
-  return `${patientName} updated to ${formatStatusLabel(status).toLowerCase()}.`;
+// Safely parse JSON without crashing if the response body is empty.
+async function readJsonSafely(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Failed to parse staff queue JSON:', error);
+    return {};
+  }
 }
 
-async function updateQueueEntryStatus(entryId, nextStatus) {
+// Load the live staff queue from the backend.
+// This assumes the backend identifies the correct clinic from the logged-in approved staff user.
+async function loadStaffQueue(session, keepExistingFeedback = false) {
+  const queueDate = getTodayDateString();
+
+  const response = await fetch(`/api/queue/staff?date=${encodeURIComponent(queueDate)}`, {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`
+    }
+  });
+
+  const payload = await readJsonSafely(response);
+
+  if (response.status === 401) {
+    window.location.href = '/login';
+    return false;
+  }
+
+  if (response.status === 403) {
+    staffState.feedback = {
+      type: 'error',
+      message: payload.message || 'Staff access is required.'
+    };
+    staffState.queueEntries = [];
+    staffState.queueSummary = {
+      total: 0,
+      waiting: 0,
+      in_consultation: 0,
+      complete: 0,
+      cancelled: 0
+    };
+    refreshStaffDashboard();
+    return false;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload.message || 'Failed to load staff queue.');
+  }
+
+  const queueData = payload.data || {};
+
+  staffState.clinic = queueData.clinic || null;
+  staffState.queueDate = queueData.queue_date || queueDate;
+  staffState.queueEntries = Array.isArray(queueData.queue_entries) ? queueData.queue_entries : [];
+  staffState.queueSummary = queueData.queue_summary || {
+    total: 0,
+    waiting: 0,
+    in_consultation: 0,
+    complete: 0,
+    cancelled: 0
+  };
+
+  if (!keepExistingFeedback) {
+    staffState.feedback = null;
+  }
+
+  refreshStaffDashboard();
+  return true;
+}
+
+// Update one queue entry status through the real backend endpoint.
+async function updateQueueEntryStatus(entryId, nextStatus, session) {
   const entry = staffState.queueEntries.find((item) => item.id === entryId);
 
   if (!entry || staffState.actionInProgressId) {
@@ -386,58 +468,54 @@ async function updateQueueEntryStatus(entryId, nextStatus) {
   staffState.actionInProgressId = entryId;
   staffState.feedback = {
     type: 'loading',
-    message: `Updating ${entry.patientName} to ${formatStatusLabel(nextStatus).toLowerCase()}...`
+    message: `Updating ${buildPatientLabel(entry)} to ${formatStatusLabel(nextStatus).toLowerCase()}...`
   };
   refreshStaffDashboard();
 
-  await new Promise((resolve) => {
-    window.setTimeout(resolve, 450);
-  });
+  try {
+    const response = await fetch(`/api/queue/staff/${encodeURIComponent(entryId)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        status: nextStatus
+      })
+    });
 
-  entry.status = nextStatus;
-  staffState.actionInProgressId = null;
-  staffState.feedback = {
-    type: 'success',
-    message: createStatusChangeMessage(entry.patientName, nextStatus)
-  };
-  refreshStaffDashboard();
+    const payload = await readJsonSafely(response);
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to update queue status.');
+    }
+
+    staffState.feedback = {
+      type: 'success',
+      message: `${buildPatientLabel(entry)} updated to ${formatStatusLabel(nextStatus).toLowerCase()}.`
+    };
+
+    await loadStaffQueue(session, true);
+  } catch (error) {
+    console.error('Failed to update staff queue entry:', error);
+    staffState.feedback = {
+      type: 'error',
+      message: error.message || 'Queue status update failed.'
+    };
+    refreshStaffDashboard();
+  } finally {
+    staffState.actionInProgressId = null;
+    refreshStaffDashboard();
+  }
 }
 
-function getNextQueueNumber() {
-  const highestNumber = staffState.queueEntries.reduce((max, entry) => {
-    const numericValue = Number(entry.queueNumber.replace(/\D/g, ''));
-    return Number.isNaN(numericValue) ? max : Math.max(max, numericValue);
-  }, 0);
-
-  return `Q${String(highestNumber + 1).padStart(3, '0')}`;
-}
-
-function hasQueueTimeConflict(timeLabel) {
-  return staffState.queueEntries.some((entry) => entry.timeLabel === timeLabel);
-}
-
-function addWalkInPatient(patientName, visitType, timeLabel) {
-  const newEntry = {
-    id: `queue-${Date.now()}`,
-    queueNumber: getNextQueueNumber(),
-    patientName,
-    arrivalType: ARRIVAL_TYPES.WALK_IN,
-    visitType,
-    timeLabel,
-    status: STAFF_QUEUE_STATUSES.WAITING
-  };
-
-  staffState.queueEntries.push(newEntry);
-  staffState.walkInsAdded += 1;
-  staffState.feedback = {
-    type: 'success',
-    message: `${patientName} added to the queue as walk-in ${newEntry.queueNumber}.`
-  };
-  renderWalkInFormFeedback('success', `${patientName} was added for ${timeLabel}.`);
-  refreshStaffDashboard();
-}
-
-function initialiseQueueActions() {
+// Attach click handling for the status update buttons in the queue table.
+function initialiseQueueActions(session) {
   const tableBody = document.getElementById('staffQueueTableBody');
 
   if (!tableBody) {
@@ -458,55 +536,30 @@ function initialiseQueueActions() {
       return;
     }
 
-    await updateQueueEntryStatus(entryId, statusSelect.value);
+    await updateQueueEntryStatus(entryId, statusSelect.value, session);
   });
 }
 
-function initialiseWalkInForm() {
+// Walk-in handling is a separate story.
+// Keep the form visible, but make it clear that it is not wired yet.
+function initialiseWalkInFormPlaceholder() {
   const form = document.getElementById('walkInForm');
-  const patientNameField = document.getElementById('walkInPatientName');
-  const timeField = document.getElementById('walkInTime');
-  const visitTypeField = document.getElementById('walkInVisitType');
 
-  if (!form || !patientNameField || !timeField || !visitTypeField) {
+  if (!form) {
     return;
   }
 
   form.addEventListener('submit', function (event) {
     event.preventDefault();
 
-    const patientName = patientNameField.value.trim();
-    const timeLabel = timeField.value;
-    const visitType = visitTypeField.value;
-
-    renderWalkInFormFeedback(null, '');
-
-    if (!patientName) {
-      renderWalkInFormFeedback('error', 'Enter a patient name before adding a walk-in.');
-      patientNameField.focus();
-      return;
-    }
-
-    if (!timeLabel) {
-      renderWalkInFormFeedback('error', 'Select a time before adding a walk-in.');
-      timeField.focus();
-      return;
-    }
-
-    if (hasQueueTimeConflict(timeLabel)) {
-      renderWalkInFormFeedback('error', `The ${timeLabel} slot is already in use. Choose a different time for this walk-in.`);
-      timeField.focus();
-      return;
-    }
-
-    addWalkInPatient(patientName, visitType, timeLabel);
-    form.reset();
-    visitTypeField.value = 'General consultation';
-    timeField.value = '';
-    patientNameField.focus();
+    renderWalkInFormFeedback(
+      'error',
+      'Walk-in intake is not connected yet in this story. Use the staff queue section for retrieval and status updates.'
+    );
   });
 }
 
+// Entry point for the staff dashboard page.
 async function initialiseStaffPage() {
   initialiseLogoutButton('logoutButton');
 
@@ -537,9 +590,19 @@ async function initialiseStaffPage() {
   const userName = session?.user?.user_metadata?.full_name || session?.user?.email || 'Staff';
   setTextContent('staffName', userName);
 
-  refreshStaffDashboard();
-  initialiseQueueActions();
-  initialiseWalkInForm();
+  try {
+    await loadStaffQueue(session);
+  } catch (error) {
+    console.error('Failed to load staff queue page:', error);
+    staffState.feedback = {
+      type: 'error',
+      message: error.message || 'Queue data could not be loaded.'
+    };
+    refreshStaffDashboard();
+  }
+
+  initialiseQueueActions(session);
+  initialiseWalkInFormPlaceholder();
 }
 
 document.addEventListener('DOMContentLoaded', initialiseStaffPage);

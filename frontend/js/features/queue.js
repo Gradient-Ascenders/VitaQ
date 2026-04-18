@@ -34,7 +34,6 @@ const QUEUE_EMPTY_STATES = {
   NOT_IN_QUEUE: 'not_in_queue',
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
-const NEAR_TURN_MAX_POSITION = 3;
 
 function getQueueBadgeClasses(state) {
   switch (state) {
@@ -131,33 +130,33 @@ function renderQueueState(state) {
   message.textContent = config.message;
 }
 
-function isNearTurnState(queueState, position) {
-  return (
-    queueState === QUEUE_STATES.WAITING
-    && typeof position === 'number'
-    && Number.isFinite(position)
-    && position >= 1
-    && position <= NEAR_TURN_MAX_POSITION
-  );
-}
-
-function getNearTurnAlertConfig(position) {
+/**
+ * Builds the near-turn alert content for the UI.
+ * The backend decides whether near-turn is true.
+ * The frontend only decides how to present the alert.
+ */
+function getNearTurnAlertConfig(position, nearTurnMessage) {
   if (position === 1) {
     return {
       title: 'It is almost your turn',
-      message: 'You are next in the queue. Please stay ready now and watch for staff guidance.',
+      message: nearTurnMessage || 'You are next in the queue. Please stay ready now and watch for staff guidance.',
       priority: 'high'
     };
   }
 
   return {
     title: 'Your turn is coming up soon',
-    message: 'You are close to the front of the queue. Please stay nearby and be ready to move when called.',
+    message: nearTurnMessage || 'You are close to the front of the queue. Please stay nearby and be ready to move when called.',
     priority: 'normal'
   };
 }
 
-function renderNearTurnAlert(queueState, position) {
+/**
+ * Renders the near-turn alert using the backend's near-turn state.
+ * This keeps the UI aligned with the service logic and prevents the
+ * page from inventing its own near-turn rule separately.
+ */
+function renderNearTurnAlert({ queueState, position, nearTurn, nearTurnMessage }) {
   const alert = document.getElementById('nearTurnAlert');
   const title = document.getElementById('nearTurnAlertTitle');
   const message = document.getElementById('nearTurnAlertMessage');
@@ -168,19 +167,24 @@ function renderNearTurnAlert(queueState, position) {
     return;
   }
 
-  if (!isNearTurnState(queueState, position)) {
+  // Safety rule:
+  // only waiting patients with an active near-turn flag should see this banner.
+  if (queueState !== QUEUE_STATES.WAITING || !nearTurn) {
     alert.classList.add('hidden');
     alert.setAttribute('data-priority', 'normal');
     positionBadge.textContent = '';
     return;
   }
 
-  const config = getNearTurnAlertConfig(position);
+  const config = getNearTurnAlertConfig(position, nearTurnMessage);
 
   eyebrow.textContent = position === 1 ? 'Immediate attention' : 'Near-turn alert';
   title.textContent = config.title;
   message.textContent = config.message;
-  positionBadge.textContent = `Position ${position}`;
+  positionBadge.textContent =
+    typeof position === 'number' && Number.isFinite(position)
+      ? `Position ${position}`
+      : 'Be ready';
   alert.setAttribute('data-priority', config.priority);
   alert.classList.remove('hidden');
 }
@@ -403,7 +407,12 @@ async function loadQueuePage() {
   if (!clinicId || !date) {
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
-    renderNearTurnAlert(QUEUE_STATES.UNAVAILABLE, null);
+    renderNearTurnAlert({
+      queueState: QUEUE_STATES.UNAVAILABLE,
+      position: null,
+      nearTurn: false,
+      nearTurnMessage: null
+    });
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
     return;
   }
@@ -433,7 +442,12 @@ async function loadQueuePage() {
 
     renderQueueState(queueState);
     renderQueueMetrics(queueData.queue_entry, queueData.position, queueState);
-    renderNearTurnAlert(queueState, queueData.position);
+    renderNearTurnAlert({
+      queueState,
+      position: queueData.position,
+      nearTurn: Boolean(queueData.near_turn),
+      nearTurnMessage: queueData.near_turn_message || null
+    });
 
     if (!queueData.is_in_queue) {
       renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_IN_QUEUE);
@@ -445,7 +459,12 @@ async function loadQueuePage() {
     console.error(error);
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
-    renderNearTurnAlert(QUEUE_STATES.UNAVAILABLE, null);
+    renderNearTurnAlert({
+      queueState: QUEUE_STATES.UNAVAILABLE,
+      position: null,
+      nearTurn: false,
+      nearTurnMessage: null
+    });
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
   }
 }

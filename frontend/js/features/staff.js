@@ -210,7 +210,6 @@ function renderFeedback() {
 }
 
 // Show or hide the walk-in feedback box.
-// Walk-in submission remains a placeholder until that story is connected.
 function renderWalkInFormFeedback(type, message) {
   const feedback = document.getElementById('walkInFormFeedback');
 
@@ -333,9 +332,15 @@ function buildStatusOptions(currentStatus) {
 }
 
 // Build a staff-friendly patient label from API data.
+// For walk-ins, the current backend stores the entered identifier in patient_id,
+// so show the full value instead of shortening it.
 function buildPatientLabel(entry) {
   if (entry.patient_label) {
     return entry.patient_label;
+  }
+
+  if (entry.source === ARRIVAL_TYPES.WALK_IN && entry.patient_id) {
+    return String(entry.patient_id);
   }
 
   if (entry.patient_id) {
@@ -843,6 +848,73 @@ async function updateQueueEntryStatus(entryId, nextStatus, session) {
   }
 }
 
+/**
+ * Adds a walk-in patient through the real backend endpoint.
+ * The current backend accepts patient_id, clinic_id, and queue_date.
+ * To stay compatible with the existing UI, we submit the entered patient name
+ * as the walk-in identifier and reload the live queue afterwards.
+ */
+async function addWalkInPatient({ patientName, timeLabel, visitType }, session) {
+  staffState.feedback = {
+    type: 'loading',
+    message: `Adding ${patientName} to the walk-in queue...`
+  };
+  refreshStaffDashboard();
+
+  try {
+    const response = await fetch('/api/queue/staff/walk-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        patient_id: patientName,
+        clinic_id: staffState.clinic?.id || null,
+        queue_date: staffState.queueDate || getTodayDateString(),
+        visit_type: visitType || null,
+        time_label: timeLabel || null
+      })
+    });
+
+    const payload = await readJsonSafely(response);
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return false;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to add walk-in patient.');
+    }
+
+    staffState.feedback = {
+      type: 'success',
+      message: payload.message || `${patientName} added to the queue successfully.`
+    };
+
+    renderWalkInFormFeedback(
+      'success',
+      `${patientName} was added to today's queue.${timeLabel ? ` Requested time: ${timeLabel}.` : ''}`
+    );
+
+    await loadStaffQueue(session, true);
+    return true;
+  } catch (error) {
+    console.error('Failed to add walk-in patient:', error);
+    staffState.feedback = {
+      type: 'error',
+      message: error.message || 'Walk-in patient could not be added.'
+    };
+    renderWalkInFormFeedback(
+      'error',
+      error.message || 'Walk-in patient could not be added.'
+    );
+    refreshStaffDashboard();
+    return false;
+  }
+}
+
 async function submitSlotTemplate(session) {
   if (staffState.slotTemplateActionId || staffState.slotTemplateGenerationInProgress) {
     return;
@@ -1117,22 +1189,58 @@ function initialiseSlotTemplateActions(session) {
   }
 }
 
-// Walk-in handling is a separate story.
-// Keep the form visible, but make it clear that it is not wired yet.
-function initialiseWalkInFormPlaceholder() {
+/**
+ * Wire the walk-in form to the live API.
+ * The current backend only needs patient_id plus clinic/date context.
+ */
+function initialiseWalkInForm(session) {
   const form = document.getElementById('walkInForm');
+  const patientNameField = document.getElementById('walkInPatientName');
+  const timeField = document.getElementById('walkInTime');
+  const visitTypeField = document.getElementById('walkInVisitType');
 
-  if (!form) {
+  if (!form || !patientNameField || !timeField || !visitTypeField) {
     return;
   }
 
-  form.addEventListener('submit', function (event) {
+  form.addEventListener('submit', async function (event) {
     event.preventDefault();
 
-    renderWalkInFormFeedback(
-      'error',
-      'Walk-in intake is not connected yet in this story. Use the staff queue section for retrieval and status updates.'
+    const patientName = patientNameField.value.trim();
+    const timeLabel = timeField.value;
+    const visitType = visitTypeField.value;
+
+    renderWalkInFormFeedback(null, '');
+
+    if (!patientName) {
+      renderWalkInFormFeedback('error', 'Enter a patient name or identifier before adding a walk-in.');
+      patientNameField.focus();
+      return;
+    }
+
+    if (!timeLabel) {
+      renderWalkInFormFeedback('error', 'Select a time before adding a walk-in.');
+      timeField.focus();
+      return;
+    }
+
+    const wasAdded = await addWalkInPatient(
+      {
+        patientName,
+        timeLabel,
+        visitType
+      },
+      session
     );
+
+    if (!wasAdded) {
+      return;
+    }
+
+    form.reset();
+    visitTypeField.value = 'General consultation';
+    timeField.value = '';
+    patientNameField.focus();
   });
 }
 
@@ -1193,7 +1301,7 @@ async function initialiseStaffPage() {
 
   initialiseQueueActions(session);
   initialiseSlotTemplateActions(session);
-  initialiseWalkInFormPlaceholder();
+  initialiseWalkInForm(session);
 }
 
 document.addEventListener('DOMContentLoaded', initialiseStaffPage);

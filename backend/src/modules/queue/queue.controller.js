@@ -49,15 +49,19 @@ async function addStaffWalkIn(req, res) {
     // clinic_id is accepted for compatibility with the frontend,
     // but the service still enforces the staff member's assigned clinic.
     const {
-      patient_id: patientId,
+      patient_name: patientName,
       clinic_id: clinicId,
-      queue_date: queueDate
+      queue_date: queueDate,
+      visit_type: visitType,
+      time_label: timeLabel
     } = req.body;
 
     const result = await createWalkInQueueEntry({
-      patientId,
+      patientName,
       clinicId,
       queueDate,
+      visitType,
+      timeLabel,
       staffUserId
     });
 
@@ -81,12 +85,17 @@ async function addStaffWalkIn(req, res) {
 async function getMyQueueStatus(req, res) {
   try {
     const patientId = req.user.id;
-    const { clinic_id: clinicId, date: queueDate } = req.query;
+    const {
+      clinic_id: clinicId,
+      date: queueDate,
+      appointment_id: appointmentId
+    } = req.query;
 
     const result = await fetchPatientQueueStatus({
       patientId,
       clinicId,
-      queueDate
+      queueDate,
+      appointmentId
     });
 
     return res.status(200).json({

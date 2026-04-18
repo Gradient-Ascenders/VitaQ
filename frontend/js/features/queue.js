@@ -395,6 +395,7 @@ function applyVisitDetails(params) {
 async function loadQueuePage() {
   const params = new URLSearchParams(window.location.search);
   const clinicId = params.get('clinicId') || '';
+  const appointmentId = params.get('appointmentId') || '';
   const date = params.get('date') || '';
   initialiseLogoutButton('logoutButton');
   applyVisitDetails(params);
@@ -418,7 +419,16 @@ async function loadQueuePage() {
   }
 
   try {
-    const response = await fetch(`/api/queue/my-status?clinic_id=${encodeURIComponent(clinicId)}&date=${encodeURIComponent(date)}`, {
+    const queryParams = new URLSearchParams({
+      clinic_id: clinicId,
+      date
+    });
+
+    if (appointmentId) {
+      queryParams.set('appointment_id', appointmentId);
+    }
+
+    const response = await fetch(`/api/queue/my-status?${queryParams.toString()}`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }

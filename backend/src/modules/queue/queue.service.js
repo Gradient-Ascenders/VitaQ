@@ -134,6 +134,39 @@ function buildQueueSummary(entries) {
 }
 
 /**
+ * Chooses the patient queue entry that should drive the patient queue page.
+ * Prefer the exact appointment when the page is opened from a booked visit.
+ * Otherwise prefer an active same-day entry over older terminal entries.
+ */
+function selectPatientQueueEntry(entries, patientId, appointmentId) {
+  const patientEntries = sortQueueEntriesByQueueNumber(entries).filter(
+    (entry) => String(entry.patient_id) === String(patientId)
+  );
+
+  if (patientEntries.length === 0) {
+    return null;
+  }
+
+  if (appointmentId) {
+    const appointmentMatch = patientEntries.find(
+      (entry) => String(entry.appointment_id) === String(appointmentId)
+    );
+
+    if (appointmentMatch) {
+      return appointmentMatch;
+    }
+  }
+
+  const activeEntries = patientEntries.filter((entry) => isActiveQueueStatus(entry.status));
+
+  if (activeEntries.length > 0) {
+    return activeEntries[0];
+  }
+
+  return patientEntries[patientEntries.length - 1];
+}
+
+/**
  * Calculates a patient's live position from active same-clinic, same-date entries.
  * The ordering rule is queue_number, not appointment time.
  *
@@ -640,7 +673,7 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
 /**
  * Returns the logged-in patient's queue status for a clinic visit date.
  */
-async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
+async function fetchPatientQueueStatus({ patientId, clinicId, queueDate, appointmentId }) {
   if (!patientId || !clinicId || !queueDate) {
     throw createServiceError('patient_id, clinic_id, and date are required.', 400);
   }
@@ -676,8 +709,7 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate }) {
   }
 
   const queueEntries = sortQueueEntriesByQueueNumber(Array.isArray(data) ? data : []);
-  const patientEntry =
-    queueEntries.find((entry) => String(entry.patient_id) === String(patientId)) || null;
+  const patientEntry = selectPatientQueueEntry(queueEntries, patientId, appointmentId);
   const queueSummary = buildQueueSummary(queueEntries);
   const mappedQueueEntries = mapQueueEntriesForPatient(queueEntries, patientId);
 

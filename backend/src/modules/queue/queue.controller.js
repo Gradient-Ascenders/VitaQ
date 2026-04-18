@@ -81,12 +81,17 @@ async function addStaffWalkIn(req, res) {
 async function getMyQueueStatus(req, res) {
   try {
     const patientId = req.user.id;
-    const { clinic_id: clinicId, date: queueDate } = req.query;
+    const {
+      clinic_id: clinicId,
+      date: queueDate,
+      appointment_id: appointmentId
+    } = req.query;
 
     const result = await fetchPatientQueueStatus({
       patientId,
       clinicId,
-      queueDate
+      queueDate,
+      appointmentId
     });
 
     return res.status(200).json({

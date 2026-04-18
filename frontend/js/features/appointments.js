@@ -43,6 +43,7 @@ function buildQueuePageUrl(appointment) {
   const params = new URLSearchParams({
     clinic: clinic.name || '',
     clinicId: appointment.clinic_id || '',
+    appointmentId: appointment.id || '',
     date: slot.date || '',
     start: slot.start_time || '',
     end: slot.end_time || ''

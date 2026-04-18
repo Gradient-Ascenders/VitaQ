@@ -946,6 +946,164 @@ describe('fetchPatientQueueStatus', () => {
     expect(result.near_turn_message).toBeNull();
   });
 
+  test('prefers the matching appointment entry when the same patient has multiple same-day queue records', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-complete',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-old',
+            queue_number: 1,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'complete',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:00:00',
+                end_time: '08:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-other',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-2',
+            appointment_id: 'appointment-other',
+            queue_number: 2,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'complete',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:30:00',
+                end_time: '09:00:00'
+              }
+            }
+          },
+          {
+            id: 'queue-waiting',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-current',
+            queue_number: 3,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '09:00:00',
+                end_time: '09:30:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16',
+      appointmentId: 'appointment-current'
+    });
+
+    expect(result.is_in_queue).toBe(true);
+    expect(result.position).toBe(1);
+    expect(result.near_turn).toBe(true);
+    expect(result.near_turn_message).toBe('It is almost your turn. Please be ready now.');
+    expect(result.queue_entry).toMatchObject({
+      id: 'queue-waiting',
+      appointment_id: 'appointment-current',
+      status: 'waiting',
+      queue_number: 3,
+      estimated_wait_minutes: 0,
+      appointment_time: '09:00:00'
+    });
+  });
+
+  test('falls back to the active same-day entry when appointment_id is missing', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-complete',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-old',
+            queue_number: 1,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'complete',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:00:00',
+                end_time: '08:30:00'
+              }
+            }
+          },
+          {
+            id: 'queue-ahead',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-2',
+            appointment_id: 'appointment-ahead',
+            queue_number: 2,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '08:30:00',
+                end_time: '09:00:00'
+              }
+            }
+          },
+          {
+            id: 'queue-active',
+            clinic_id: 'clinic-1',
+            patient_id: 'patient-1',
+            appointment_id: 'appointment-current',
+            queue_number: 3,
+            queue_date: '2026-04-16',
+            source: 'appointment',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            appointment: {
+              slot: {
+                start_time: '09:00:00',
+                end_time: '09:30:00'
+              }
+            }
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchPatientQueueStatus({
+      patientId: 'patient-1',
+      clinicId: 'clinic-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.is_in_queue).toBe(true);
+    expect(result.position).toBe(2);
+    expect(result.near_turn).toBe(true);
+    expect(result.queue_entry).toMatchObject({
+      id: 'queue-active',
+      appointment_id: 'appointment-current',
+      status: 'waiting',
+      appointment_time: '09:00:00'
+    });
+  });
+
   test('ignores completed entries ahead when calculating patient position', async () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({

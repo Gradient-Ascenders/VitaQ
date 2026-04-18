@@ -94,6 +94,10 @@ function formatAppointmentTimeLabel(entry) {
     return startTime.slice(0, 5);
   }
 
+  if (entry?.source === 'walk_in' && entry?.time_label) {
+    return entry.time_label;
+  }
+
   if (entry?.source === 'walk_in') {
     return 'Walk-in';
   }
@@ -131,6 +135,17 @@ function buildQueueSummary(entries) {
       complete: 0
     }
   );
+}
+
+function normalizeWalkInPatientLabel(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function getWalkInPatientLabel(entry) {
+  return entry?.patient_label || '';
 }
 
 /**
@@ -200,6 +215,7 @@ function mapQueueEntriesForPatient(entries, patientId) {
   return orderedEntries.map((entry) => ({
     id: entry.id,
     position: activePositionsById[entry.id] || null,
+    patient_label: entry.patient_label || null,
     queue_number: entry.queue_number,
     status: entry.status,
     appointment_time: formatAppointmentTimeLabel(entry),
@@ -290,6 +306,10 @@ async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,
@@ -322,6 +342,10 @@ function buildQueueEntryResponse(entry, estimatedWaitMinutes) {
     id: entry.id,
     clinic_id: entry.clinic_id,
     patient_id: entry.patient_id,
+    patient_label: entry.patient_label || null,
+    visit_type: entry.visit_type || null,
+    time_label: entry.time_label || null,
+    created_by_staff_user_id: entry.created_by_staff_user_id || null,
     appointment_id: entry.appointment_id,
     queue_number: entry.queue_number,
     queue_date: entry.queue_date,
@@ -353,16 +377,20 @@ async function fetchApprovedStaffRequest(staffUserId) {
 }
 
 /**
- * Checks for an existing active queue entry for the same patient, clinic, and day.
+ * Checks for an existing active walk-in queue entry for the same patient name, clinic, and day.
  * This prevents staff from accidentally creating duplicate active walk-in entries.
  */
-async function fetchExistingActiveQueueEntry({ clinicId, patientId, queueDate }) {
+async function fetchExistingActiveQueueEntry({ clinicId, patientName, queueDate }) {
   const { data, error } = await supabase
     .from('queue_entries')
     .select(`
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,
@@ -373,26 +401,42 @@ async function fetchExistingActiveQueueEntry({ clinicId, patientId, queueDate })
       updated_at
     `)
     .eq('clinic_id', clinicId)
-    .eq('patient_id', patientId)
     .eq('queue_date', queueDate)
+    .eq('source', 'walk_in')
     .in('status', ACTIVE_QUEUE_STATUSES)
-    .order('queue_number', { ascending: true })
-    .limit(1);
+    .order('queue_number', { ascending: true });
 
   if (error) {
     throw createServiceError('Failed to check existing walk-in queue entry.', 500);
   }
 
-  return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  const normalizedPatientName = normalizeWalkInPatientLabel(patientName);
+
+  return (
+    (Array.isArray(data) ? data : []).find(
+      (entry) => normalizeWalkInPatientLabel(getWalkInPatientLabel(entry)) === normalizedPatientName
+    ) || null
+  );
 }
 
 /**
  * Allows approved staff to add a walk-in patient to their assigned clinic queue.
  * No appointment booking is required for this flow.
  */
-async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUserId }) {
-  if (!patientId || !staffUserId) {
-    throw createServiceError('patient_id and staff user id are required.', 400);
+async function createWalkInQueueEntry({
+  patientName,
+  clinicId,
+  queueDate,
+  visitType,
+  timeLabel,
+  staffUserId
+}) {
+  const resolvedPatientName = String(patientName || '').trim();
+  const resolvedVisitType = String(visitType || '').trim();
+  const resolvedTimeLabel = String(timeLabel || '').trim();
+
+  if (!resolvedPatientName || !staffUserId) {
+    throw createServiceError('patient_name and staff user id are required.', 400);
   }
 
   const staffRequest = await fetchApprovedStaffRequest(staffUserId);
@@ -405,13 +449,12 @@ async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUse
     throw createServiceError('You can only add walk-in patients for your assigned clinic.', 403);
   }
 
-  // Patients are authenticated through Supabase Auth in this project.
-  // They are not required to have a row in the shared profiles table,
-  // so we accept the provided patient_id directly for walk-in intake.
+  // Walk-ins do not require an authenticated patient account, so we store
+  // the entered name separately and generate a synthetic queue identifier.
 
   const existingEntry = await fetchExistingActiveQueueEntry({
     clinicId: assignedClinicId,
-    patientId,
+    patientName: resolvedPatientName,
     queueDate: resolvedQueueDate
   });
 
@@ -435,7 +478,11 @@ async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUse
   const provisionalEntry = {
     id: '__pending_walk_in_queue_entry__',
     clinic_id: assignedClinicId,
-    patient_id: patientId,
+    patient_id: null,
+    patient_label: resolvedPatientName,
+    visit_type: resolvedVisitType || null,
+    time_label: resolvedTimeLabel || null,
+    created_by_staff_user_id: staffUserId,
     appointment_id: null,
     queue_number: queueNumber,
     queue_date: resolvedQueueDate,
@@ -459,7 +506,11 @@ async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUse
     .insert([
       {
         clinic_id: assignedClinicId,
-        patient_id: patientId,
+        patient_id: null,
+        patient_label: resolvedPatientName,
+        visit_type: resolvedVisitType || null,
+        time_label: resolvedTimeLabel || null,
+        created_by_staff_user_id: staffUserId,
         appointment_id: null,
         queue_number: queueNumber,
         queue_date: resolvedQueueDate,
@@ -472,6 +523,10 @@ async function createWalkInQueueEntry({ patientId, clinicId, queueDate, staffUse
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,
@@ -547,6 +602,10 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,
@@ -684,6 +743,10 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate, appoint
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,
@@ -770,6 +833,10 @@ function mapQueueEntriesForStaff(entries) {
       id: entry.id,
       clinic_id: entry.clinic_id,
       patient_id: entry.patient_id,
+      patient_label: entry.patient_label || null,
+      visit_type: entry.visit_type || null,
+      time_label: entry.time_label || null,
+      created_by_staff_user_id: entry.created_by_staff_user_id || null,
       appointment_id: entry.appointment_id,
       queue_number: entry.queue_number,
       queue_date: entry.queue_date,
@@ -780,7 +847,9 @@ function mapQueueEntriesForStaff(entries) {
           ? (livePosition - 1) * WAIT_MINUTES_PER_PATIENT
           : 0,
       live_position: livePosition,
-      appointment_time: entry.appointment?.slot?.start_time || null,
+      appointment_time: entry.source === 'walk_in'
+        ? entry.time_label || null
+        : entry.appointment?.slot?.start_time || null,
       appointment_end_time: entry.appointment?.slot?.end_time || null,
       created_at: entry.created_at,
       updated_at: entry.updated_at
@@ -816,6 +885,10 @@ async function fetchStaffQueue({ staffUserId, queueDate }) {
       id,
       clinic_id,
       patient_id,
+      patient_label,
+      visit_type,
+      time_label,
+      created_by_staff_user_id,
       appointment_id,
       queue_number,
       queue_date,

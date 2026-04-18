@@ -144,8 +144,12 @@ function formatTime(timeString) {
   return timeString?.slice(0, 5) || '';
 }
 
-// Format appointment time values returned by the backend.
-function formatAppointmentTime(startTime, endTime, source) {
+// Format appointment or walk-in time values returned by the backend.
+function formatAppointmentTime(startTime, endTime, source, timeLabel) {
+  if (source === ARRIVAL_TYPES.WALK_IN && timeLabel) {
+    return timeLabel;
+  }
+
   if (startTime && endTime) {
     return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`;
   }
@@ -281,8 +285,9 @@ function renderClinicSnapshot() {
     `${formatArrivalTypeLabel(nextWaitingEntry.source)} patient at ${formatAppointmentTime(
       nextWaitingEntry.appointment_time,
       nextWaitingEntry.appointment_end_time,
-      nextWaitingEntry.source
-    )} is next in the waiting queue.`
+      nextWaitingEntry.source,
+      nextWaitingEntry.time_label
+    )}${nextWaitingEntry.visit_type ? ` for ${nextWaitingEntry.visit_type}` : ''} is next in the waiting queue.`
   );
 }
 
@@ -332,15 +337,14 @@ function buildStatusOptions(currentStatus) {
 }
 
 // Build a staff-friendly patient label from API data.
-// For walk-ins, the current backend stores the entered identifier in patient_id,
-// so show the full value instead of shortening it.
+// Walk-ins should prefer the stored patient_label when available.
 function buildPatientLabel(entry) {
   if (entry.patient_label) {
     return entry.patient_label;
   }
 
-  if (entry.source === ARRIVAL_TYPES.WALK_IN && entry.patient_id) {
-    return String(entry.patient_id);
+  if (entry.source === ARRIVAL_TYPES.WALK_IN) {
+    return 'Walk-in patient';
   }
 
   if (entry.patient_id) {
@@ -348,6 +352,18 @@ function buildPatientLabel(entry) {
   }
 
   return 'Patient';
+}
+
+function buildPatientSecondaryLabel(entry) {
+  if (entry.source === ARRIVAL_TYPES.WALK_IN) {
+    return entry.visit_type || 'Walk-in record';
+  }
+
+  if (entry.patient_id) {
+    return `Patient ${String(entry.patient_id).slice(-6)}`;
+  }
+
+  return 'Patient record';
 }
 
 // Render the main staff queue table from live backend data.
@@ -363,6 +379,7 @@ function renderQueueTable() {
   staffState.queueEntries.forEach((entry) => {
     const isBusy = staffState.actionInProgressId === entry.id;
     const patientLabel = escapeHtml(buildPatientLabel(entry));
+    const patientSecondaryLabel = escapeHtml(buildPatientSecondaryLabel(entry));
     const row = document.createElement('article');
 
     row.className = 'grid gap-5 px-5 py-5 lg:grid-cols-[0.9fr_1.25fr_0.95fr_0.95fr_0.95fr_1.35fr] lg:items-center';
@@ -375,7 +392,7 @@ function renderQueueTable() {
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Patient</p>
         <p class="text-sm font-semibold text-[#e0e5ff]">${patientLabel}</p>
-        <p class="text-xs text-[#8b93b8]">${escapeHtml(entry.patient_id || 'Patient record')}</p>
+        <p class="text-xs text-[#8b93b8]">${patientSecondaryLabel}</p>
       </section>
 
       <section class="space-y-2">
@@ -387,7 +404,7 @@ function renderQueueTable() {
 
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Time</p>
-        <p class="text-sm text-[#c0caf5]">${formatAppointmentTime(entry.appointment_time, entry.appointment_end_time, entry.source)}</p>
+        <p class="text-sm text-[#c0caf5]">${formatAppointmentTime(entry.appointment_time, entry.appointment_end_time, entry.source, entry.time_label)}</p>
       </section>
 
       <section class="space-y-2">
@@ -850,9 +867,8 @@ async function updateQueueEntryStatus(entryId, nextStatus, session) {
 
 /**
  * Adds a walk-in patient through the real backend endpoint.
- * The current backend accepts patient_id, clinic_id, and queue_date.
- * To stay compatible with the existing UI, we submit the entered patient name
- * as the walk-in identifier and reload the live queue afterwards.
+ * The backend accepts patient_name, clinic_id, and queue_date for walk-ins.
+ * The staff page reloads the live queue afterwards so the dashboard stays in sync.
  */
 async function addWalkInPatient({ patientName, timeLabel, visitType }, session) {
   staffState.feedback = {
@@ -869,7 +885,7 @@ async function addWalkInPatient({ patientName, timeLabel, visitType }, session) 
         Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        patient_id: patientName,
+        patient_name: patientName,
         clinic_id: staffState.clinic?.id || null,
         queue_date: staffState.queueDate || getTodayDateString(),
         visit_type: visitType || null,

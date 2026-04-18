@@ -1414,6 +1414,7 @@ describe('fetchPatientQueueStatus', () => {
         {
           id: 'queue-1',
           position: 1,
+          patient_label: null,
           queue_number: 1,
           status: 'waiting',
           appointment_time: '08:00',
@@ -1544,13 +1545,13 @@ describe('createWalkInQueueEntry', () => {
     jest.clearAllMocks();
   });
 
-  test('throws an error when patient_id or staff user id is missing', async () => {
+  test('throws an error when patient_name or staff user id is missing', async () => {
     await expect(
       createWalkInQueueEntry({
-        patientId: 'patient-1'
+        patientName: 'patient-1'
       })
     ).rejects.toMatchObject({
-      message: 'patient_id and staff user id are required.',
+      message: 'patient_name and staff user id are required.',
       statusCode: 400
     });
 
@@ -1567,7 +1568,7 @@ describe('createWalkInQueueEntry', () => {
 
     await expect(
       createWalkInQueueEntry({
-        patientId: 'patient-1',
+        patientName: 'patient-1',
         staffUserId: 'staff-1'
       })
     ).rejects.toMatchObject({
@@ -1591,7 +1592,7 @@ describe('createWalkInQueueEntry', () => {
 
     await expect(
       createWalkInQueueEntry({
-        patientId: 'patient-1',
+        patientName: 'patient-1',
         clinicId: 'clinic-2',
         queueDate: '2026-04-16',
         staffUserId: 'staff-1'
@@ -1606,7 +1607,11 @@ describe('createWalkInQueueEntry', () => {
     const existingEntry = {
       id: 'queue-2',
       clinic_id: 'clinic-1',
-      patient_id: 'Walk-in Patient',
+      patient_id: null,
+      patient_label: 'Walk-in Patient',
+      visit_type: 'Medication collection',
+      time_label: '08:30',
+      created_by_staff_user_id: 'staff-1',
       appointment_id: null,
       queue_number: 2,
       queue_date: '2026-04-16',
@@ -1656,15 +1661,22 @@ describe('createWalkInQueueEntry', () => {
       );
 
     const result = await createWalkInQueueEntry({
-      patientId: 'Walk-in Patient',
+      patientName: 'walk-in    patient',
       clinicId: 'clinic-1',
       queueDate: '2026-04-16',
+      visitType: 'Medication collection',
+      timeLabel: '08:30',
       staffUserId: 'staff-1'
     });
 
     expect(result.position).toBe(2);
     expect(result.queue_entry).toMatchObject({
       id: 'queue-2',
+      patient_id: null,
+      patient_label: 'Walk-in Patient',
+      visit_type: 'Medication collection',
+      time_label: '08:30',
+      created_by_staff_user_id: 'staff-1',
       queue_number: 2,
       source: 'walk_in',
       status: 'waiting',
@@ -1676,7 +1688,11 @@ describe('createWalkInQueueEntry', () => {
     const queueEntry = {
       id: 'queue-5',
       clinic_id: 'clinic-1',
-      patient_id: 'Walk-in Patient',
+      patient_id: null,
+      patient_label: 'Walk-in Patient',
+      visit_type: 'General consultation',
+      time_label: '09:00',
+      created_by_staff_user_id: 'staff-1',
       appointment_id: null,
       queue_number: 5,
       queue_date: '2026-04-16',
@@ -1686,6 +1702,11 @@ describe('createWalkInQueueEntry', () => {
       created_at: '2026-04-16T09:00:00.000Z',
       updated_at: '2026-04-16T09:00:00.000Z'
     };
+
+    const insertQuery = createMockQuery({
+      data: queueEntry,
+      error: null
+    });
 
     supabase.from
       .mockReturnValueOnce(
@@ -1740,24 +1761,42 @@ describe('createWalkInQueueEntry', () => {
           error: null
         })
       )
-      .mockReturnValueOnce(
-        createMockQuery({
-          data: queueEntry,
-          error: null
-        })
-      );
+      .mockReturnValueOnce(insertQuery);
 
     const result = await createWalkInQueueEntry({
-      patientId: 'Walk-in Patient',
+      patientName: 'Walk-in Patient',
       clinicId: 'clinic-1',
       queueDate: '2026-04-16',
+      visitType: 'General consultation',
+      timeLabel: '09:00',
       staffUserId: 'staff-1'
     });
 
     expect(result.position).toBe(3);
     expect(result.queue_entry).toMatchObject({
       id: 'queue-5',
+      patient_id: null,
+      patient_label: 'Walk-in Patient',
+      visit_type: 'General consultation',
+      time_label: '09:00',
+      created_by_staff_user_id: 'staff-1',
       queue_number: 5,
+      source: 'walk_in',
+      status: 'waiting',
+      estimated_wait_minutes: 30
+    });
+
+    expect(insertQuery.insert).toHaveBeenCalledTimes(1);
+    expect(insertQuery.insert.mock.calls[0][0][0]).toMatchObject({
+      clinic_id: 'clinic-1',
+      patient_id: null,
+      patient_label: 'Walk-in Patient',
+      visit_type: 'General consultation',
+      time_label: '09:00',
+      created_by_staff_user_id: 'staff-1',
+      appointment_id: null,
+      queue_number: 5,
+      queue_date: '2026-04-16',
       source: 'walk_in',
       status: 'waiting',
       estimated_wait_minutes: 30
@@ -1804,9 +1843,11 @@ describe('createWalkInQueueEntry', () => {
 
     await expect(
       createWalkInQueueEntry({
-        patientId: 'Walk-in Patient',
+        patientName: 'Walk-in Patient',
         clinicId: 'clinic-1',
         queueDate: '2026-04-16',
+        visitType: 'General consultation',
+        timeLabel: '09:00',
         staffUserId: 'staff-1'
       })
     ).rejects.toMatchObject({
@@ -1936,6 +1977,74 @@ describe('fetchStaffQueue', () => {
       status: 'in_consultation',
       live_position: null,
       appointment_time: '08:30:00'
+    });
+  });
+
+  test('returns explicit walk-in metadata for staff queue entries', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: {
+          id: 'staff-request-1',
+          user_id: 'staff-1',
+          clinic_id: 'clinic-1',
+          status: 'approved'
+        },
+        error: null
+      })
+    );
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: {
+          id: 'clinic-1',
+          name: 'Tembisa Community Clinic'
+        },
+        error: null
+      })
+    );
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            id: 'queue-walkin-1',
+            clinic_id: 'clinic-1',
+            patient_id: null,
+            patient_label: 'Joe',
+            visit_type: 'General consultation',
+            time_label: '22:00',
+            created_by_staff_user_id: 'staff-1',
+            appointment_id: null,
+            queue_number: 3,
+            queue_date: '2026-04-16',
+            source: 'walk_in',
+            status: 'waiting',
+            estimated_wait_minutes: 0,
+            created_at: '2026-04-16T20:00:00Z',
+            updated_at: '2026-04-16T20:00:00Z',
+            appointment: null
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchStaffQueue({
+      staffUserId: 'staff-1',
+      queueDate: '2026-04-16'
+    });
+
+    expect(result.queue_entries[0]).toMatchObject({
+      id: 'queue-walkin-1',
+      patient_id: null,
+      patient_label: 'Joe',
+      visit_type: 'General consultation',
+      time_label: '22:00',
+      created_by_staff_user_id: 'staff-1',
+      source: 'walk_in',
+      appointment_time: '22:00',
+      appointment_end_time: null,
+      live_position: 1
     });
   });
 

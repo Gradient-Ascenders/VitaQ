@@ -49,15 +49,19 @@ async function addStaffWalkIn(req, res) {
     // clinic_id is accepted for compatibility with the frontend,
     // but the service still enforces the staff member's assigned clinic.
     const {
-      patient_id: patientId,
+      patient_name: patientName,
       clinic_id: clinicId,
-      queue_date: queueDate
+      queue_date: queueDate,
+      visit_type: visitType,
+      time_label: timeLabel
     } = req.body;
 
     const result = await createWalkInQueueEntry({
-      patientId,
+      patientName,
       clinicId,
       queueDate,
+      visitType,
+      timeLabel,
       staffUserId
     });
 

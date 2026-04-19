@@ -1,3 +1,5 @@
+-- Sample slot inventory for upcoming clinic dates.
+-- This seed supports booking and queue demos with a mix of open and full slots.
 insert into public.appointment_slots (
   clinic_id,
   date,

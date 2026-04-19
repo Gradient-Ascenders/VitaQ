@@ -1,3 +1,6 @@
+// Appointments page logic.
+// This page turns the patient's booking history into cards and only exposes
+// queue tracking when the appointment still represents an active visit.
 function formatDate(dateString) {
   if (!dateString) return 'N/A';
 
@@ -33,10 +36,12 @@ function getStatusClasses(status) {
   }
 }
 
+// Queue tracking only makes sense for booked visits with enough context to identify the queue day.
 function canViewQueue(appointment) {
   return appointment?.status === 'booked' && appointment?.clinic && appointment?.slot?.date;
 }
 
+// The queue page reads appointment context from query parameters instead of reloading it immediately.
 function buildQueuePageUrl(appointment) {
   const clinic = appointment.clinic || {};
   const slot = appointment.slot || {};
@@ -52,6 +57,7 @@ function buildQueuePageUrl(appointment) {
   return `/queue?${params.toString()}`;
 }
 
+// Render one card per appointment so the page stays fully driven by API data.
 function renderAppointments(appointments) {
   const appointmentsList = document.getElementById('appointmentsList');
   const appointmentsCount = document.getElementById('appointmentsCount');
@@ -75,6 +81,7 @@ function renderAppointments(appointments) {
     const slot = appointment.slot || {};
     const location = [clinic.area, clinic.district, clinic.province].filter(Boolean).join(' • ');
     const address = clinic.address || 'Address not available';
+    // Sprint 2 queue tracking is only available from still-booked appointments.
     const queueAction = canViewQueue(appointment)
       ? `
         <a
@@ -144,6 +151,7 @@ function renderAppointments(appointments) {
   });
 }
 
+// Page bootstrap handles auth first, then loads the patient's appointments.
 async function loadAppointmentsPage() {
   const loadingState = document.getElementById('loadingState');
   const errorState = document.getElementById('errorState');

@@ -1,3 +1,5 @@
+-- Enable row-level security for the core public-facing tables.
+-- Reads needed by the app are allowed here, while richer role checks stay in backend services.
 alter table public.clinics enable row level security;
 alter table public.appointment_slots enable row level security;
 alter table public.appointments enable row level security;

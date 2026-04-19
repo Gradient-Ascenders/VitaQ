@@ -1,3 +1,5 @@
+// Mock the Supabase client before importing the slot service.
+// The tests cover slot filtering, availability calculation, and timezone-sensitive expiry rules.
 jest.mock('../src/lib/supabaseClient', () => ({
   from: jest.fn()
 }));
@@ -5,6 +7,7 @@ jest.mock('../src/lib/supabaseClient', () => ({
 const supabase = require('../src/lib/supabaseClient');
 const { getAvailableSlotsByClinicId } = require('../src/modules/slots/slot.service');
 
+// Minimal chainable query builder for the slot service's select/eq/order flow.
 function createMockQuery(result) {
   const query = {
     select: jest.fn(() => query),

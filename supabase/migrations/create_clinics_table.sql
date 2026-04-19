@@ -1,3 +1,4 @@
+-- Central clinic directory used by bookings, slots, queue entries, and staff assignment.
 create extension if not exists pgcrypto;
 
 create table if not exists public.clinics (

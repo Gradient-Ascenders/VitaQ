@@ -1,3 +1,4 @@
+-- Store recurring weekly slot templates that staff can later expand into appointment slots.
 create table if not exists public.slot_templates (
   id uuid primary key default gen_random_uuid(),
 

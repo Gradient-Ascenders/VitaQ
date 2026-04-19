@@ -1,3 +1,6 @@
+-- Extend queue entries for walk-in support.
+-- patient_id becomes optional while patient_label, visit_type, and time_label
+-- preserve enough information for staff-managed queue entries without appointments.
 alter table if exists public.queue_entries
 alter column patient_id drop not null;
 

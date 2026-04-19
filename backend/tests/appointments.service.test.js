@@ -1,3 +1,5 @@
+// Mock the Supabase client and queue-side effects before importing the appointments service.
+// These tests focus on booking rules, slot count updates, and rollback behaviour.
 const mockFrom = jest.fn();
 const mockSlotSelect = jest.fn();
 const mockSlotUpdate = jest.fn();
@@ -7,6 +9,7 @@ const mockAppointmentsDelete = jest.fn();
 const mockQueueEntriesSelect = jest.fn();
 const mockQueueEntriesInsert = jest.fn();
 
+// Each named result object controls one stage of the chained Supabase workflow.
 let slotFetchResult;
 let slotUpdateResult;
 let rollbackResult;

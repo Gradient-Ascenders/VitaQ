@@ -1,3 +1,5 @@
+// Clinics listing page.
+// The page loads the clinic dataset once, then applies search/filter logic in the browser.
 const searchInput = document.getElementById("searchInput");
 const provinceFilter = document.getElementById("provinceFilter");
 const districtFilter = document.getElementById("districtFilter");
@@ -11,6 +13,7 @@ const clinicsList = document.getElementById("clinicsList");
 
 let allClinics = [];
 
+// Support both raw arrays and { data: [...] } payloads while backend responses stay lightweight.
 function normaliseClinicResponse(payload) {
   if (Array.isArray(payload)) {
     return payload;
@@ -45,6 +48,7 @@ function fillSelectOptions(selectElement, values, defaultLabel) {
   });
 }
 
+// Escape database-backed values before inserting them into template strings.
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -88,6 +92,7 @@ function formatAvailableSlotsLabel(count) {
   return `${numericCount} slot${numericCount === 1 ? "" : "s"} available`;
 }
 
+// Sort clinics with the most available slots first so patients see bookable options sooner.
 function sortClinicsByAvailability(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
     const leftAvailableSlots = Math.max(Number(leftClinic?.available_slots_count) || 0, 0);
@@ -101,6 +106,7 @@ function sortClinicsByAvailability(clinics) {
   });
 }
 
+// Render the currently visible clinic cards from the filtered clinic set.
 function renderClinics(clinics) {
   clinicsList.innerHTML = "";
 
@@ -169,6 +175,7 @@ function renderClinics(clinics) {
   clinicsList.innerHTML = cardsMarkup;
 }
 
+// Search and dropdown filters run entirely client-side after the first clinic fetch.
 function applyFilters() {
   const searchValue = searchInput.value.trim().toLowerCase();
   const provinceValue = provinceFilter.value.trim().toLowerCase();
@@ -202,6 +209,7 @@ function applyFilters() {
   renderClinics(sortClinicsByAvailability(filteredClinics));
 }
 
+// Build filter options from the live clinic dataset instead of hard-coding provinces or facility types.
 function initialiseFilters(clinics) {
   const provinces = uniqueSortedValues(clinics, "province");
   const districtsAndAreas = [
@@ -218,6 +226,7 @@ function initialiseFilters(clinics) {
   fillSelectOptions(facilityTypeFilter, facilityTypes, "All Facility Types");
 }
 
+// Initial load fetches clinics, prepares filters, and renders the default availability-sorted view.
 async function loadClinics() {
   loadingState.classList.remove("hidden");
   errorState.classList.add("hidden");

@@ -1,3 +1,5 @@
+-- Store patient bookings that connect one patient to one clinic slot.
+-- The unique patient+slot rule prevents duplicate bookings for the same time window.
 create table if not exists public.appointments (
   id uuid primary key default gen_random_uuid(),
 

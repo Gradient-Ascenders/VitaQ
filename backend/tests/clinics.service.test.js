@@ -1,3 +1,5 @@
+// Mock the Supabase client before importing the clinics service.
+// The service queries clinics first, then appointment slots to compute availability counts.
 const mockFrom = jest.fn();
 const mockClinicSelect = jest.fn();
 const mockClinicOrder = jest.fn();
@@ -35,6 +37,7 @@ describe("fetchClinics", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    // Reset query results for each test so clinic and slot lookups stay independent.
     clinicQueryResult = { data: [], error: null };
     slotQueryResult = { data: [], error: null };
 

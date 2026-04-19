@@ -1,3 +1,5 @@
+// Booking confirmation reads the latest slot details from either the redirect URL
+// or sessionStorage so the summary still works after a refresh or redirect.
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-ZA', {
@@ -17,6 +19,7 @@ function formatTimeRange(start, end) {
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
 
+  // sessionStorage is the fallback when the redirect does not include every booking field.
   const savedBooking = sessionStorage.getItem('latestBooking');
   const booking = savedBooking ? JSON.parse(savedBooking) : null;
 

@@ -1,3 +1,5 @@
+-- Store dated appointment slot inventory for each clinic.
+-- booked_count and status support fast availability checks during booking.
 create table if not exists public.appointment_slots (
   id uuid primary key default gen_random_uuid(),
 

@@ -1,8 +1,11 @@
+// Clinic details page logic.
+// This page combines clinic facts, slot availability, and the booking action for a single clinic.
 function getClinicIdFromPath() {
   const parts = window.location.pathname.split('/').filter(Boolean);
   return parts[1] || null; // expects /clinic/:id
 }
 
+// Services are currently stored as a semicolon-separated string in the clinics table.
 function formatServices(services) {
   if (!services) return [];
 
@@ -25,6 +28,7 @@ function formatTime(timeString) {
   return timeString?.slice(0, 5) || '';
 }
 
+// Reuse one text helper so missing clinic fields fall back consistently across the page.
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value || 'N/A';
@@ -72,6 +76,7 @@ function renderClinic(clinic) {
   renderServices(clinic.services_offered);
 }
 
+// Slot cards depend on both real slot availability and whether the patient already booked that slot.
 function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
   const slotsList = document.getElementById('slotsList');
   const slotsEmptyState = document.getElementById('slotsEmptyState');
@@ -171,6 +176,7 @@ function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
   attachBookHandlers();
 }
 
+// Pull the patient's existing bookings so already-booked slots can be disabled in the UI.
 async function fetchBookedSlotIds(session, clinicId) {
   if (!session?.access_token) {
     return new Set();
@@ -199,6 +205,7 @@ async function fetchBookedSlotIds(session, clinicId) {
   return new Set(bookedSlotIds);
 }
 
+// Button handlers are attached after each render because the slot card markup is regenerated.
 function attachBookHandlers() {
   const buttons = document.querySelectorAll('.book-slot-btn');
 
@@ -215,6 +222,7 @@ function attachBookHandlers() {
       button.disabled = true;
       button.textContent = defaultLabel;
 
+      // Booking requires an access token because appointments are patient-owned records.
       const {
         data: { session }
       } = await window.supabaseClient.auth.getSession();
@@ -251,6 +259,7 @@ function attachBookHandlers() {
           end: slotEnd
         });
 
+        // Store a lightweight summary so the confirmation page can survive small redirect changes.
         sessionStorage.setItem(
           'latestBooking',
           JSON.stringify({
@@ -271,6 +280,7 @@ function attachBookHandlers() {
   });
 }
 
+// Page bootstrap fetches clinic details, available slots, and the patient's booked-slot context together.
 async function loadClinicPage() {
   const loadingState = document.getElementById('loadingState');
   const errorState = document.getElementById('errorState');

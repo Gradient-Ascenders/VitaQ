@@ -1,3 +1,8 @@
+/**
+ * Controller endpoints for recurring slot templates.
+ * Staff use these routes to manage clinic schedule patterns and generate
+ * concrete appointment slots from them.
+ */
 const {
   createSlotTemplateForStaff,
   generateUpcomingSlotsForStaff,
@@ -5,6 +10,7 @@ const {
   updateSlotTemplateForStaff
 } = require('./slotTemplates.service');
 
+// Returns the recurring templates linked to the logged-in staff member's clinic.
 async function getSlotTemplates(req, res) {
   try {
     const templates = await listSlotTemplatesForStaff({
@@ -24,6 +30,7 @@ async function getSlotTemplates(req, res) {
   }
 }
 
+// Accepts database-style payload fields from the frontend and creates one template.
 async function createSlotTemplate(req, res) {
   try {
     const {
@@ -56,6 +63,7 @@ async function createSlotTemplate(req, res) {
   }
 }
 
+// Updates an existing template while keeping staff limited to their own clinic.
 async function updateSlotTemplate(req, res) {
   try {
     const { templateId } = req.params;
@@ -90,6 +98,7 @@ async function updateSlotTemplate(req, res) {
   }
 }
 
+// Expands active templates into real appointment_slots rows for the upcoming window.
 async function generateUpcomingSlots(req, res) {
   try {
     const { days_ahead: daysAhead } = req.body || {};

@@ -1,3 +1,5 @@
+// Admin dashboard behaviour for reviewing pending staff onboarding requests.
+// The page keeps its own lightweight state so actions can update the UI without a full reload.
 const STAFF_REQUEST_STATUSES = {
   PENDING: 'pending',
   APPROVED: 'approved',
@@ -6,6 +8,7 @@ const STAFF_REQUEST_STATUSES = {
 
 const ADMIN_PENDING_REQUESTS_ENDPOINT = '/api/admin/staff-requests/pending';
 
+// Track the pending review list plus transient UI state for counters and action feedback.
 const adminState = {
   requests: [],
   feedback: null,
@@ -89,6 +92,7 @@ async function readJsonSafely(response) {
   }
 }
 
+// Joined clinic data can be returned as either an object or a one-item array.
 function getClinicName(rawRequest) {
   if (rawRequest?.clinic?.name) {
     return rawRequest.clinic.name;
@@ -101,6 +105,7 @@ function getClinicName(rawRequest) {
   return 'Clinic not available';
 }
 
+// Convert raw API rows into the smaller shape the admin page actually renders.
 function normaliseStaffRequest(rawRequest) {
   return {
     id: rawRequest?.id || '',
@@ -112,12 +117,14 @@ function normaliseStaffRequest(rawRequest) {
   };
 }
 
+// All admin API calls reuse the current page session token.
 function createAuthHeaders() {
   return {
     Authorization: `Bearer ${adminState.accessToken}`
   };
 }
 
+// The summary cards combine live pending work with approvals/rejections completed this session.
 function renderSummary() {
   const pendingCount = adminState.requests.length;
   let requestSummary = `${pendingCount} pending staff request${pendingCount === 1 ? '' : 's'} to review`;
@@ -159,6 +166,7 @@ function renderFeedback() {
   feedback.textContent = adminState.feedback.message;
 }
 
+// Swap between the table and the empty/error card without rebuilding the outer page shell.
 function renderEmptyState() {
   const emptyState = document.getElementById('adminEmptyState');
   const requestTable = document.getElementById('adminRequestTable');
@@ -193,6 +201,7 @@ function renderEmptyState() {
   requestTable.classList.toggle('hidden', isEmpty);
 }
 
+// Each request row owns its approve/reject buttons so the busy state can stay local.
 function buildActionButtons(request) {
   const isBusy = adminState.actionInProgressId === request.id;
 
@@ -220,6 +229,7 @@ function buildActionButtons(request) {
   `;
 }
 
+// Re-render the request rows from the current in-memory state.
 function renderRequestList() {
   const requestTableBody = document.getElementById('adminRequestTableBody');
 
@@ -270,6 +280,7 @@ function renderRequestList() {
   });
 }
 
+// Keep all derived UI regions in sync after any admin-state change.
 function refreshAdminDashboard() {
   renderSummary();
   renderFeedback();
@@ -316,6 +327,7 @@ async function loadPendingStaffRequests() {
       throw new Error(payload.message || 'Failed to load staff requests.');
     }
 
+    // Only keep the fields needed by this page so later render code stays simple.
     adminState.requests = Array.isArray(payload.data)
       ? payload.data.map(normaliseStaffRequest)
       : [];
@@ -334,6 +346,7 @@ async function loadPendingStaffRequests() {
   }
 }
 
+// Approve/reject actions update local state immediately because this page only shows pending requests.
 async function handleAdminAction(requestId, nextStatus) {
   const request = adminState.requests.find((entry) => entry.id === requestId);
 
@@ -398,6 +411,7 @@ async function handleAdminAction(requestId, nextStatus) {
   }
 }
 
+// Buttons are injected dynamically, so event delegation is safer than per-row listeners.
 function initialiseAdminActions() {
   const requestTableBody = document.getElementById('adminRequestTableBody');
 
@@ -425,6 +439,7 @@ function initialiseAdminActions() {
   });
 }
 
+// Page bootstrap enforces auth and role access before any admin-only request is sent.
 async function initialiseAdminPage() {
   initialiseLogoutButton('logoutButton');
   initialiseLogoutButton('logoutCardButton');

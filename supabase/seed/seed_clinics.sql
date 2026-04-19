@@ -1,3 +1,4 @@
+-- Seed a broad clinic directory so clinic search, filters, and booking flows have realistic demo data.
 insert into public.clinics (
   name,
   province,

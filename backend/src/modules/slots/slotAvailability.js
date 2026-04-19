@@ -1,6 +1,12 @@
+/**
+ * Shared slot date/time helpers.
+ * These utilities keep slot filtering and template generation aligned to
+ * South African local time instead of the server's timezone.
+ */
 const SOUTH_AFRICA_TIME_ZONE = 'Africa/Johannesburg';
 const SOUTH_AFRICA_UTC_OFFSET = '+02:00';
 
+// Build comparable YYYY-MM-DD and HH:MM:SS strings in the clinic timezone.
 function getSouthAfricaDateTimeParts(now = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: SOUTH_AFRICA_TIME_ZONE,
@@ -27,6 +33,7 @@ function getSouthAfricaDateTimeParts(now = new Date()) {
   };
 }
 
+// A slot is only bookable when it still has capacity and has not ended locally.
 function isBookableSlot(slot, now = new Date()) {
   const remainingCapacity = Number(slot?.capacity || 0) - Number(slot?.booked_count || 0);
 
@@ -49,6 +56,7 @@ function isBookableSlot(slot, now = new Date()) {
   return true;
 }
 
+// Parse YYYY-MM-DD strings explicitly so day arithmetic stays predictable.
 function parseDateString(dateString) {
   const [year, month, day] = String(dateString || '')
     .split('-')
@@ -61,6 +69,7 @@ function parseDateString(dateString) {
   return { year, month, day };
 }
 
+// Use UTC date arithmetic so calendar-day offsets do not drift with local DST logic.
 function addDaysToDateString(dateString, dayOffset) {
   const { year, month, day } = parseDateString(dateString);
   const utcDate = new Date(Date.UTC(year, month - 1, day + dayOffset));
@@ -72,11 +81,13 @@ function addDaysToDateString(dateString, dayOffset) {
   ].join('-');
 }
 
+// Slot template generation uses day-of-week matching, so date parsing must stay stable.
 function getDayOfWeekFromDateString(dateString) {
   const { year, month, day } = parseDateString(dateString);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+// Build Date objects that represent clinic-local timestamps for comparisons and inserts.
 function createSouthAfricaDateTime(dateString, timeString = '00:00:00') {
   return new Date(`${dateString}T${timeString}${SOUTH_AFRICA_UTC_OFFSET}`);
 }

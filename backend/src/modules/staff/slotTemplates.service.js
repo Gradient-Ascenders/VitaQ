@@ -1,3 +1,8 @@
+/**
+ * Service logic for recurring slot templates.
+ * This module validates weekly template definitions and turns them into
+ * dated appointment slots for the assigned clinic staff member.
+ */
 const supabase = require('../../lib/supabaseClient');
 const {
   addDaysToDateString,
@@ -18,10 +23,12 @@ function createServiceError(message, statusCode = 400) {
   return error;
 }
 
+// Normalise optional text inputs before validation so blank strings are treated consistently.
 function cleanText(value) {
   return typeof value === 'string' ? value.trim() : value;
 }
 
+// The frontend may send HH:MM or HH:MM:SS, but the database should always receive HH:MM:SS.
 function normalizeTimeString(value) {
   const cleanedValue = cleanText(value);
 
@@ -40,6 +47,7 @@ function normalizeTimeString(value) {
   return null;
 }
 
+// Slot template capacity is used to seed future appointment_slots rows.
 function normalizeCapacity(value) {
   const capacity = Number(value);
 
@@ -50,6 +58,7 @@ function normalizeCapacity(value) {
   return capacity;
 }
 
+// Templates are stored against weekday numbers because generation works from dates, not names.
 function normalizeDayOfWeek(value) {
   const dayOfWeek = Number(value);
 
@@ -60,6 +69,7 @@ function normalizeDayOfWeek(value) {
   return dayOfWeek;
 }
 
+// Keep template status values aligned with the current text-based database convention.
 function normalizeTemplateStatus(value) {
   const normalizedStatus = cleanText(value) || TEMPLATE_STATUSES.ACTIVE;
 
@@ -70,6 +80,7 @@ function normalizeTemplateStatus(value) {
   return normalizedStatus;
 }
 
+// Templates cannot overlap within the same clinic/day because generation would create ambiguous slots.
 function isTimeRangeValid(startTime, endTime) {
   return typeof startTime === 'string' && typeof endTime === 'string' && startTime < endTime;
 }
@@ -78,6 +89,7 @@ function isOverlappingTimeRange(leftStart, leftEnd, rightStart, rightEnd) {
   return leftStart < rightEnd && rightStart < leftEnd;
 }
 
+// Staff scheduling is limited to approved staff requests so the clinic assignment is trusted.
 async function fetchApprovedStaffAssignment(staffUserId) {
   const { data: staffRequest, error } = await supabase
     .from('staff_requests')
@@ -93,6 +105,7 @@ async function fetchApprovedStaffAssignment(staffUserId) {
   return staffRequest;
 }
 
+// Reuse this when updates need to confirm ownership before mutating a template.
 async function fetchSlotTemplateById(templateId) {
   const { data: template, error } = await supabase
     .from('slot_templates')
@@ -117,6 +130,7 @@ async function fetchSlotTemplateById(templateId) {
   return template;
 }
 
+// Overlap checks are done before insert/update so one clinic cannot create clashing weekly templates.
 async function ensureNoTemplateOverlap({
   clinicId,
   dayOfWeek,
@@ -150,6 +164,7 @@ async function ensureNoTemplateOverlap({
   }
 }
 
+// Validate and reshape request payloads into the exact database column names expected downstream.
 function normalizeTemplateInput({
   dayOfWeek,
   startTime,
@@ -189,6 +204,7 @@ function normalizeTemplateInput({
   };
 }
 
+// Staff only see templates for their assigned clinic, ordered like a weekly timetable.
 async function listSlotTemplatesForStaff({ staffUserId }) {
   if (!staffUserId) {
     throw createServiceError('staff user id is required.', 400);

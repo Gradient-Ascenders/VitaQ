@@ -1,3 +1,5 @@
+// Mock the Supabase client before importing the slot template service.
+// These tests exercise template validation plus slot generation from weekly patterns.
 jest.mock('../src/lib/supabaseClient', () => ({
   from: jest.fn()
 }));
@@ -10,6 +12,7 @@ const {
   updateSlotTemplateForStaff
 } = require('../src/modules/staff/slotTemplates.service');
 
+// The service uses chained selects, updates, and inserts, so tests share one fake builder shape.
 function createMockQuery(result) {
   const query = {
     select: jest.fn(() => query),

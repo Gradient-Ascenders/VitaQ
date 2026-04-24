@@ -11,7 +11,8 @@
     "test:coverage": "jest --coverage",
     "tw:build": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css",
     "tw:watch": "npx @tailwindcss/cli -i ./src/input.css -o ./frontend/assets/css/output.css --watch",
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "import:sa-clinics": "node scripts/import-sa-clinics.mjs"
   },
   "repository": {
     "type": "git",

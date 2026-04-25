@@ -2,7 +2,7 @@
 name: Chore
 about: Maintenance, config or setup that needs to be done
 title: ''
-labels: help wanted
+labels: ''
 assignees: ''
 
 ---

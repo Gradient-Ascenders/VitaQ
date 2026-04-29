@@ -13,8 +13,30 @@ function formatDate(dateString) {
   });
 }
 
+function formatDateTime(dateString) {
+  if (!dateString) return 'N/A';
+
+  const date = new Date(dateString);
+  return date.toLocaleString('en-ZA', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function formatTime(timeString) {
   return timeString ? timeString.slice(0, 5) : 'N/A';
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatStatus(status) {
@@ -57,6 +79,56 @@ function buildQueuePageUrl(appointment) {
   return `/queue?${params.toString()}`;
 }
 
+function buildAppointmentDetailsMarkup(appointment) {
+  const details = [];
+
+  if (appointment?.cancelled_at) {
+    details.push(`
+      <article class="rounded-3xl border border-[#f7768e]/20 bg-[#f7768e]/10 p-5">
+        <p class="text-xs uppercase tracking-[0.2em] text-[#f4b5c0]">Cancelled On</p>
+        <p class="mt-3 text-base font-semibold text-[#ffe0e6]">${escapeHtml(formatDateTime(appointment.cancelled_at))}</p>
+      </article>
+    `);
+  }
+
+  if (appointment?.cancellation_reason) {
+    details.push(`
+      <article class="rounded-3xl border border-[#f7768e]/20 bg-[#f7768e]/10 p-5">
+        <p class="text-xs uppercase tracking-[0.2em] text-[#f4b5c0]">Cancellation Reason</p>
+        <p class="mt-3 text-sm leading-6 text-[#ffe0e6]">${escapeHtml(appointment.cancellation_reason)}</p>
+      </article>
+    `);
+  }
+
+  if (appointment?.rescheduled_at) {
+    details.push(`
+      <article class="rounded-3xl border border-[#7aa2f7]/20 bg-[#7aa2f7]/10 p-5">
+        <p class="text-xs uppercase tracking-[0.2em] text-[#c7d8ff]">Rescheduled On</p>
+        <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${escapeHtml(formatDateTime(appointment.rescheduled_at))}</p>
+      </article>
+    `);
+  }
+
+  if (appointment?.notes) {
+    details.push(`
+      <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/85 p-5 md:col-span-3">
+        <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Notes</p>
+        <p class="mt-3 text-sm leading-6 text-[#c0caf5]">${escapeHtml(appointment.notes)}</p>
+      </article>
+    `);
+  }
+
+  if (details.length === 0) {
+    return '';
+  }
+
+  return `
+    <section class="mt-4 grid gap-4 md:grid-cols-3">
+      ${details.join('')}
+    </section>
+  `;
+}
+
 // Render one card per appointment so the page stays fully driven by API data.
 function renderAppointments(appointments) {
   const appointmentsList = document.getElementById('appointmentsList');
@@ -81,6 +153,7 @@ function renderAppointments(appointments) {
     const slot = appointment.slot || {};
     const location = [clinic.area, clinic.district, clinic.province].filter(Boolean).join(' • ');
     const address = clinic.address || 'Address not available';
+    const appointmentDetailsMarkup = buildAppointmentDetailsMarkup(appointment);
     // Sprint 2 queue tracking is only available from still-booked appointments.
     const queueAction = canViewQueue(appointment)
       ? `
@@ -145,6 +218,8 @@ function renderAppointments(appointments) {
           <p class="mt-3 text-base font-semibold text-[#e0e5ff]">${formatDate(appointment.created_at)}</p>
         </article>
       </section>
+
+      ${appointmentDetailsMarkup}
     `;
 
     appointmentsList.appendChild(card);

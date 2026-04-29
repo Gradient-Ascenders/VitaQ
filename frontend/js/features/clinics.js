@@ -78,21 +78,60 @@ function formatServiceLabel(service) {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
-function formatServicesSummary(services) {
+function parseServiceList(services) {
   if (!services) {
-    return "Services information not available";
+    return [];
   }
 
-  const serviceList = String(services)
-    .split(";")
+  return String(services)
+    .split(/[;,]/)
     .map(formatServiceLabel)
     .filter(Boolean);
+}
+
+function renderServicesPreview(services) {
+  const serviceList = parseServiceList(services);
 
   if (serviceList.length === 0) {
-    return "Services information not available";
+    return `
+      <p class="text-sm leading-6 text-[#8b93b8]">
+        Services information not available
+      </p>
+    `;
   }
 
-  return serviceList.slice(0, 3).join(" • ");
+  const previewServices = serviceList.slice(0, 3);
+  const overflowCount = Math.max(serviceList.length - previewServices.length, 0);
+  const serviceChipStyles = [
+    "border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]",
+    "border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]",
+    "border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]"
+  ];
+
+  const previewMarkup = previewServices
+    .map(
+      (service, index) => `
+        <span class="inline-flex max-w-full items-center rounded-full border px-3 py-2 text-xs font-medium leading-5 ${serviceChipStyles[index % serviceChipStyles.length]}">
+          <span class="block break-words">${escapeHtml(service)}</span>
+        </span>
+      `
+    )
+    .join("");
+
+  const overflowMarkup = overflowCount > 0
+    ? `
+        <span class="inline-flex items-center rounded-full border border-[#414868] bg-[#24283b]/80 px-3 py-2 text-xs font-semibold text-[#a9b1d6]">
+          +${overflowCount} more service${overflowCount === 1 ? "" : "s"}
+        </span>
+      `
+    : "";
+
+  return `
+    <div class="mt-3 flex flex-wrap gap-2">
+      ${previewMarkup}
+      ${overflowMarkup}
+    </div>
+  `;
 }
 
 function formatAvailableSlotsLabel(count) {
@@ -234,7 +273,7 @@ function renderClinics(clinics) {
     .map((clinic) => {
       const locationText = buildClinicLocationText(clinic);
       const facilityType = cleanTextValue(clinic.facility_type) || "Facility type not available";
-      const services = formatServicesSummary(clinic.services_offered);
+      const servicesMarkup = renderServicesPreview(clinic.services_offered);
       const address = buildClinicAddressText(clinic);
       const availableSlotsLabel = formatAvailableSlotsLabel(clinic.available_slots_count);
       const summaryItemsMarkup = getClinicSummaryItems(clinic)
@@ -303,9 +342,7 @@ function renderClinics(clinics) {
 
           <div class="mt-5 rounded-[1.25rem] border border-[#414868] bg-[#1f2335]/85 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Services</p>
-            <p class="mt-2 text-sm leading-6 break-words text-[#c0caf5]">
-              ${escapeHtml(services)}
-            </p>
+            ${servicesMarkup}
           </div>
 
           ${websiteMarkup}

@@ -603,6 +603,9 @@
   .max-w-\[620px\] {
     max-width: 620px;
   }
+  .max-w-full {
+    max-width: 100%;
+  }
   .max-w-md {
     max-width: var(--container-md);
   }
@@ -1189,6 +1192,10 @@
   }
   .text-\[1\.05rem\] {
     font-size: 1.05rem;
+  }
+  .leading-5 {
+    --tw-leading: calc(var(--spacing) * 5);
+    line-height: calc(var(--spacing) * 5);
   }
   .leading-6 {
     --tw-leading: calc(var(--spacing) * 6);

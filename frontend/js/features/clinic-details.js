@@ -13,12 +13,12 @@ function cleanTextValue(value) {
   return String(value).trim();
 }
 
-// Services are currently stored as a semicolon-separated string in the clinics table.
+// Services can arrive as a semicolon- or comma-separated string from the clinic dataset.
 function formatServices(services) {
   if (!services) return [];
 
   return services
-    .split(';')
+    .split(/[;,]/)
     .map((service) => service.replace(/_/g, ' ').trim())
     .filter(Boolean);
 }

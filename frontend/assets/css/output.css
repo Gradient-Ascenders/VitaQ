@@ -366,6 +366,9 @@
   .z-20 {
     z-index: 20;
   }
+  .row-1 {
+    grid-row: 1;
+  }
   .mx-auto {
     margin-inline: auto;
   }
@@ -891,6 +894,9 @@
   }
   .bg-\[\#1f3d2e\]\/70 {
     background-color: color-mix(in oklab, #1f3d2e 70%, transparent);
+  }
+  .bg-\[\#1f2335\] {
+    background-color: #1f2335;
   }
   .bg-\[\#1f2335\]\/55 {
     background-color: color-mix(in oklab, #1f2335 55%, transparent);
@@ -1750,6 +1756,11 @@
       line-height: var(--tw-leading, var(--text-lg--line-height));
     }
   }
+  .md\:col-span-2 {
+    @media (width >= 48rem) {
+      grid-column: span 2 / span 2;
+    }
+  }
   .md\:block {
     @media (width >= 48rem) {
       display: block;
@@ -2071,6 +2082,11 @@
   .xl\:grid-cols-\[0\.92fr_1\.08fr\] {
     @media (width >= 80rem) {
       grid-template-columns: 0.92fr 1.08fr;
+    }
+  }
+  .xl\:items-start {
+    @media (width >= 80rem) {
+      align-items: flex-start;
     }
   }
   .xl\:px-16 {

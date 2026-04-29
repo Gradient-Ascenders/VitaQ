@@ -1,6 +1,9 @@
 const {
   fetchPendingStaffRequests,
-  reviewStaffRequest
+  reviewStaffRequest,
+  fetchAdminClinics,
+  fetchAdminClinicById,
+  updateAdminClinic
 } = require('./admin.service');
 
 /**
@@ -19,6 +22,59 @@ async function getPendingStaffRequests(req, res) {
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Failed to fetch pending staff requests.'
+    });
+  }
+}
+
+async function getAdminClinics(req, res) {
+  try {
+    const clinics = await fetchAdminClinics();
+
+    return res.status(200).json({
+      success: true,
+      count: clinics.length,
+      data: clinics
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to fetch clinics for admin management.'
+    });
+  }
+}
+
+async function getAdminClinicById(req, res) {
+  try {
+    const clinic = await fetchAdminClinicById(req.params.clinicId);
+
+    return res.status(200).json({
+      success: true,
+      data: clinic
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to load clinic details.'
+    });
+  }
+}
+
+async function patchAdminClinic(req, res) {
+  try {
+    const clinic = await updateAdminClinic({
+      clinicId: req.params.clinicId,
+      updates: req.body
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Clinic details updated successfully.',
+      data: clinic
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to update clinic details.'
     });
   }
 }
@@ -82,5 +138,8 @@ async function rejectStaffRequest(req, res) {
 module.exports = {
   getPendingStaffRequests,
   approveStaffRequest,
-  rejectStaffRequest
+  rejectStaffRequest,
+  getAdminClinics,
+  getAdminClinicById,
+  patchAdminClinic
 };

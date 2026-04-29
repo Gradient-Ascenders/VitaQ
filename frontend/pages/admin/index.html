@@ -95,8 +95,8 @@
             </h1>
 
             <p class="mt-5 max-w-2xl text-base leading-8 text-[#a9b1d6] sm:text-lg">
-              Confirm which clinic staff members should receive verified access. This page keeps
-              pending verification requests visible, actionable, and easy to review during Sprint 2.
+              Keep clinic administration in one place. Review pending staff access requests and
+              update live clinic directory details without leaving the dashboard during Sprint 3.
             </p>
 
             <div id="adminActionFeedback" class="hidden mt-8" aria-live="polite"></div>
@@ -107,6 +107,12 @@
                 class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-6 py-3.5 text-base font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
               >
                 Review requests
+              </a>
+              <a
+                href="#clinic-management"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/85 px-6 py-3.5 text-base font-medium text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+              >
+                Manage clinics
               </a>
             </div>
           </section>
@@ -212,6 +218,183 @@
         </div>
       </section>
 
+      <section
+        id="clinic-management"
+        class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10"
+        aria-labelledby="clinic-management-heading"
+      >
+        <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="max-w-2xl">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Clinic management
+              </p>
+              <h2 id="clinic-management-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Edit clinic directory details
+              </h2>
+              <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+                Select a clinic, review its current record, and save updates to the live directory fields used by search and booking flows.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 lg:items-end">
+              <p id="clinicManagementSummary" class="text-sm text-[#8b93b8]">Loading clinics...</p>
+              <p id="clinicSelectionSummary" class="text-sm text-[#8b93b8]">No clinic selected yet.</p>
+            </div>
+          </div>
+
+          <div id="clinicFormFeedback" class="mt-8 hidden" aria-live="polite"></div>
+
+          <section id="adminClinicManagementContent" class="mt-8 grid gap-6 xl:grid-cols-[0.92fr_1.08fr] xl:items-start">
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Clinic selector</p>
+              <h3 class="mt-3 text-2xl font-semibold text-[#e0e5ff]">Choose a clinic to edit</h3>
+              <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
+                Inactive clinics remain visible here so admins can reactivate and maintain older records safely.
+              </p>
+
+              <label for="adminClinicSelect" class="mt-6 block text-sm font-semibold text-[#e0e5ff]">
+                Clinic record
+              </label>
+              <select
+                id="adminClinicSelect"
+                class="mt-3 w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+              >
+                <option value="">Loading clinics...</option>
+              </select>
+              <p id="adminClinicSelectHelp" class="mt-3 text-sm leading-7 text-[#8b93b8]">
+                The clinic list will load after admin access is confirmed.
+              </p>
+
+              <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/80 p-4">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Selected clinic</p>
+                  <p id="selectedClinicName" class="mt-3 text-lg font-semibold text-[#e0e5ff]">-</p>
+                </article>
+                <article class="rounded-3xl border border-[#414868] bg-[#1f2335]/80 p-4">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Directory status</p>
+                  <p id="selectedClinicStatus" class="mt-3 text-lg font-semibold text-[#e0e5ff]">-</p>
+                </article>
+              </div>
+            </article>
+
+            <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Editable fields</p>
+                  <h3 class="mt-3 text-2xl font-semibold text-[#e0e5ff]">Clinic details form</h3>
+                </div>
+                <p id="clinicFormMeta" class="text-sm text-[#8b93b8]">Select a clinic to begin editing.</p>
+              </div>
+
+              <form id="adminClinicForm" class="mt-8 grid gap-5 md:grid-cols-2">
+                <div class="space-y-2 md:col-span-2">
+                  <label for="clinicNameInput" class="text-sm font-semibold text-[#e0e5ff]">Clinic name</label>
+                  <input id="clinicNameInput" name="name" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled required />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicProvinceInput" class="text-sm font-semibold text-[#e0e5ff]">Province</label>
+                  <input id="clinicProvinceInput" name="province" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicDistrictInput" class="text-sm font-semibold text-[#e0e5ff]">District</label>
+                  <input id="clinicDistrictInput" name="district" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicAreaInput" class="text-sm font-semibold text-[#e0e5ff]">Area</label>
+                  <input id="clinicAreaInput" name="area" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicMunicipalityInput" class="text-sm font-semibold text-[#e0e5ff]">Municipality</label>
+                  <input id="clinicMunicipalityInput" name="municipality" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicRegionInput" class="text-sm font-semibold text-[#e0e5ff]">Region</label>
+                  <input id="clinicRegionInput" name="region" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicFacilityTypeInput" class="text-sm font-semibold text-[#e0e5ff]">Facility type</label>
+                  <input id="clinicFacilityTypeInput" name="facility_type" type="text" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                  <label for="clinicAddressInput" class="text-sm font-semibold text-[#e0e5ff]">Address</label>
+                  <textarea id="clinicAddressInput" name="address" rows="3" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled></textarea>
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                  <label for="clinicServicesInput" class="text-sm font-semibold text-[#e0e5ff]">Services offered</label>
+                  <textarea id="clinicServicesInput" name="services_offered" rows="4" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled></textarea>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicWebsiteInput" class="text-sm font-semibold text-[#e0e5ff]">Website</label>
+                  <input id="clinicWebsiteInput" name="contact_website" type="url" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2">
+                  <label for="clinicNumberInput" class="text-sm font-semibold text-[#e0e5ff]">Contact number</label>
+                  <input id="clinicNumberInput" name="contact_number" type="tel" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                  <label for="clinicEmailInput" class="text-sm font-semibold text-[#e0e5ff]">Contact email</label>
+                  <input id="clinicEmailInput" name="contact_email" type="email" class="w-full rounded-2xl border border-[#414868] bg-[#1f2335] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="flex items-start gap-3 rounded-2xl border border-[#414868] bg-[#1f2335]/85 px-4 py-4 text-sm text-[#c0caf5]">
+                    <input id="clinicActiveInput" name="is_active" type="checkbox" class="mt-1 h-4 w-4 rounded border-[#414868] bg-[#1a1b26] text-[#7aa2f7] focus:ring-[#7aa2f7]/30 disabled:cursor-not-allowed disabled:opacity-60" disabled />
+                    <span>
+                      <span class="block font-semibold text-[#e0e5ff]">Clinic is active</span>
+                      <span class="mt-1 block text-sm leading-7 text-[#8b93b8]">
+                        Active clinics appear in normal patient search results. Inactive clinics stay hidden from public search but remain editable here.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div class="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p class="text-sm leading-7 text-[#8b93b8]">
+                    Dataset source fields remain preserved automatically when you save clinic edits.
+                  </p>
+                  <button
+                    id="adminClinicSaveButton"
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7] px-6 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled
+                  >
+                    Save clinic updates
+                  </button>
+                </div>
+              </form>
+            </article>
+          </section>
+
+          <section
+            id="adminClinicEmptyState"
+            class="hidden mt-8 rounded-[1.75rem] border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-12 text-center shadow-lg shadow-black/10"
+          >
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+              Clinic data unavailable
+            </p>
+            <h3 id="adminClinicEmptyStateTitle" class="mt-4 text-3xl font-bold text-[#e0e5ff]">
+              No clinics are available for management
+            </h3>
+            <p id="adminClinicEmptyStateMessage" class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+              Clinic records will appear here once the admin clinic directory has loaded.
+            </p>
+          </section>
+        </div>
+      </section>
+
       <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
         <div class="grid gap-6 md:grid-cols-3">
           <article class="rounded-3xl border border-[#414868] bg-[#24283b]/70 p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
@@ -219,10 +402,10 @@
               Review detail
             </div>
             <h3 class="text-2xl font-semibold text-[#e0e5ff]">
-              Check clinic assignment
+              Keep clinic records accurate
             </h3>
             <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">
-              Confirm that each request is linked to the correct clinic before you approve access.
+              Confirm that each directory update keeps clinic names, locations, services, and contact details clear for patients and staff.
             </p>
           </article>
 

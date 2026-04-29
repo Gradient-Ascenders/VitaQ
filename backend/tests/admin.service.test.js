@@ -8,7 +8,10 @@ const supabase = require('../src/lib/supabaseClient');
 
 const {
   fetchPendingStaffRequests,
-  reviewStaffRequest
+  reviewStaffRequest,
+  fetchAdminClinics,
+  fetchAdminClinicById,
+  updateAdminClinic
 } = require('../src/modules/admin/admin.service');
 
 /**
@@ -392,6 +395,298 @@ describe('reviewStaffRequest', () => {
       message:
         'Failed to update approved staff profile. Rollback also failed: Failed to restore the staff registration request after approval failed.',
       statusCode: 500
+    });
+  });
+});
+
+describe('fetchAdminClinics', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns clinics for admin management, including inactive clinics', async () => {
+    const clinics = [
+      {
+        id: 'clinic-1',
+        name: 'Hillbrow Clinic',
+        province: 'Gauteng',
+        district: 'Johannesburg',
+        municipality: 'City of Johannesburg',
+        region: 'Johannesburg Metro',
+        facility_type: 'Clinic',
+        is_active: true,
+        updated_at: '2026-04-29T10:00:00.000Z'
+      },
+      {
+        id: 'clinic-2',
+        name: 'Orange Farm Clinic',
+        province: 'Gauteng',
+        district: 'Johannesburg',
+        municipality: 'City of Johannesburg',
+        region: 'Johannesburg South',
+        facility_type: 'Community Health Centre',
+        is_active: false,
+        updated_at: '2026-04-28T08:00:00.000Z'
+      }
+    ];
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: clinics,
+        error: null
+      })
+    );
+
+    const result = await fetchAdminClinics();
+
+    expect(result).toEqual(clinics);
+    expect(supabase.from).toHaveBeenCalledWith('clinics');
+  });
+
+  test('throws an error when admin clinic list loading fails', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { message: 'Query failed' }
+      })
+    );
+
+    await expect(fetchAdminClinics()).rejects.toMatchObject({
+      message: 'Failed to fetch clinics for admin management.',
+      statusCode: 500
+    });
+  });
+});
+
+describe('fetchAdminClinicById', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns one normalized clinic record', async () => {
+    const clinic = {
+      id: 'clinic-1',
+      name: 'Hillbrow Clinic',
+      province: 'Gauteng',
+      district: 'Johannesburg',
+      area: null,
+      municipality: 'City of Johannesburg',
+      region: 'Johannesburg Metro',
+      facility_type: 'Clinic',
+      address: null,
+      services_offered: 'Primary Care',
+      contact_website: null,
+      contact_number: '011 123 4567',
+      contact_email: null,
+      is_active: false,
+      source_dataset: 'dataset.csv',
+      source_record_id: 'row-1',
+      source_last_updated: null,
+      created_at: '2026-04-20T10:00:00.000Z',
+      updated_at: '2026-04-25T10:00:00.000Z'
+    };
+
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: clinic,
+        error: null
+      })
+    );
+
+    const result = await fetchAdminClinicById('clinic-1');
+
+    expect(result).toEqual({
+      id: 'clinic-1',
+      name: 'Hillbrow Clinic',
+      province: 'Gauteng',
+      district: 'Johannesburg',
+      area: '',
+      municipality: 'City of Johannesburg',
+      region: 'Johannesburg Metro',
+      facility_type: 'Clinic',
+      address: '',
+      services_offered: 'Primary Care',
+      contact_website: '',
+      contact_number: '011 123 4567',
+      contact_email: '',
+      is_active: false,
+      source_dataset: 'dataset.csv',
+      source_record_id: 'row-1',
+      source_last_updated: null,
+      created_at: '2026-04-20T10:00:00.000Z',
+      updated_at: '2026-04-25T10:00:00.000Z'
+    });
+  });
+
+  test('returns 404 when the clinic does not exist', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { code: 'PGRST116', message: 'No rows found' }
+      })
+    );
+
+    await expect(fetchAdminClinicById('missing-clinic')).rejects.toMatchObject({
+      message: 'Clinic not found.',
+      statusCode: 404
+    });
+  });
+});
+
+describe('updateAdminClinic', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('updates supported clinic fields and trims optional text values', async () => {
+    const updatedClinic = {
+      id: 'clinic-1',
+      name: 'Updated Clinic',
+      province: 'Gauteng',
+      district: 'Johannesburg',
+      area: 'Hillbrow',
+      municipality: 'City of Johannesburg',
+      region: 'Johannesburg Metro',
+      facility_type: 'Clinic',
+      address: '12 Claim Street',
+      services_offered: 'Primary Care;Immunisation',
+      contact_website: 'https://clinic.example.org',
+      contact_number: '011 123 4567',
+      contact_email: 'admin@clinic.org',
+      is_active: true,
+      source_dataset: 'dataset.csv',
+      source_record_id: 'row-1',
+      source_last_updated: '2026-04-10T00:00:00.000Z',
+      created_at: '2026-04-20T10:00:00.000Z',
+      updated_at: '2026-04-29T12:00:00.000Z'
+    };
+
+    const updateQuery = createMockQuery({
+      data: updatedClinic,
+      error: null
+    });
+
+    supabase.from.mockReturnValueOnce(updateQuery);
+
+    const result = await updateAdminClinic({
+      clinicId: 'clinic-1',
+      updates: {
+        name: '  Updated Clinic  ',
+        province: ' Gauteng ',
+        district: 'Johannesburg',
+        area: 'Hillbrow',
+        municipality: 'City of Johannesburg',
+        region: 'Johannesburg Metro',
+        facility_type: 'Clinic',
+        address: '12 Claim Street',
+        services_offered: 'Primary Care;Immunisation',
+        contact_website: 'https://clinic.example.org',
+        contact_number: '011 123 4567',
+        contact_email: 'admin@clinic.org',
+        is_active: true
+      }
+    });
+
+    expect(updateQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Updated Clinic',
+        province: 'Gauteng',
+        is_active: true,
+        updated_at: expect.any(String)
+      })
+    );
+
+    expect(result).toMatchObject({
+      id: 'clinic-1',
+      name: 'Updated Clinic',
+      is_active: true,
+      source_dataset: 'dataset.csv'
+    });
+  });
+
+  test('rejects an empty clinic name', async () => {
+    await expect(
+      updateAdminClinic({
+        clinicId: 'clinic-1',
+        updates: {
+          name: '   ',
+          province: '',
+          district: '',
+          area: '',
+          municipality: '',
+          region: '',
+          facility_type: '',
+          address: '',
+          services_offered: '',
+          contact_website: '',
+          contact_number: '',
+          contact_email: '',
+          is_active: true
+        }
+      })
+    ).rejects.toMatchObject({
+      message: 'Clinic name is required.',
+      statusCode: 400
+    });
+  });
+
+  test('rejects unsupported update fields', async () => {
+    await expect(
+      updateAdminClinic({
+        clinicId: 'clinic-1',
+        updates: {
+          name: 'Clinic',
+          province: '',
+          district: '',
+          area: '',
+          municipality: '',
+          region: '',
+          facility_type: '',
+          address: '',
+          services_offered: '',
+          contact_website: '',
+          contact_number: '',
+          contact_email: '',
+          is_active: true,
+          latitude: '-26.1'
+        }
+      })
+    ).rejects.toMatchObject({
+      message: 'Unsupported clinic field(s): latitude',
+      statusCode: 400
+    });
+  });
+
+  test('returns 404 when updating an unknown clinic', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { code: 'PGRST116', message: 'No rows found' }
+      })
+    );
+
+    await expect(
+      updateAdminClinic({
+        clinicId: 'missing-clinic',
+        updates: {
+          name: 'Clinic',
+          province: '',
+          district: '',
+          area: '',
+          municipality: '',
+          region: '',
+          facility_type: '',
+          address: '',
+          services_offered: '',
+          contact_website: '',
+          contact_number: '',
+          contact_email: '',
+          is_active: false
+        }
+      })
+    ).rejects.toMatchObject({
+      message: 'Clinic not found.',
+      statusCode: 404
     });
   });
 });

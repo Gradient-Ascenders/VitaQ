@@ -1611,6 +1611,13 @@
       }
     }
   }
+  .hover\:text-\[\#e0e5ff\] {
+    &:hover {
+      @media (hover: hover) {
+        color: #e0e5ff;
+      }
+    }
+  }
   .hover\:underline {
     &:hover {
       @media (hover: hover) {

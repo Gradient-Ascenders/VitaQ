@@ -89,7 +89,32 @@ function parseServiceList(services) {
     .filter(Boolean);
 }
 
-function renderServicesPreview(services) {
+function normaliseDomIdPart(value) {
+  return String(value || "clinic")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "clinic";
+}
+
+function buildServiceChipsMarkup(serviceList, startIndex = 0) {
+  const serviceChipStyles = [
+    "border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]",
+    "border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]",
+    "border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]"
+  ];
+
+  return serviceList
+    .map(
+      (service, index) => `
+        <span class="inline-flex max-w-full items-center rounded-full border px-3 py-2 text-xs font-medium leading-5 ${serviceChipStyles[(startIndex + index) % serviceChipStyles.length]}">
+          <span class="block break-words">${escapeHtml(service)}</span>
+        </span>
+      `
+    )
+    .join("");
+}
+
+function renderServicesPreview(services, clinicId) {
   const serviceList = parseServiceList(services);
 
   if (serviceList.length === 0) {
@@ -101,37 +126,66 @@ function renderServicesPreview(services) {
   }
 
   const previewServices = serviceList.slice(0, 3);
+  const overflowServices = serviceList.slice(3);
   const overflowCount = Math.max(serviceList.length - previewServices.length, 0);
-  const serviceChipStyles = [
-    "border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]",
-    "border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]",
-    "border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dfcbff]"
-  ];
-
-  const previewMarkup = previewServices
-    .map(
-      (service, index) => `
-        <span class="inline-flex max-w-full items-center rounded-full border px-3 py-2 text-xs font-medium leading-5 ${serviceChipStyles[index % serviceChipStyles.length]}">
-          <span class="block break-words">${escapeHtml(service)}</span>
-        </span>
-      `
-    )
-    .join("");
-
+  const previewMarkup = buildServiceChipsMarkup(previewServices);
+  const overflowSectionId = `clinic-services-overflow-${normaliseDomIdPart(clinicId)}`;
   const overflowMarkup = overflowCount > 0
     ? `
-        <span class="inline-flex items-center rounded-full border border-[#414868] bg-[#24283b]/80 px-3 py-2 text-xs font-semibold text-[#a9b1d6]">
+        <div id="${escapeHtml(overflowSectionId)}" class="mt-2 hidden flex flex-wrap gap-2">
+          ${buildServiceChipsMarkup(overflowServices, previewServices.length)}
+        </div>
+        <button
+          type="button"
+          class="mt-2 inline-flex items-center rounded-full border border-[#414868] bg-[#24283b]/80 px-3 py-2 text-xs font-semibold text-[#a9b1d6] transition hover:border-[#7aa2f7]/40 hover:text-[#e0e5ff]"
+          data-service-toggle
+          data-collapsed-label="+${overflowCount} more service${overflowCount === 1 ? "" : "s"}"
+          data-expanded-label="Show fewer services"
+          aria-expanded="false"
+          aria-controls="${escapeHtml(overflowSectionId)}"
+        >
           +${overflowCount} more service${overflowCount === 1 ? "" : "s"}
-        </span>
+        </button>
       `
     : "";
 
   return `
-    <div class="mt-3 flex flex-wrap gap-2">
-      ${previewMarkup}
+    <div class="mt-3">
+      <div class="flex flex-wrap gap-2">
+        ${previewMarkup}
+      </div>
       ${overflowMarkup}
     </div>
   `;
+}
+
+function handleServiceToggle(event) {
+  const toggleButton = event.target.closest("[data-service-toggle]");
+
+  if (!toggleButton) {
+    return;
+  }
+
+  const targetId = toggleButton.getAttribute("aria-controls");
+
+  if (!targetId) {
+    return;
+  }
+
+  const overflowSection = document.getElementById(targetId);
+
+  if (!overflowSection) {
+    return;
+  }
+
+  const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+  const nextExpandedState = !isExpanded;
+
+  toggleButton.setAttribute("aria-expanded", String(nextExpandedState));
+  overflowSection.classList.toggle("hidden", !nextExpandedState);
+  toggleButton.textContent = nextExpandedState
+    ? toggleButton.dataset.expandedLabel || "Show fewer services"
+    : toggleButton.dataset.collapsedLabel || "Show more services";
 }
 
 function formatAvailableSlotsLabel(count) {
@@ -273,7 +327,7 @@ function renderClinics(clinics) {
     .map((clinic) => {
       const locationText = buildClinicLocationText(clinic);
       const facilityType = cleanTextValue(clinic.facility_type) || "Facility type not available";
-      const servicesMarkup = renderServicesPreview(clinic.services_offered);
+      const servicesMarkup = renderServicesPreview(clinic.services_offered, clinic.id);
       const address = buildClinicAddressText(clinic);
       const availableSlotsLabel = formatAvailableSlotsLabel(clinic.available_slots_count);
       const summaryItemsMarkup = getClinicSummaryItems(clinic)
@@ -461,5 +515,6 @@ searchInput.addEventListener("input", applyFilters);
 provinceFilter.addEventListener("change", applyFilters);
 districtFilter.addEventListener("change", applyFilters);
 facilityTypeFilter.addEventListener("change", applyFilters);
+clinicsList.addEventListener("click", handleServiceToggle);
 
 document.addEventListener("DOMContentLoaded", loadClinics);

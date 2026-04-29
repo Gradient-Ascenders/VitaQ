@@ -140,6 +140,8 @@ async function fetchClinics(filters = {}) {
     const facility_type = cleanFilter(filters.facility_type);
     const services_offered = cleanFilter(filters.services_offered);
 
+    // Start building the query against the clinics table.
+    // Include the patient-facing dataset fields used by the clinic search cards.
     let query = supabase
       .from('clinics')
       .select(`
@@ -153,6 +155,10 @@ async function fetchClinics(filters = {}) {
         facility_type,
         address,
         services_offered,
+        region,
+        municipality,
+        contact_website,
+        is_active,
         latitude,
         longitude,
         contact_number,
@@ -216,9 +222,24 @@ async function fetchClinics(filters = {}) {
       clinics.map((clinic) => clinic.id).filter(Boolean)
     );
 
-    const normalizedClinics = clinics.map((clinic) =>
-      normalizeClinic(clinic, availableSlotCounts)
-    );
+    // Normalize the returned clinic objects so the frontend gets a consistent shape
+    const normalizedClinics = clinics.map((clinic) => ({
+      id: clinic.id,
+      name: clinic.name || '',
+      province: clinic.province || '',
+      district: clinic.district || '',
+      area: clinic.area || '',
+      facility_type: clinic.facility_type || '',
+      address: clinic.address || '',
+      services_offered: clinic.services_offered || '',
+      region: clinic.region || '',
+      municipality: clinic.municipality || '',
+      contact_website: clinic.contact_website || '',
+      is_active: clinic.is_active !== false,
+      latitude: clinic.latitude ?? null,
+      longitude: clinic.longitude ?? null,
+      available_slots_count: availableSlotCounts[clinic.id] || 0
+    }));
 
     return sortClinicsByAvailability(normalizedClinics);
   } catch (error) {

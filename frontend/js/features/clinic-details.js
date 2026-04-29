@@ -5,12 +5,20 @@ function getClinicIdFromPath() {
   return parts[1] || null; // expects /clinic/:id
 }
 
-// Services are currently stored as a semicolon-separated string in the clinics table.
+function cleanTextValue(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
+// Services can arrive as a semicolon- or comma-separated string from the clinic dataset.
 function formatServices(services) {
   if (!services) return [];
 
   return services
-    .split(';')
+    .split(/[;,]/)
     .map((service) => service.replace(/_/g, ' ').trim())
     .filter(Boolean);
 }
@@ -29,9 +37,119 @@ function formatTime(timeString) {
 }
 
 // Reuse one text helper so missing clinic fields fall back consistently across the page.
-function setText(id, value) {
+function setText(id, value, fallback = 'N/A') {
   const element = document.getElementById(id);
-  if (element) element.textContent = value || 'N/A';
+  if (element) {
+    element.textContent = cleanTextValue(value) || fallback;
+  }
+}
+
+function normaliseWebsiteUrl(value) {
+  const website = cleanTextValue(value);
+
+  if (!website) {
+    return '';
+  }
+
+  const withProtocol = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+
+  try {
+    const url = new URL(withProtocol);
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
+
+    return url.toString();
+  } catch (error) {
+    return '';
+  }
+}
+
+function buildClinicAddressText(clinic) {
+  const address = cleanTextValue(clinic.address);
+
+  if (address) {
+    return address;
+  }
+
+  const locationParts = [clinic.area, clinic.district, clinic.municipality, clinic.province]
+    .map(cleanTextValue)
+    .filter(Boolean);
+
+  if (locationParts.length > 0) {
+    return locationParts.join(', ');
+  }
+
+  return 'Location details incomplete';
+}
+
+function buildClinicIssues(clinic) {
+  const issues = [];
+
+  if (clinic.is_active === false) {
+    issues.push('This clinic listing is marked inactive. Confirm the clinic status before visiting.');
+  }
+
+  const missingImportantFields = [
+    !cleanTextValue(clinic.address),
+    !cleanTextValue(clinic.services_offered),
+    !cleanTextValue(clinic.contact_website),
+    !cleanTextValue(clinic.municipality) && !cleanTextValue(clinic.region)
+  ].filter(Boolean).length;
+
+  if (missingImportantFields >= 2) {
+    issues.push('Some clinic details are still being completed in the dataset.');
+  }
+
+  return issues;
+}
+
+function renderClinicDataNotice(clinic) {
+  const notice = document.getElementById('clinicDataNotice');
+  const noticeText = document.getElementById('clinicDataNoticeText');
+
+  if (!notice || !noticeText) {
+    return;
+  }
+
+  const issues = buildClinicIssues(clinic);
+
+  if (issues.length === 0) {
+    notice.classList.add('hidden');
+    noticeText.textContent = '';
+    return;
+  }
+
+  noticeText.textContent = issues.join(' ');
+  notice.classList.remove('hidden');
+}
+
+function renderWebsite(value) {
+  const websiteElement = document.getElementById('clinicWebsite');
+
+  if (!websiteElement) {
+    return;
+  }
+
+  const websiteUrl = normaliseWebsiteUrl(value);
+
+  if (!websiteUrl) {
+    websiteElement.textContent = 'Website not available';
+    websiteElement.removeAttribute('href');
+    websiteElement.removeAttribute('target');
+    websiteElement.removeAttribute('rel');
+    websiteElement.classList.remove('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
+    websiteElement.classList.add('cursor-default', 'text-[#8b93b8]', 'no-underline');
+    return;
+  }
+
+  websiteElement.textContent = websiteUrl.replace(/^https?:\/\//i, '');
+  websiteElement.href = websiteUrl;
+  websiteElement.target = '_blank';
+  websiteElement.rel = 'noopener noreferrer';
+  websiteElement.classList.remove('cursor-default', 'text-[#8b93b8]', 'no-underline');
+  websiteElement.classList.add('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
 }
 
 function renderServices(services) {
@@ -51,10 +169,12 @@ function renderServices(services) {
     const badge = document.createElement('span');
 
     const badgeStyles = [
-      'border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]',
-      'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#b9cfff]',
-      'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dbcaff]',
-      'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]'
+      'border-[#7dcfff]/25 bg-[#7dcfff]/12 text-[#b8ecff]',
+      'border-[#7aa2f7]/25 bg-[#7aa2f7]/12 text-[#c7d8ff]',
+      'border-[#bb9af7]/25 bg-[#bb9af7]/12 text-[#dfcbff]',
+      'border-[#9ece6a]/25 bg-[#9ece6a]/12 text-[#d6f3b8]',
+      'border-[#e0af68]/25 bg-[#e0af68]/12 text-[#f6d8a8]',
+      'border-[#f7768e]/25 bg-[#f7768e]/12 text-[#f4b5c0]'
     ];
 
     badge.className = `rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-sm backdrop-blur-sm ${badgeStyles[index % badgeStyles.length]}`;
@@ -64,14 +184,19 @@ function renderServices(services) {
 }
 
 function renderClinic(clinic) {
-  setText('clinicName', clinic.name);
+  setText('clinicName', clinic.name, 'Clinic details');
+  setText('clinicAddress', buildClinicAddressText(clinic), 'Location details incomplete');
+  setText('clinicProvince', clinic.province, 'Province not available');
   setText(
-    'clinicAddress',
-    clinic.address || `${clinic.area || ''}, ${clinic.district || ''}, ${clinic.province || ''}`
+    'clinicDistrictArea',
+    [clinic.district, clinic.area].map(cleanTextValue).filter(Boolean).join(' / '),
+    'District and area not available'
   );
-  setText('clinicProvince', clinic.province);
-  setText('clinicDistrictArea', [clinic.district, clinic.area].filter(Boolean).join(' / '));
-  setText('clinicFacilityType', clinic.facility_type);
+  setText('clinicMunicipality', clinic.municipality, 'Municipality not available');
+  setText('clinicRegion', clinic.region, 'Region not available');
+  setText('clinicFacilityType', clinic.facility_type, 'Facility type not available');
+  renderWebsite(clinic.contact_website);
+  renderClinicDataNotice(clinic);
 
   renderServices(clinic.services_offered);
 }

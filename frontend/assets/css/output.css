@@ -835,6 +835,9 @@
   .border-\[\#7dcfff\]\/20 {
     border-color: color-mix(in oklab, #7dcfff 20%, transparent);
   }
+  .border-\[\#7dcfff\]\/25 {
+    border-color: color-mix(in oklab, #7dcfff 25%, transparent);
+  }
   .border-\[\#9ece6a\]\/20 {
     border-color: color-mix(in oklab, #9ece6a 20%, transparent);
   }
@@ -850,8 +853,14 @@
   .border-\[\#bb9af7\]\/20 {
     border-color: color-mix(in oklab, #bb9af7 20%, transparent);
   }
+  .border-\[\#bb9af7\]\/25 {
+    border-color: color-mix(in oklab, #bb9af7 25%, transparent);
+  }
   .border-\[\#e0af68\]\/20 {
     border-color: color-mix(in oklab, #e0af68 20%, transparent);
+  }
+  .border-\[\#e0af68\]\/25 {
+    border-color: color-mix(in oklab, #e0af68 25%, transparent);
   }
   .border-\[\#f7768e\]\/20 {
     border-color: color-mix(in oklab, #f7768e 20%, transparent);
@@ -919,11 +928,17 @@
   .bg-\[\#7dcfff\]\/10 {
     background-color: color-mix(in oklab, #7dcfff 10%, transparent);
   }
+  .bg-\[\#7dcfff\]\/12 {
+    background-color: color-mix(in oklab, #7dcfff 12%, transparent);
+  }
   .bg-\[\#7dcfff\]\/15 {
     background-color: color-mix(in oklab, #7dcfff 15%, transparent);
   }
   .bg-\[\#9ece6a\]\/10 {
     background-color: color-mix(in oklab, #9ece6a 10%, transparent);
+  }
+  .bg-\[\#9ece6a\]\/12 {
+    background-color: color-mix(in oklab, #9ece6a 12%, transparent);
   }
   .bg-\[\#9ece6a\]\/15 {
     background-color: color-mix(in oklab, #9ece6a 15%, transparent);
@@ -951,6 +966,9 @@
   }
   .bg-\[\#bb9af7\]\/10 {
     background-color: color-mix(in oklab, #bb9af7 10%, transparent);
+  }
+  .bg-\[\#bb9af7\]\/12 {
+    background-color: color-mix(in oklab, #bb9af7 12%, transparent);
   }
   .bg-\[\#bb9af7\]\/15 {
     background-color: color-mix(in oklab, #bb9af7 15%, transparent);
@@ -1298,9 +1316,6 @@
   .text-\[\#b8ecff\] {
     color: #b8ecff;
   }
-  .text-\[\#b9cfff\] {
-    color: #b9cfff;
-  }
   .text-\[\#bb9af7\] {
     color: #bb9af7;
   }
@@ -1312,9 +1327,6 @@
   }
   .text-\[\#d6f3b8\] {
     color: #d6f3b8;
-  }
-  .text-\[\#dbcaff\] {
-    color: #dbcaff;
   }
   .text-\[\#dfcbff\] {
     color: #dfcbff;

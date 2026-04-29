@@ -169,10 +169,12 @@ function renderServices(services) {
     const badge = document.createElement('span');
 
     const badgeStyles = [
-      'border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]',
-      'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#b9cfff]',
-      'border-[#bb9af7]/20 bg-[#bb9af7]/10 text-[#dbcaff]',
-      'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]'
+      'border-[#7dcfff]/25 bg-[#7dcfff]/12 text-[#b8ecff]',
+      'border-[#7aa2f7]/25 bg-[#7aa2f7]/12 text-[#c7d8ff]',
+      'border-[#bb9af7]/25 bg-[#bb9af7]/12 text-[#dfcbff]',
+      'border-[#9ece6a]/25 bg-[#9ece6a]/12 text-[#d6f3b8]',
+      'border-[#e0af68]/25 bg-[#e0af68]/12 text-[#f6d8a8]',
+      'border-[#f7768e]/25 bg-[#f7768e]/12 text-[#f4b5c0]'
     ];
 
     badge.className = `rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-sm backdrop-blur-sm ${badgeStyles[index % badgeStyles.length]}`;

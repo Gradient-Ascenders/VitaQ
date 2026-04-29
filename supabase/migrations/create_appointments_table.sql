@@ -8,6 +8,11 @@ create table if not exists public.appointments (
   slot_id uuid not null references public.appointment_slots(id) on delete cascade,
 
   status text not null default 'booked',
+  cancelled_at timestamptz,
+  cancellation_reason text,
+  rescheduled_from_slot_id uuid references public.appointment_slots(id) on delete set null,
+  rescheduled_at timestamptz,
+  notes text,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

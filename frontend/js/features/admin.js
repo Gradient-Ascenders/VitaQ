@@ -236,6 +236,8 @@ function normalizeClinicDetail(rawClinic) {
     facility_type: rawClinic?.facility_type || '',
     address: rawClinic?.address || '',
     services_offered: rawClinic?.services_offered || '',
+    latitude: rawClinic?.latitude ?? null,
+    longitude: rawClinic?.longitude ?? null,
     contact_website: rawClinic?.contact_website || '',
     contact_number: rawClinic?.contact_number || '',
     contact_email: rawClinic?.contact_email || '',

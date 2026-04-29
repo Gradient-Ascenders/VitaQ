@@ -320,7 +320,7 @@ async function fetchQueueEntriesForClinicDate(clinicId, queueDate) {
       updated_at,
       appointment:appointments (
         id,
-        slot:appointment_slots (
+        slot:appointment_slots!appointments_slot_id_fkey (
           start_time,
           end_time
         )
@@ -757,7 +757,7 @@ async function fetchPatientQueueStatus({ patientId, clinicId, queueDate, appoint
       updated_at,
       appointment:appointments (
         id,
-        slot:appointment_slots (
+        slot:appointment_slots!appointments_slot_id_fkey (
           start_time,
           end_time
         )
@@ -899,7 +899,7 @@ async function fetchStaffQueue({ staffUserId, queueDate }) {
       updated_at,
       appointment:appointments (
         id,
-        slot:appointment_slots (
+        slot:appointment_slots!appointments_slot_id_fkey (
           start_time,
           end_time
         )

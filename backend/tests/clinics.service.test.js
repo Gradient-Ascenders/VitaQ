@@ -5,6 +5,9 @@ const mockClinicSelect = jest.fn();
 const mockClinicOrder = jest.fn();
 const mockClinicLimit = jest.fn();
 const mockClinicIlike = jest.fn();
+const mockClinicOr = jest.fn();
+const mockClinicEq = jest.fn();
+
 const mockSlotSelect = jest.fn();
 const mockSlotIn = jest.fn();
 const mockSlotEq = jest.fn();
@@ -17,6 +20,8 @@ const clinicQuery = {
   order: mockClinicOrder,
   limit: mockClinicLimit,
   ilike: mockClinicIlike,
+  or: mockClinicOr,
+  eq: mockClinicEq,
   then: (resolve, reject) => Promise.resolve(clinicQueryResult).then(resolve, reject),
 };
 
@@ -57,6 +62,8 @@ describe("fetchClinics", () => {
     mockClinicOrder.mockReturnValue(clinicQuery);
     mockClinicLimit.mockReturnValue(clinicQuery);
     mockClinicIlike.mockReturnValue(clinicQuery);
+    mockClinicOr.mockReturnValue(clinicQuery);
+    mockClinicEq.mockReturnValue(clinicQuery);
 
     mockSlotSelect.mockReturnValue(slotQuery);
     mockSlotIn.mockReturnValue(slotQuery);
@@ -72,15 +79,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: "Hillbrow",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "12 Claim St",
           services_offered: "Primary Care",
-          region: "Inner City",
-          municipality: "Johannesburg",
-          contact_website: "https://clinic.example.org",
-          is_active: true,
           latitude: -26.1,
           longitude: 28.04,
+          contact_number: "011 123 4567",
+          contact_email: "info@hillbrowclinic.gov.za",
+          contact_website: "https://example.com/hillbrow",
+          source_dataset: "DSFSI covid19za health_system_za_hospitals_v1.csv",
+          source_record_id: "hillbrow-clinic-001",
+          source_last_updated: "2026-04-29T00:00:00.000Z",
+          is_active: true,
+          created_at: "2026-04-29T00:00:00.000Z",
+          updated_at: "2026-04-29T00:00:00.000Z",
         },
       ],
       error: null,
@@ -108,15 +122,22 @@ describe("fetchClinics", () => {
         province: "Gauteng",
         district: "Johannesburg",
         area: "Hillbrow",
+        municipality: "City of Johannesburg",
+        region: "Johannesburg Metro",
         facility_type: "Clinic",
         address: "12 Claim St",
         services_offered: "Primary Care",
-        region: "Inner City",
-        municipality: "Johannesburg",
-        contact_website: "https://clinic.example.org",
-        is_active: true,
         latitude: -26.1,
         longitude: 28.04,
+        contact_number: "011 123 4567",
+        contact_email: "info@hillbrowclinic.gov.za",
+        contact_website: "https://example.com/hillbrow",
+        source_dataset: "DSFSI covid19za health_system_za_hospitals_v1.csv",
+        source_record_id: "hillbrow-clinic-001",
+        source_last_updated: "2026-04-29T00:00:00.000Z",
+        is_active: true,
+        created_at: "2026-04-29T00:00:00.000Z",
+        updated_at: "2026-04-29T00:00:00.000Z",
         available_slots_count: 1,
       },
     ]);
@@ -131,17 +152,29 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: null,
+          municipality: null,
+          region: null,
           facility_type: "Clinic",
           address: null,
           services_offered: null,
-          region: null,
-          municipality: null,
-          contact_website: null,
-          is_active: false,
           latitude: null,
           longitude: null,
+          contact_number: null,
+          contact_email: null,
+          contact_website: null,
+          source_dataset: null,
+          source_record_id: null,
+          source_last_updated: null,
+          is_active: false,
+          created_at: null,
+          updated_at: null,
         },
       ],
+      error: null,
+    };
+
+    slotQueryResult = {
+      data: [],
       error: null,
     };
 
@@ -154,15 +187,22 @@ describe("fetchClinics", () => {
         province: "Gauteng",
         district: "Johannesburg",
         area: "",
+        municipality: "",
+        region: "",
         facility_type: "Clinic",
         address: "",
         services_offered: "",
-        region: "",
-        municipality: "",
-        contact_website: "",
-        is_active: false,
         latitude: null,
         longitude: null,
+        contact_number: "",
+        contact_email: "",
+        contact_website: "",
+        source_dataset: "",
+        source_record_id: "",
+        source_last_updated: null,
+        is_active: false,
+        created_at: null,
+        updated_at: null,
         available_slots_count: 0,
       },
     ]);
@@ -174,16 +214,39 @@ describe("fetchClinics", () => {
       province: "Gauteng",
       district: "Johannesburg",
       area: "Hillbrow",
+      municipality: "City of Johannesburg",
+      region: "Johannesburg Metro",
       facility_type: "Clinic",
       services_offered: "Care",
     });
 
-    expect(mockClinicIlike).toHaveBeenCalledWith("name", "%Hill%");
+    expect(mockClinicEq).toHaveBeenCalledWith("is_active", true);
+    expect(mockClinicLimit).toHaveBeenCalledWith(1000);
+
+    expect(mockClinicOr).toHaveBeenCalledWith(
+      "name.ilike.%Hill%,address.ilike.%Hill%,area.ilike.%Hill%,district.ilike.%Hill%,region.ilike.%Hill%,municipality.ilike.%Hill%"
+    );
+
     expect(mockClinicIlike).toHaveBeenCalledWith("province", "Gauteng");
     expect(mockClinicIlike).toHaveBeenCalledWith("district", "Johannesburg");
     expect(mockClinicIlike).toHaveBeenCalledWith("area", "Hillbrow");
+    expect(mockClinicIlike).toHaveBeenCalledWith("municipality", "City of Johannesburg");
+    expect(mockClinicIlike).toHaveBeenCalledWith("region", "Johannesburg Metro");
     expect(mockClinicIlike).toHaveBeenCalledWith("facility_type", "Clinic");
     expect(mockClinicIlike).toHaveBeenCalledWith("services_offered", "%Care%");
+  });
+
+  test("returns an empty array when no clinics match", async () => {
+    clinicQueryResult = {
+      data: [],
+      error: null,
+    };
+
+    const result = await fetchClinics();
+
+    expect(result).toEqual([]);
+    expect(mockFrom).toHaveBeenCalledWith("clinics");
+    expect(mockFrom).not.toHaveBeenCalledWith("appointment_slots");
   });
 
   test("counts only bookable future slots for each clinic", async () => {
@@ -195,15 +258,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "City of Johannesburg",
           area: "Randburg",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "12 Example St",
           services_offered: "General;Child health",
-          region: "",
-          municipality: "",
-          contact_website: "",
-          is_active: true,
           latitude: null,
           longitude: null,
+          contact_number: "",
+          contact_email: "",
+          contact_website: "",
+          source_dataset: "",
+          source_record_id: "",
+          source_last_updated: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
         },
       ],
       error: null,
@@ -259,15 +329,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: "Soweto",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "2 Example St",
           services_offered: "General",
-          region: "",
-          municipality: "",
-          contact_website: "",
-          is_active: true,
           latitude: null,
           longitude: null,
+          contact_number: "",
+          contact_email: "",
+          contact_website: "",
+          source_dataset: "",
+          source_record_id: "",
+          source_last_updated: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
         },
         {
           id: "clinic-1",
@@ -275,15 +352,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: "Randburg",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "1 Example St",
           services_offered: "General",
-          region: "",
-          municipality: "",
-          contact_website: "",
-          is_active: true,
           latitude: null,
           longitude: null,
+          contact_number: "",
+          contact_email: "",
+          contact_website: "",
+          source_dataset: "",
+          source_record_id: "",
+          source_last_updated: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
         },
         {
           id: "clinic-3",
@@ -291,15 +375,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: "Roodepoort",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "3 Example St",
           services_offered: "General",
-          region: "",
-          municipality: "",
-          contact_website: "",
-          is_active: true,
           latitude: null,
           longitude: null,
+          contact_number: "",
+          contact_email: "",
+          contact_website: "",
+          source_dataset: "",
+          source_record_id: "",
+          source_last_updated: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
         },
       ],
       error: null,
@@ -342,6 +433,59 @@ describe("fetchClinics", () => {
     expect(result.map((clinic) => clinic.available_slots_count)).toEqual([1, 1, 0]);
   });
 
+  test("batches slot lookups when many clinics are returned", async () => {
+    const clinics = Array.from({ length: 101 }, (_, index) => ({
+      id: `clinic-${index + 1}`,
+      name: `Clinic ${index + 1}`,
+      province: "Gauteng",
+      district: "Johannesburg",
+      area: "Randburg",
+      municipality: "City of Johannesburg",
+      region: "Johannesburg Metro",
+      facility_type: "Clinic",
+      address: "Example Address",
+      services_offered: "General",
+      latitude: null,
+      longitude: null,
+      contact_number: "",
+      contact_email: "",
+      contact_website: "",
+      source_dataset: "",
+      source_record_id: "",
+      source_last_updated: null,
+      is_active: true,
+      created_at: null,
+      updated_at: null,
+    }));
+
+    clinicQueryResult = {
+      data: clinics,
+      error: null,
+    };
+
+    slotQueryResult = {
+      data: [],
+      error: null,
+    };
+
+    const result = await fetchClinics();
+
+    expect(result).toHaveLength(101);
+    expect(mockSlotIn).toHaveBeenCalledTimes(2);
+
+    expect(mockSlotIn).toHaveBeenNthCalledWith(
+      1,
+      "clinic_id",
+      clinics.slice(0, 100).map((clinic) => clinic.id)
+    );
+
+    expect(mockSlotIn).toHaveBeenNthCalledWith(
+      2,
+      "clinic_id",
+      ["clinic-101"]
+    );
+  });
+
   test("counts same-day slots using South Africa time consistently", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(Date.parse("2026-04-17T22:30:00.000Z"));
@@ -355,15 +499,22 @@ describe("fetchClinics", () => {
             province: "Gauteng",
             district: "City of Johannesburg",
             area: "Randburg",
+            municipality: "City of Johannesburg",
+            region: "Johannesburg Metro",
             facility_type: "Clinic",
             address: "12 Example St",
             services_offered: "General;Child health",
-            region: "",
-            municipality: "",
-            contact_website: "",
-            is_active: true,
             latitude: null,
             longitude: null,
+            contact_number: "",
+            contact_email: "",
+            contact_website: "",
+            source_dataset: "",
+            source_record_id: "",
+            source_last_updated: null,
+            is_active: true,
+            created_at: null,
+            updated_at: null,
           },
         ],
         error: null,
@@ -395,6 +546,46 @@ describe("fetchClinics", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  test("throws a clean error when appointment slot lookup fails", async () => {
+    clinicQueryResult = {
+      data: [
+        {
+          id: "clinic-1",
+          name: "Berario Clinic",
+          province: "Gauteng",
+          district: "City of Johannesburg",
+          area: "Randburg",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
+          facility_type: "Clinic",
+          address: "12 Example St",
+          services_offered: "General",
+          latitude: null,
+          longitude: null,
+          contact_number: "",
+          contact_email: "",
+          contact_website: "",
+          source_dataset: "",
+          source_record_id: "",
+          source_last_updated: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
+        },
+      ],
+      error: null,
+    };
+
+    slotQueryResult = {
+      data: null,
+      error: { message: "slot lookup failed" },
+    };
+
+    await expect(fetchClinics()).rejects.toThrow(
+      "Clinic search failed: slot lookup failed"
+    );
   });
 
   test("throws a clean error when supabase returns an error", async () => {

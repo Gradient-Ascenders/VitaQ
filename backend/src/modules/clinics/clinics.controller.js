@@ -1,4 +1,4 @@
-const { fetchClinics } = require('./clinics.service');
+const { fetchClinics, updateClinicDetails } = require('./clinics.service');
 const supabase = require('../../lib/supabaseClient');
 
 // Query parameters that the clinic endpoint is allowed to accept.
@@ -130,7 +130,29 @@ async function getClinicById(req, res) {
   }
 }
 
+/**
+ * Handles PATCH /api/clinics/:id.
+ * The route protects this controller with authMiddleware.requireAdmin, so only admins can update clinics.
+ */
+async function updateClinic(req, res) {
+  try {
+    const updatedClinic = await updateClinicDetails(req.params.id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Clinic details updated successfully.',
+      data: updatedClinic
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to update clinic details.'
+    });
+  }
+}
+
 module.exports = {
   getClinics,
-  getClinicById
+  getClinicById,
+  updateClinic
 };

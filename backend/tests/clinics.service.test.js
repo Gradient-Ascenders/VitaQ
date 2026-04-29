@@ -7,6 +7,8 @@ const mockClinicLimit = jest.fn();
 const mockClinicIlike = jest.fn();
 const mockClinicOr = jest.fn();
 const mockClinicEq = jest.fn();
+const mockClinicUpdate = jest.fn();
+const mockClinicSingle = jest.fn();
 
 const mockSlotSelect = jest.fn();
 const mockSlotIn = jest.fn();
@@ -22,6 +24,8 @@ const clinicQuery = {
   ilike: mockClinicIlike,
   or: mockClinicOr,
   eq: mockClinicEq,
+  update: mockClinicUpdate,
+  single: mockClinicSingle,
   then: (resolve, reject) => Promise.resolve(clinicQueryResult).then(resolve, reject),
 };
 
@@ -36,7 +40,10 @@ jest.mock("../src/lib/supabaseClient", () => ({
   from: mockFrom,
 }));
 
-const { fetchClinics } = require("../src/modules/clinics/clinics.service");
+const {
+  fetchClinics,
+  updateClinicDetails,
+} = require("../src/modules/clinics/clinics.service");
 
 describe("fetchClinics", () => {
   beforeEach(() => {
@@ -64,6 +71,8 @@ describe("fetchClinics", () => {
     mockClinicIlike.mockReturnValue(clinicQuery);
     mockClinicOr.mockReturnValue(clinicQuery);
     mockClinicEq.mockReturnValue(clinicQuery);
+    mockClinicUpdate.mockReturnValue(clinicQuery);
+    mockClinicSingle.mockImplementation(() => Promise.resolve(clinicQueryResult));
 
     mockSlotSelect.mockReturnValue(slotQuery);
     mockSlotIn.mockReturnValue(slotQuery);
@@ -598,4 +607,196 @@ describe("fetchClinics", () => {
       "Clinic search failed: db failed"
     );
   });
+
+  test("updates approved clinic fields and returns normalized clinic data", async () => {
+    clinicQueryResult = {
+      data: {
+        id: "clinic-1",
+        name: "Berario Clinic",
+        province: "Gauteng",
+        district: "City of Johannesburg",
+        area: "Randburg",
+        municipality: "City of Johannesburg",
+        region: "Johannesburg Metro",
+        facility_type: "Clinic",
+        address: "12 Example Street",
+        services_offered: "Primary care;Child health",
+        latitude: -26.1,
+        longitude: 28.04,
+        contact_number: "011 123 4567",
+        contact_email: "info@berario.gov.za",
+        contact_website: "https://example.com/berario",
+        source_dataset: "dsfsi/covid19za health_system_za_hospitals_v1.csv",
+        source_record_id: "berario-clinic-001",
+        source_last_updated: "2026-04-29T00:00:00.000Z",
+        is_active: false,
+        created_at: "2026-04-01T00:00:00.000Z",
+        updated_at: "2026-04-29T10:00:00.000Z",
+      },
+      error: null,
+    };
+
+    const result = await updateClinicDetails("clinic-1", {
+      name: "  Berario Clinic  ",
+      province: "Gauteng",
+      district: "City of Johannesburg",
+      area: "Randburg",
+      municipality: "City of Johannesburg",
+      region: "Johannesburg Metro",
+      facility_type: "Clinic",
+      address: "  12 Example Street  ",
+      services_offered: "Primary care;Child health",
+      latitude: "-26.1",
+      longitude: 28.04,
+      contact_number: "011 123 4567",
+      contact_email: "info@berario.gov.za",
+      contact_website: "https://example.com/berario",
+      is_active: "false",
+    });
+
+    expect(mockFrom).toHaveBeenCalledWith("clinics");
+    expect(mockClinicUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Berario Clinic",
+        province: "Gauteng",
+        district: "City of Johannesburg",
+        area: "Randburg",
+        municipality: "City of Johannesburg",
+        region: "Johannesburg Metro",
+        facility_type: "Clinic",
+        address: "12 Example Street",
+        services_offered: "Primary care;Child health",
+        latitude: -26.1,
+        longitude: 28.04,
+        contact_number: "011 123 4567",
+        contact_email: "info@berario.gov.za",
+        contact_website: "https://example.com/berario",
+        is_active: false,
+        updated_at: expect.any(String),
+      })
+    );
+    expect(mockClinicEq).toHaveBeenCalledWith("id", "clinic-1");
+    expect(mockClinicSelect).toHaveBeenCalledWith(expect.stringContaining("source_record_id"));
+    expect(mockClinicSingle).toHaveBeenCalledTimes(1);
+
+    expect(result).toEqual({
+      id: "clinic-1",
+      name: "Berario Clinic",
+      province: "Gauteng",
+      district: "City of Johannesburg",
+      area: "Randburg",
+      municipality: "City of Johannesburg",
+      region: "Johannesburg Metro",
+      facility_type: "Clinic",
+      address: "12 Example Street",
+      services_offered: "Primary care;Child health",
+      latitude: -26.1,
+      longitude: 28.04,
+      contact_number: "011 123 4567",
+      contact_email: "info@berario.gov.za",
+      contact_website: "https://example.com/berario",
+      source_dataset: "dsfsi/covid19za health_system_za_hospitals_v1.csv",
+      source_record_id: "berario-clinic-001",
+      source_last_updated: "2026-04-29T00:00:00.000Z",
+      is_active: false,
+      created_at: "2026-04-01T00:00:00.000Z",
+      updated_at: "2026-04-29T10:00:00.000Z",
+      available_slots_count: 0,
+    });
+  });
+
+  test("rejects protected or unknown clinic update fields", async () => {
+    await expect(
+      updateClinicDetails("clinic-1", {
+        source_dataset: "changed-source",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Invalid clinic update field(s): source_dataset",
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test("rejects empty required clinic fields", async () => {
+    await expect(
+      updateClinicDetails("clinic-1", {
+        name: "   ",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "name cannot be empty.",
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test("rejects invalid latitude and longitude values", async () => {
+    await expect(
+      updateClinicDetails("clinic-1", {
+        latitude: -91,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "latitude must be between -90 and 90.",
+    });
+
+    await expect(
+      updateClinicDetails("clinic-1", {
+        longitude: 181,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "longitude must be between -180 and 180.",
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test("rejects an empty clinic update payload", async () => {
+    await expect(updateClinicDetails("clinic-1", {})).rejects.toMatchObject({
+      statusCode: 400,
+      message: "At least one clinic detail must be provided.",
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test("throws a not found error when updating a missing clinic", async () => {
+    clinicQueryResult = {
+      data: null,
+      error: {
+        code: "PGRST116",
+        message: "No rows found",
+      },
+    };
+
+    await expect(
+      updateClinicDetails("missing-clinic", {
+        name: "Missing Clinic",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 404,
+      message: "Clinic not found.",
+    });
+  });
+
+  test("throws a clean error when clinic update fails", async () => {
+    clinicQueryResult = {
+      data: null,
+      error: {
+        message: "database update failed",
+      },
+    };
+
+    await expect(
+      updateClinicDetails("clinic-1", {
+        name: "Berario Clinic",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 500,
+      message: "Failed to update clinic details.",
+    });
+  });
+
 });

@@ -620,64 +620,64 @@ describe('fetchPatientQueueStatus', () => {
   });
 
   test('returns waiting queue status with live position and wait time when consultation is ahead', async () => {
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: [
-          {
-            id: 'queue-1',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-a',
-            appointment_id: 'appointment-a',
-            queue_number: 1,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'in_consultation',
-            estimated_wait_minutes: 0,
-            appointment: {
-              slot: {
-                start_time: '08:00:00',
-                end_time: '08:30:00'
-              }
-            }
-          },
-          {
-            id: 'queue-2',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-1',
-            appointment_id: 'appointment-1',
-            queue_number: 2,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 90,
-            appointment: {
-              slot: {
-                start_time: '08:30:00',
-                end_time: '09:00:00'
-              }
-            }
-          },
-          {
-            id: 'queue-3',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-b',
-            appointment_id: 'appointment-c',
-            queue_number: 3,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 0,
-            appointment: {
-              slot: {
-                start_time: '09:00:00',
-                end_time: '09:30:00'
-              }
+    const queueQuery = createMockQuery({
+      data: [
+        {
+          id: 'queue-1',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-a',
+          appointment_id: 'appointment-a',
+          queue_number: 1,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'in_consultation',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '08:00:00',
+              end_time: '08:30:00'
             }
           }
-        ],
-        error: null
-      })
-    );
+        },
+        {
+          id: 'queue-2',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-1',
+          appointment_id: 'appointment-1',
+          queue_number: 2,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 90,
+          appointment: {
+            slot: {
+              start_time: '08:30:00',
+              end_time: '09:00:00'
+            }
+          }
+        },
+        {
+          id: 'queue-3',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-b',
+          appointment_id: 'appointment-c',
+          queue_number: 3,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          appointment: {
+            slot: {
+              start_time: '09:00:00',
+              end_time: '09:30:00'
+            }
+          }
+        }
+      ],
+      error: null
+    });
+
+    supabase.from.mockReturnValueOnce(queueQuery);
 
     const result = await fetchPatientQueueStatus({
       patientId: 'patient-1',
@@ -711,6 +711,9 @@ describe('fetchPatientQueueStatus', () => {
       position: 3,
       status: 'waiting'
     });
+    expect(queueQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('appointment_slots!appointments_slot_id_fkey')
+    );
   });
 
   test('returns near-turn true with the urgent message when the patient is first in queue', async () => {
@@ -1902,51 +1905,51 @@ describe('fetchStaffQueue', () => {
       })
     );
 
-    supabase.from.mockReturnValueOnce(
-      createMockQuery({
-        data: [
-          {
-            id: 'queue-1',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-1',
-            appointment_id: 'appointment-1',
-            queue_number: 1,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'waiting',
-            estimated_wait_minutes: 0,
-            created_at: '2026-04-16T08:00:00Z',
-            updated_at: '2026-04-16T08:00:00Z',
-            appointment: {
-              slot: {
-                start_time: '08:00:00',
-                end_time: '08:30:00'
-              }
-            }
-          },
-          {
-            id: 'queue-2',
-            clinic_id: 'clinic-1',
-            patient_id: 'patient-2',
-            appointment_id: 'appointment-2',
-            queue_number: 2,
-            queue_date: '2026-04-16',
-            source: 'appointment',
-            status: 'in_consultation',
-            estimated_wait_minutes: 0,
-            created_at: '2026-04-16T08:05:00Z',
-            updated_at: '2026-04-16T08:05:00Z',
-            appointment: {
-              slot: {
-                start_time: '08:30:00',
-                end_time: '09:00:00'
-              }
+    const queueQuery = createMockQuery({
+      data: [
+        {
+          id: 'queue-1',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-1',
+          appointment_id: 'appointment-1',
+          queue_number: 1,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'waiting',
+          estimated_wait_minutes: 0,
+          created_at: '2026-04-16T08:00:00Z',
+          updated_at: '2026-04-16T08:00:00Z',
+          appointment: {
+            slot: {
+              start_time: '08:00:00',
+              end_time: '08:30:00'
             }
           }
-        ],
-        error: null
-      })
-    );
+        },
+        {
+          id: 'queue-2',
+          clinic_id: 'clinic-1',
+          patient_id: 'patient-2',
+          appointment_id: 'appointment-2',
+          queue_number: 2,
+          queue_date: '2026-04-16',
+          source: 'appointment',
+          status: 'in_consultation',
+          estimated_wait_minutes: 0,
+          created_at: '2026-04-16T08:05:00Z',
+          updated_at: '2026-04-16T08:05:00Z',
+          appointment: {
+            slot: {
+              start_time: '08:30:00',
+              end_time: '09:00:00'
+            }
+          }
+        }
+      ],
+      error: null
+    });
+
+    supabase.from.mockReturnValueOnce(queueQuery);
 
     const result = await fetchStaffQueue({
       staffUserId: 'staff-1',
@@ -1978,6 +1981,9 @@ describe('fetchStaffQueue', () => {
       live_position: null,
       appointment_time: '08:30:00'
     });
+    expect(queueQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('appointment_slots!appointments_slot_id_fkey')
+    );
   });
 
   test('returns explicit walk-in metadata for staff queue entries', async () => {

@@ -1,7 +1,17 @@
-// Import the shared Supabase client
+// Import the shared Supabase client used by all backend modules.
 const supabase = require('../../lib/supabaseClient');
+
+// Reuse the slot availability helper so clinic cards only count slots that can still be booked.
 const { isBookableSlot } = require('../slots/slotAvailability');
 
+// The imported SA dataset currently has 893 records.
+// This limit is raised from 50 so the frontend can display the full imported clinic dataset.
+const MAX_CLINIC_RESULTS = 1000;
+
+/**
+ * Sorts clinics so clinics with available appointment slots appear first.
+ * If two clinics have the same number of available slots, they are sorted alphabetically.
+ */
 function sortClinicsByAvailability(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
     const leftAvailableSlots = Math.max(Number(leftClinic?.available_slots_count) || 0, 0);
@@ -15,47 +25,121 @@ function sortClinicsByAvailability(clinics) {
   });
 }
 
+/**
+ * Cleans incoming filter values from the controller.
+ * This keeps the query-building code safer and avoids repeated trim checks.
+ */
+function cleanFilter(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Builds a Supabase OR search filter.
+ * This allows one search term to match clinic name, address, area, district, region, or municipality.
+ */
+function buildClinicSearchFilter(search) {
+  // Commas have special meaning in Supabase .or() filters, so replace them with spaces.
+  const safeSearch = search.replace(/,/g, ' ');
+
+  return [
+    `name.ilike.%${safeSearch}%`,
+    `address.ilike.%${safeSearch}%`,
+    `area.ilike.%${safeSearch}%`,
+    `district.ilike.%${safeSearch}%`,
+    `region.ilike.%${safeSearch}%`,
+    `municipality.ilike.%${safeSearch}%`
+  ].join(',');
+}
+
+/**
+ * Fetches available appointment slot counts for the clinics being displayed.
+ * This keeps the clinic search useful for patients because they can see which clinics have bookable slots.
+ */
+/**
+ * Fetches available appointment slot counts for the clinics being displayed.
+ * Clinic IDs are split into smaller batches and counted safely.
+ */
 async function fetchAvailableSlotCounts(clinicIds) {
   if (!Array.isArray(clinicIds) || clinicIds.length === 0) {
     return {};
   }
 
-  const { data, error } = await supabase
-    .from('appointment_slots')
-    .select('clinic_id, date, end_time, capacity, booked_count')
-    .in('clinic_id', clinicIds)
-    .eq('status', 'available');
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  const batchSize = 100;
   const now = new Date();
+  const counts = {};
 
-  return (data || []).reduce((counts, slot) => {
-    if (!isBookableSlot(slot, now)) {
-      return counts;
+  for (let i = 0; i < clinicIds.length; i += batchSize) {
+    const clinicIdBatch = clinicIds.slice(i, i + batchSize);
+
+    const { data, error } = await supabase
+      .from('appointment_slots')
+      .select('clinic_id, date, end_time, capacity, booked_count')
+      .in('clinic_id', clinicIdBatch)
+      .eq('status', 'available');
+
+    if (error) {
+      throw new Error(error.message);
     }
 
-    counts[slot.clinic_id] = (counts[slot.clinic_id] || 0) + 1;
-    return counts;
-  }, {});
+    // Count only slots that are still bookable, not full, and not already in the past.
+    for (const slot of data || []) {
+      if (!isBookableSlot(slot, now)) {
+        continue;
+      }
+
+      counts[slot.clinic_id] = (counts[slot.clinic_id] || 0) + 1;
+    }
+  }
+
+  return counts;
 }
 
-// Service function responsible for building and running the clinic query
+/**
+ * Normalizes a clinic row from Supabase into the clean shape expected by the frontend.
+ * Empty optional fields become empty strings, while coordinates stay null when missing.
+ */
+function normalizeClinic(clinic, availableSlotCounts) {
+  return {
+    id: clinic.id,
+    name: clinic.name || '',
+    province: clinic.province || '',
+    district: clinic.district || '',
+    area: clinic.area || '',
+    municipality: clinic.municipality || '',
+    region: clinic.region || '',
+    facility_type: clinic.facility_type || '',
+    address: clinic.address || '',
+    services_offered: clinic.services_offered || '',
+    latitude: clinic.latitude ?? null,
+    longitude: clinic.longitude ?? null,
+    contact_number: clinic.contact_number || '',
+    contact_email: clinic.contact_email || '',
+    contact_website: clinic.contact_website || '',
+    source_dataset: clinic.source_dataset || '',
+    source_record_id: clinic.source_record_id || '',
+    source_last_updated: clinic.source_last_updated || null,
+    is_active: clinic.is_active ?? true,
+    created_at: clinic.created_at || null,
+    updated_at: clinic.updated_at || null,
+    available_slots_count: availableSlotCounts[clinic.id] || 0
+  };
+}
+
+/**
+ * Main clinic search service.
+ * It builds the Supabase query based on optional filters and returns normalized clinic objects.
+ */
 async function fetchClinics(filters = {}) {
   try {
-    // Clean incoming filter values by trimming whitespace
-    // Default to empty strings so filters are optional
-    const search = filters.search?.trim() || '';
-    const province = filters.province?.trim() || '';
-    const district = filters.district?.trim() || '';
-    const area = filters.area?.trim() || '';
-    const facility_type = filters.facility_type?.trim() || '';
-    const services_offered = filters.services_offered?.trim() || '';
+    const search = cleanFilter(filters.search);
+    const province = cleanFilter(filters.province);
+    const district = cleanFilter(filters.district);
+    const area = cleanFilter(filters.area);
+    const municipality = cleanFilter(filters.municipality);
+    const region = cleanFilter(filters.region);
+    const facility_type = cleanFilter(filters.facility_type);
+    const services_offered = cleanFilter(filters.services_offered);
 
-    // Start building the query against the clinics table
-    // Select only the fields needed for Sprint 1 clinic search and display
     let query = supabase
       .from('clinics')
       .select(`
@@ -64,82 +148,82 @@ async function fetchClinics(filters = {}) {
         province,
         district,
         area,
+        municipality,
+        region,
         facility_type,
         address,
         services_offered,
         latitude,
-        longitude
+        longitude,
+        contact_number,
+        contact_email,
+        contact_website,
+        source_dataset,
+        source_record_id,
+        source_last_updated,
+        is_active,
+        created_at,
+        updated_at
       `)
-      // Order alphabetically by clinic name for cleaner frontend display
+      // Only active clinics should appear in normal search results.
+      .eq('is_active', true)
+      // Keep results predictable before the availability-based sorting happens.
       .order('name', { ascending: true })
-      // Limit results so the endpoint does not return too much data at once
-      .limit(50);
+      // Increased from 50 so all imported SA clinic records can be returned.
+      .limit(MAX_CLINIC_RESULTS);
 
-    // Apply case-insensitive partial search on clinic name
     if (search) {
-      query = query.ilike('name', `%${search}%`);
+      query = query.or(buildClinicSearchFilter(search));
     }
 
-    // Apply case-insensitive province filter
     if (province) {
       query = query.ilike('province', province);
     }
 
-    // Apply case-insensitive district filter
     if (district) {
       query = query.ilike('district', district);
     }
 
-    // Apply case-insensitive area filter
     if (area) {
       query = query.ilike('area', area);
     }
 
-    // Apply case-insensitive facility type filter
+    if (municipality) {
+      query = query.ilike('municipality', municipality);
+    }
+
+    if (region) {
+      query = query.ilike('region', region);
+    }
+
     if (facility_type) {
       query = query.ilike('facility_type', facility_type);
     }
 
-    // Apply partial match filter for services offered
-    // This helps match shorter search terms inside a longer services string
     if (services_offered) {
       query = query.ilike('services_offered', `%${services_offered}%`);
     }
 
-    // Run the query
     const { data, error } = await query;
 
-    // Throw an error if Supabase reports a problem
     if (error) {
       throw new Error(error.message);
     }
 
     const clinics = data || [];
+
     const availableSlotCounts = await fetchAvailableSlotCounts(
       clinics.map((clinic) => clinic.id).filter(Boolean)
     );
 
-    // Normalize the returned clinic objects so the frontend gets a consistent shape
-    const normalizedClinics = clinics.map((clinic) => ({
-      id: clinic.id,
-      name: clinic.name || '',
-      province: clinic.province || '',
-      district: clinic.district || '',
-      area: clinic.area || '',
-      facility_type: clinic.facility_type || '',
-      address: clinic.address || '',
-      services_offered: clinic.services_offered || '',
-      latitude: clinic.latitude ?? null,
-      longitude: clinic.longitude ?? null,
-      available_slots_count: availableSlotCounts[clinic.id] || 0
-    }));
+    const normalizedClinics = clinics.map((clinic) =>
+      normalizeClinic(clinic, availableSlotCounts)
+    );
 
     return sortClinicsByAvailability(normalizedClinics);
   } catch (error) {
-    // Re-throw a cleaner error message for the controller to catch
     throw new Error(`Clinic search failed: ${error.message}`);
   }
 }
 
-// Export the service function
 module.exports = { fetchClinics };

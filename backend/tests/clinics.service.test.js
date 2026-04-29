@@ -8,6 +8,8 @@ const mockClinicIlike = jest.fn();
 const mockSlotSelect = jest.fn();
 const mockSlotIn = jest.fn();
 const mockSlotEq = jest.fn();
+const mockClinicOr = jest.fn();
+const mockClinicEq = jest.fn();
 
 let clinicQueryResult = { data: [], error: null };
 let slotQueryResult = { data: [], error: null };
@@ -17,6 +19,8 @@ const clinicQuery = {
   order: mockClinicOrder,
   limit: mockClinicLimit,
   ilike: mockClinicIlike,
+  or: mockClinicOr,
+  eq: mockClinicEq,
   then: (resolve, reject) => Promise.resolve(clinicQueryResult).then(resolve, reject),
 };
 
@@ -57,7 +61,8 @@ describe("fetchClinics", () => {
     mockClinicOrder.mockReturnValue(clinicQuery);
     mockClinicLimit.mockReturnValue(clinicQuery);
     mockClinicIlike.mockReturnValue(clinicQuery);
-
+    mockClinicOr.mockReturnValue(clinicQuery);
+    mockClinicEq.mockReturnValue(clinicQuery);
     mockSlotSelect.mockReturnValue(slotQuery);
     mockSlotIn.mockReturnValue(slotQuery);
     mockSlotEq.mockReturnValue(slotQuery);
@@ -72,11 +77,22 @@ describe("fetchClinics", () => {
           province: "Gauteng",
           district: "Johannesburg",
           area: "Hillbrow",
+          municipality: "City of Johannesburg",
+          region: "Johannesburg Metro",
           facility_type: "Clinic",
           address: "12 Claim St",
           services_offered: "Primary Care",
           latitude: -26.1,
           longitude: 28.04,
+          contact_number: "011 123 4567",
+          contact_email: "info@hillbrowclinic.gov.za",
+          contact_website: "https://example.com/hillbrow",
+          source_dataset: "DSFSI covid19za health_system_za_hospitals_v1.csv",
+          source_record_id: "hillbrow-clinic-001",
+          source_last_updated: "2026-04-29T00:00:00.000Z",
+          is_active: true,
+          created_at: "2026-04-29T00:00:00.000Z",
+          updated_at: "2026-04-29T00:00:00.000Z",
         },
       ],
       error: null,
@@ -104,11 +120,22 @@ describe("fetchClinics", () => {
         province: "Gauteng",
         district: "Johannesburg",
         area: "Hillbrow",
+        municipality: "City of Johannesburg",
+        region: "Johannesburg Metro",
         facility_type: "Clinic",
         address: "12 Claim St",
         services_offered: "Primary Care",
         latitude: -26.1,
         longitude: 28.04,
+        contact_number: "011 123 4567",
+        contact_email: "info@hillbrowclinic.gov.za",
+        contact_website: "https://example.com/hillbrow",
+        source_dataset: "DSFSI covid19za health_system_za_hospitals_v1.csv",
+        source_record_id: "hillbrow-clinic-001",
+        source_last_updated: "2026-04-29T00:00:00.000Z",
+        is_active: true,
+        created_at: "2026-04-29T00:00:00.000Z",
+        updated_at: "2026-04-29T00:00:00.000Z",
         available_slots_count: 1,
       },
     ]);
@@ -120,14 +147,24 @@ describe("fetchClinics", () => {
       province: "Gauteng",
       district: "Johannesburg",
       area: "Hillbrow",
+      municipality: "City of Johannesburg",
+      region: "Johannesburg Metro",
       facility_type: "Clinic",
       services_offered: "Care",
     });
 
-    expect(mockClinicIlike).toHaveBeenCalledWith("name", "%Hill%");
+    expect(mockClinicEq).toHaveBeenCalledWith("is_active", true);
+    expect(mockClinicLimit).toHaveBeenCalledWith(1000);
+
+    expect(mockClinicOr).toHaveBeenCalledWith(
+      "name.ilike.%Hill%,address.ilike.%Hill%,area.ilike.%Hill%,district.ilike.%Hill%,region.ilike.%Hill%,municipality.ilike.%Hill%"
+    );
+
     expect(mockClinicIlike).toHaveBeenCalledWith("province", "Gauteng");
     expect(mockClinicIlike).toHaveBeenCalledWith("district", "Johannesburg");
     expect(mockClinicIlike).toHaveBeenCalledWith("area", "Hillbrow");
+    expect(mockClinicIlike).toHaveBeenCalledWith("municipality", "City of Johannesburg");
+    expect(mockClinicIlike).toHaveBeenCalledWith("region", "Johannesburg Metro");
     expect(mockClinicIlike).toHaveBeenCalledWith("facility_type", "Clinic");
     expect(mockClinicIlike).toHaveBeenCalledWith("services_offered", "%Care%");
   });

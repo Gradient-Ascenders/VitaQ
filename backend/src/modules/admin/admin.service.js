@@ -1,6 +1,38 @@
 const supabase = require('../../lib/supabaseClient');
 
 const STAFF_REQUEST_STATUSES = ['approved', 'rejected'];
+const ADMIN_CLINIC_LIST_FIELDS = `
+  id,
+  name,
+  province,
+  district,
+  municipality,
+  region,
+  facility_type,
+  is_active,
+  updated_at
+`;
+const ADMIN_CLINIC_DETAIL_FIELDS = `
+  id,
+  name,
+  province,
+  district,
+  area,
+  municipality,
+  region,
+  facility_type,
+  address,
+  services_offered,
+  contact_website,
+  contact_number,
+  contact_email,
+  is_active,
+  source_dataset,
+  source_record_id,
+  source_last_updated,
+  created_at,
+  updated_at
+`;
 const STAFF_REQUEST_SELECT_FIELDS = `
   id,
   user_id,
@@ -28,6 +60,105 @@ function createServiceError(message, statusCode = 400) {
   return error;
 }
 
+function normalizeClinicRecord(clinic) {
+  return {
+    id: clinic?.id || '',
+    name: clinic?.name || '',
+    province: clinic?.province || '',
+    district: clinic?.district || '',
+    area: clinic?.area || '',
+    municipality: clinic?.municipality || '',
+    region: clinic?.region || '',
+    facility_type: clinic?.facility_type || '',
+    address: clinic?.address || '',
+    services_offered: clinic?.services_offered || '',
+    contact_website: clinic?.contact_website || '',
+    contact_number: clinic?.contact_number || '',
+    contact_email: clinic?.contact_email || '',
+    is_active: clinic?.is_active ?? true,
+    source_dataset: clinic?.source_dataset || '',
+    source_record_id: clinic?.source_record_id || '',
+    source_last_updated: clinic?.source_last_updated || null,
+    created_at: clinic?.created_at || null,
+    updated_at: clinic?.updated_at || null
+  };
+}
+
+function normalizeClinicSummary(clinic) {
+  return {
+    id: clinic?.id || '',
+    name: clinic?.name || '',
+    province: clinic?.province || '',
+    district: clinic?.district || '',
+    municipality: clinic?.municipality || '',
+    region: clinic?.region || '',
+    facility_type: clinic?.facility_type || '',
+    is_active: clinic?.is_active ?? true,
+    updated_at: clinic?.updated_at || null
+  };
+}
+
+function cleanOptionalClinicText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeClinicUpdatePayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw createServiceError('Clinic update payload is required.', 400);
+  }
+
+  const allowedFields = [
+    'name',
+    'province',
+    'district',
+    'area',
+    'municipality',
+    'region',
+    'facility_type',
+    'address',
+    'services_offered',
+    'contact_website',
+    'contact_number',
+    'contact_email',
+    'is_active'
+  ];
+  const payloadKeys = Object.keys(payload);
+  const invalidFields = payloadKeys.filter((key) => !allowedFields.includes(key));
+
+  if (invalidFields.length > 0) {
+    throw createServiceError(
+      `Unsupported clinic field(s): ${invalidFields.join(', ')}`,
+      400
+    );
+  }
+
+  const name = cleanOptionalClinicText(payload.name);
+
+  if (!name) {
+    throw createServiceError('Clinic name is required.', 400);
+  }
+
+  if (typeof payload.is_active !== 'boolean') {
+    throw createServiceError('Clinic active status must be a boolean.', 400);
+  }
+
+  return {
+    name,
+    province: cleanOptionalClinicText(payload.province),
+    district: cleanOptionalClinicText(payload.district),
+    area: cleanOptionalClinicText(payload.area),
+    municipality: cleanOptionalClinicText(payload.municipality),
+    region: cleanOptionalClinicText(payload.region),
+    facility_type: cleanOptionalClinicText(payload.facility_type),
+    address: cleanOptionalClinicText(payload.address),
+    services_offered: cleanOptionalClinicText(payload.services_offered),
+    contact_website: cleanOptionalClinicText(payload.contact_website),
+    contact_number: cleanOptionalClinicText(payload.contact_number),
+    contact_email: cleanOptionalClinicText(payload.contact_email),
+    is_active: payload.is_active
+  };
+}
+
 /**
  * Fetches all pending staff registration requests for the admin dashboard.
  *
@@ -46,6 +177,70 @@ async function fetchPendingStaffRequests() {
   }
 
   return Array.isArray(data) ? data : [];
+}
+
+async function fetchAdminClinics() {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(ADMIN_CLINIC_LIST_FIELDS)
+    .order('name', { ascending: true });
+
+  if (error) {
+    throw createServiceError('Failed to fetch clinics for admin management.', 500);
+  }
+
+  return Array.isArray(data) ? data.map(normalizeClinicSummary) : [];
+}
+
+async function fetchAdminClinicById(clinicId) {
+  if (!clinicId) {
+    throw createServiceError('Clinic ID is required.', 400);
+  }
+
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(ADMIN_CLINIC_DETAIL_FIELDS)
+    .eq('id', clinicId)
+    .single();
+
+  if (error || !data) {
+    if (error?.code === 'PGRST116') {
+      throw createServiceError('Clinic not found.', 404);
+    }
+
+    throw createServiceError('Failed to load clinic details.', 500);
+  }
+
+  return normalizeClinicRecord(data);
+}
+
+async function updateAdminClinic({ clinicId, updates }) {
+  if (!clinicId) {
+    throw createServiceError('Clinic ID is required.', 400);
+  }
+
+  const normalizedUpdates = normalizeClinicUpdatePayload(updates);
+  const updatedAt = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('clinics')
+    .update({
+      ...normalizedUpdates,
+      updated_at: updatedAt
+    })
+    .eq('id', clinicId)
+    .select(ADMIN_CLINIC_DETAIL_FIELDS)
+    .single();
+
+  if (error || !data) {
+    if (error?.code === 'PGRST116') {
+      throw createServiceError('Clinic not found.', 404);
+    }
+
+    throw createServiceError('Failed to update clinic details.', 500);
+  }
+
+  return normalizeClinicRecord(data);
 }
 
 /**
@@ -224,5 +419,8 @@ async function reviewStaffRequest({ requestId, adminId, status }) {
 
 module.exports = {
   fetchPendingStaffRequests,
-  reviewStaffRequest
+  reviewStaffRequest,
+  fetchAdminClinics,
+  fetchAdminClinicById,
+  updateAdminClinic
 };

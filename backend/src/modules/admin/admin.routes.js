@@ -1,5 +1,8 @@
 const express = require('express');
 const {
+  getAdminClinics,
+  getAdminClinicById,
+  patchAdminClinic,
   getPendingStaffRequests,
   approveStaffRequest,
   rejectStaffRequest
@@ -7,6 +10,33 @@ const {
 const authMiddleware = require('../../middleware/auth');
 
 const router = express.Router();
+
+// GET /api/admin/clinics
+// Admin-only route to view all clinics, including inactive rows, for management.
+router.get(
+  '/clinics',
+  authMiddleware,
+  authMiddleware.requireAdmin,
+  getAdminClinics
+);
+
+// GET /api/admin/clinics/:clinicId
+// Admin-only route to load one clinic into the management form.
+router.get(
+  '/clinics/:clinicId',
+  authMiddleware,
+  authMiddleware.requireAdmin,
+  getAdminClinicById
+);
+
+// PATCH /api/admin/clinics/:clinicId
+// Admin-only route to update editable clinic details.
+router.patch(
+  '/clinics/:clinicId',
+  authMiddleware,
+  authMiddleware.requireAdmin,
+  patchAdminClinic
+);
 
 // GET /api/admin/staff-requests/pending
 // Admin-only route to view pending staff registration requests.

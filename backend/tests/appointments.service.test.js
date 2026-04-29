@@ -532,13 +532,24 @@ describe('appointments.service', () => {
                         slot_id: 'slot-1',
                         status: 'booked',
                         created_at: '2026-04-15T08:00:00.000Z',
+                        updated_at: '2026-04-15T09:00:00.000Z',
+                        cancelled_at: null,
+                        cancellation_reason: null,
+                        rescheduled_from_slot_id: null,
+                        rescheduled_at: '2026-04-15T09:00:00.000Z',
+                        notes: 'Bring your previous prescription.',
                         clinic: {
                             name: 'Mangaung Clinic',
                             address: '123 Main Rd',
                             province: 'Free State',
                             district: 'Mangaung',
                             area: 'Botshabelo',
+                            municipality: 'Mangaung',
+                            region: 'Mangaung Metro',
                             facility_type: 'clinic',
+                            contact_number: '051 000 0000',
+                            contact_email: 'bookings@mangaung.example.org',
+                            contact_website: 'https://mangaung.example.org',
                         },
                         slot: {
                             date: '2026-04-16',
@@ -558,6 +569,9 @@ describe('appointments.service', () => {
                 ascending: false,
             });
             expect(result[0].slot_id).toBe('slot-1');
+            expect(result[0].rescheduled_at).toBe('2026-04-15T09:00:00.000Z');
+            expect(result[0].notes).toBe('Bring your previous prescription.');
+            expect(result[0].clinic.contact_website).toBe('https://mangaung.example.org');
         });
 
         test('throws a clean error when patient appointment lookup fails', async () => {

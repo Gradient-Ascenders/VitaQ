@@ -179,13 +179,24 @@ async function fetchAppointmentsByPatientId(patientId) {
       slot_id,
       status,
       created_at,
+      updated_at,
+      cancelled_at,
+      cancellation_reason,
+      rescheduled_from_slot_id,
+      rescheduled_at,
+      notes,
       clinic:clinics (
         name,
         address,
         province,
         district,
         area,
-        facility_type
+        municipality,
+        region,
+        facility_type,
+        contact_number,
+        contact_email,
+        contact_website
       ),
       slot:appointment_slots (
         date,

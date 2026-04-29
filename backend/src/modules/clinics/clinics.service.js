@@ -54,8 +54,8 @@ async function fetchClinics(filters = {}) {
     const facility_type = filters.facility_type?.trim() || '';
     const services_offered = filters.services_offered?.trim() || '';
 
-    // Start building the query against the clinics table
-    // Select only the fields needed for Sprint 1 clinic search and display
+    // Start building the query against the clinics table.
+    // Include the patient-facing dataset fields used by the clinic search cards.
     let query = supabase
       .from('clinics')
       .select(`
@@ -67,6 +67,10 @@ async function fetchClinics(filters = {}) {
         facility_type,
         address,
         services_offered,
+        region,
+        municipality,
+        contact_website,
+        is_active,
         latitude,
         longitude
       `)
@@ -129,6 +133,10 @@ async function fetchClinics(filters = {}) {
       facility_type: clinic.facility_type || '',
       address: clinic.address || '',
       services_offered: clinic.services_offered || '',
+      region: clinic.region || '',
+      municipality: clinic.municipality || '',
+      contact_website: clinic.contact_website || '',
+      is_active: clinic.is_active !== false,
       latitude: clinic.latitude ?? null,
       longitude: clinic.longitude ?? null,
       available_slots_count: availableSlotCounts[clinic.id] || 0

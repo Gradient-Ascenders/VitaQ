@@ -32,6 +32,14 @@ function uniqueSortedValues(items, key) {
   );
 }
 
+function cleanTextValue(value) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return String(value).trim();
+}
+
 function fillSelectOptions(selectElement, values, defaultLabel) {
   selectElement.innerHTML = "";
 
@@ -92,6 +100,107 @@ function formatAvailableSlotsLabel(count) {
   return `${numericCount} slot${numericCount === 1 ? "" : "s"} available`;
 }
 
+function buildClinicLocationText(clinic) {
+  const locationParts = [clinic.area, clinic.district, clinic.province]
+    .map(cleanTextValue)
+    .filter(Boolean);
+
+  if (locationParts.length > 0) {
+    return locationParts.join(" • ");
+  }
+
+  const broaderLocation = [clinic.municipality, clinic.region]
+    .map(cleanTextValue)
+    .filter(Boolean);
+
+  if (broaderLocation.length > 0) {
+    return broaderLocation.join(" • ");
+  }
+
+  return "Location details incomplete";
+}
+
+function buildClinicAddressText(clinic) {
+  const address = cleanTextValue(clinic.address);
+
+  if (address) {
+    return address;
+  }
+
+  const municipality = cleanTextValue(clinic.municipality);
+  const region = cleanTextValue(clinic.region);
+
+  if (municipality && region) {
+    return `${municipality} • ${region}`;
+  }
+
+  if (municipality || region) {
+    return municipality || region;
+  }
+
+  return "Address not available";
+}
+
+function getClinicSummaryItems(clinic) {
+  const items = [];
+
+  if (cleanTextValue(clinic.municipality)) {
+    items.push({
+      label: "Municipality",
+      value: cleanTextValue(clinic.municipality)
+    });
+  }
+
+  if (cleanTextValue(clinic.region)) {
+    items.push({
+      label: "Region",
+      value: cleanTextValue(clinic.region)
+    });
+  }
+
+  return items;
+}
+
+function getClinicDataNote(clinic) {
+  if (clinic.is_active === false) {
+    return "Clinic listing may be outdated. Confirm details with the clinic before visiting.";
+  }
+
+  const missingImportantFields = [
+    !cleanTextValue(clinic.address),
+    !cleanTextValue(clinic.services_offered),
+    !cleanTextValue(clinic.municipality) && !cleanTextValue(clinic.region)
+  ].filter(Boolean).length;
+
+  if (missingImportantFields >= 2) {
+    return "Some clinic details are still being completed in the dataset.";
+  }
+
+  return "";
+}
+
+function normaliseWebsiteUrl(value) {
+  const website = cleanTextValue(value);
+
+  if (!website) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+
+  try {
+    const url = new URL(withProtocol);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+
+    return url.toString();
+  } catch (error) {
+    return "";
+  }
+}
+
 // Sort clinics with the most available slots first so patients see bookable options sooner.
 function sortClinicsByAvailability(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
@@ -123,12 +232,49 @@ function renderClinics(clinics) {
 
   const cardsMarkup = clinics
     .map((clinic) => {
-      const locationParts = [clinic.area, clinic.district, clinic.province].filter(Boolean);
-      const locationText = locationParts.length > 0 ? locationParts.join(" • ") : "Location not available";
-      const facilityType = clinic.facility_type || "Facility type not available";
+      const locationText = buildClinicLocationText(clinic);
+      const facilityType = cleanTextValue(clinic.facility_type) || "Facility type not available";
       const services = formatServicesSummary(clinic.services_offered);
-      const address = clinic.address || "Address not available";
+      const address = buildClinicAddressText(clinic);
       const availableSlotsLabel = formatAvailableSlotsLabel(clinic.available_slots_count);
+      const summaryItemsMarkup = getClinicSummaryItems(clinic)
+        .map(
+          (item) => `
+            <div class="rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-3 py-3">
+              <p class="text-[0.65rem] uppercase tracking-[0.24em] text-[#8b93b8]">${escapeHtml(item.label)}</p>
+              <p class="mt-2 text-sm font-medium text-[#e0e5ff]">${escapeHtml(item.value)}</p>
+            </div>
+          `
+        )
+        .join("");
+      const websiteUrl = normaliseWebsiteUrl(clinic.contact_website);
+      const dataNote = getClinicDataNote(clinic);
+      const statusBadge = clinic.is_active === false
+        ? `
+            <p class="inline-flex rounded-2xl border border-[#f7768e]/25 bg-[#f7768e]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#f4b5c0]">
+              Listing unconfirmed
+            </p>
+          `
+        : "";
+      const websiteMarkup = websiteUrl
+        ? `
+            <a
+              href="${escapeHtml(websiteUrl)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-4 inline-flex self-start text-sm font-medium text-[#7dcfff] transition hover:text-[#b8ecff]"
+            >
+              Visit clinic website
+            </a>
+          `
+        : "";
+      const dataNoteMarkup = dataNote
+        ? `
+            <div class="mt-4 rounded-[1.25rem] border border-[#e0af68]/20 bg-[#e0af68]/10 px-4 py-3 text-sm text-[#f6d8a8]">
+              ${escapeHtml(dataNote)}
+            </div>
+          `
+        : "";
 
       return `
         <article class="flex h-full flex-col rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7aa2f7]/40 hover:bg-[#24283b]/82">
@@ -136,6 +282,7 @@ function renderClinics(clinics) {
             <p class="inline-flex rounded-2xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7dcfff]">
               ${escapeHtml(facilityType)}
             </p>
+            ${statusBadge}
           </div>
 
           <h3 class="mt-4 text-2xl font-semibold text-[#e0e5ff]">
@@ -150,12 +297,19 @@ function renderClinics(clinics) {
             ${escapeHtml(address)}
           </p>
 
+          ${summaryItemsMarkup
+            ? `<div class="mt-5 grid gap-3 sm:grid-cols-2">${summaryItemsMarkup}</div>`
+            : ""}
+
           <div class="mt-5 rounded-[1.25rem] border border-[#414868] bg-[#1f2335]/85 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Services</p>
             <p class="mt-2 text-sm leading-6 break-words text-[#c0caf5]">
               ${escapeHtml(services)}
             </p>
           </div>
+
+          ${websiteMarkup}
+          ${dataNoteMarkup}
 
           <p class="mt-4 text-sm font-medium text-[#b8ecff]">
             ${escapeHtml(availableSlotsLabel)}
@@ -189,13 +343,19 @@ function applyFilters() {
     const clinicArea = String(clinic.area || "").toLowerCase();
     const clinicFacilityType = String(clinic.facility_type || "").toLowerCase();
     const clinicServices = String(clinic.services_offered || "").toLowerCase();
+    const clinicMunicipality = String(clinic.municipality || "").toLowerCase();
+    const clinicRegion = String(clinic.region || "").toLowerCase();
 
     const matchesSearch =
       !searchValue ||
       clinicName.includes(searchValue) ||
       clinicArea.includes(searchValue) ||
       clinicDistrict.includes(searchValue) ||
-      clinicServices.includes(searchValue);
+      clinicProvince.includes(searchValue) ||
+      clinicFacilityType.includes(searchValue) ||
+      clinicServices.includes(searchValue) ||
+      clinicMunicipality.includes(searchValue) ||
+      clinicRegion.includes(searchValue);
 
     const matchesProvince = !provinceValue || clinicProvince === provinceValue;
     const matchesDistrict =
@@ -233,6 +393,7 @@ async function loadClinics() {
   emptyState.classList.add("hidden");
   clinicsList.classList.add("hidden");
   resultsCount.textContent = "Loading clinics...";
+  loadingState.textContent = "Loading clinics and location details...";
 
   try {
     const response = await fetch("/api/clinics");
@@ -254,6 +415,7 @@ async function loadClinics() {
     clinicsList.classList.add("hidden");
     emptyState.classList.add("hidden");
     errorState.classList.remove("hidden");
+    errorState.textContent = "We could not load clinic directory details right now. Please try again.";
     resultsCount.textContent = "Unable to load clinics";
   }
 }

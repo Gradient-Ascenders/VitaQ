@@ -5,6 +5,14 @@ function getClinicIdFromPath() {
   return parts[1] || null; // expects /clinic/:id
 }
 
+function cleanTextValue(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
 // Services are currently stored as a semicolon-separated string in the clinics table.
 function formatServices(services) {
   if (!services) return [];
@@ -29,9 +37,119 @@ function formatTime(timeString) {
 }
 
 // Reuse one text helper so missing clinic fields fall back consistently across the page.
-function setText(id, value) {
+function setText(id, value, fallback = 'N/A') {
   const element = document.getElementById(id);
-  if (element) element.textContent = value || 'N/A';
+  if (element) {
+    element.textContent = cleanTextValue(value) || fallback;
+  }
+}
+
+function normaliseWebsiteUrl(value) {
+  const website = cleanTextValue(value);
+
+  if (!website) {
+    return '';
+  }
+
+  const withProtocol = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+
+  try {
+    const url = new URL(withProtocol);
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
+
+    return url.toString();
+  } catch (error) {
+    return '';
+  }
+}
+
+function buildClinicAddressText(clinic) {
+  const address = cleanTextValue(clinic.address);
+
+  if (address) {
+    return address;
+  }
+
+  const locationParts = [clinic.area, clinic.district, clinic.municipality, clinic.province]
+    .map(cleanTextValue)
+    .filter(Boolean);
+
+  if (locationParts.length > 0) {
+    return locationParts.join(', ');
+  }
+
+  return 'Location details incomplete';
+}
+
+function buildClinicIssues(clinic) {
+  const issues = [];
+
+  if (clinic.is_active === false) {
+    issues.push('This clinic listing is marked inactive. Confirm the clinic status before visiting.');
+  }
+
+  const missingImportantFields = [
+    !cleanTextValue(clinic.address),
+    !cleanTextValue(clinic.services_offered),
+    !cleanTextValue(clinic.contact_website),
+    !cleanTextValue(clinic.municipality) && !cleanTextValue(clinic.region)
+  ].filter(Boolean).length;
+
+  if (missingImportantFields >= 2) {
+    issues.push('Some clinic details are still being completed in the dataset.');
+  }
+
+  return issues;
+}
+
+function renderClinicDataNotice(clinic) {
+  const notice = document.getElementById('clinicDataNotice');
+  const noticeText = document.getElementById('clinicDataNoticeText');
+
+  if (!notice || !noticeText) {
+    return;
+  }
+
+  const issues = buildClinicIssues(clinic);
+
+  if (issues.length === 0) {
+    notice.classList.add('hidden');
+    noticeText.textContent = '';
+    return;
+  }
+
+  noticeText.textContent = issues.join(' ');
+  notice.classList.remove('hidden');
+}
+
+function renderWebsite(value) {
+  const websiteElement = document.getElementById('clinicWebsite');
+
+  if (!websiteElement) {
+    return;
+  }
+
+  const websiteUrl = normaliseWebsiteUrl(value);
+
+  if (!websiteUrl) {
+    websiteElement.textContent = 'Website not available';
+    websiteElement.removeAttribute('href');
+    websiteElement.removeAttribute('target');
+    websiteElement.removeAttribute('rel');
+    websiteElement.classList.remove('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
+    websiteElement.classList.add('cursor-default', 'text-[#8b93b8]', 'no-underline');
+    return;
+  }
+
+  websiteElement.textContent = websiteUrl.replace(/^https?:\/\//i, '');
+  websiteElement.href = websiteUrl;
+  websiteElement.target = '_blank';
+  websiteElement.rel = 'noopener noreferrer';
+  websiteElement.classList.remove('cursor-default', 'text-[#8b93b8]', 'no-underline');
+  websiteElement.classList.add('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
 }
 
 function renderServices(services) {
@@ -64,14 +182,19 @@ function renderServices(services) {
 }
 
 function renderClinic(clinic) {
-  setText('clinicName', clinic.name);
+  setText('clinicName', clinic.name, 'Clinic details');
+  setText('clinicAddress', buildClinicAddressText(clinic), 'Location details incomplete');
+  setText('clinicProvince', clinic.province, 'Province not available');
   setText(
-    'clinicAddress',
-    clinic.address || `${clinic.area || ''}, ${clinic.district || ''}, ${clinic.province || ''}`
+    'clinicDistrictArea',
+    [clinic.district, clinic.area].map(cleanTextValue).filter(Boolean).join(' / '),
+    'District and area not available'
   );
-  setText('clinicProvince', clinic.province);
-  setText('clinicDistrictArea', [clinic.district, clinic.area].filter(Boolean).join(' / '));
-  setText('clinicFacilityType', clinic.facility_type);
+  setText('clinicMunicipality', clinic.municipality, 'Municipality not available');
+  setText('clinicRegion', clinic.region, 'Region not available');
+  setText('clinicFacilityType', clinic.facility_type, 'Facility type not available');
+  renderWebsite(clinic.contact_website);
+  renderClinicDataNotice(clinic);
 
   renderServices(clinic.services_offered);
 }

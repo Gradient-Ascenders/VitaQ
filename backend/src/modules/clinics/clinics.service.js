@@ -53,11 +53,8 @@ function buildClinicSearchFilter(search) {
 
 /**
  * Fetches available appointment slot counts for the clinics being displayed.
- * This keeps the clinic search useful for patients because they can see which clinics have bookable slots.
- */
-/**
- * Fetches available appointment slot counts for the clinics being displayed.
- * Clinic IDs are split into smaller batches and counted safely.
+ * Clinic IDs are split into smaller batches so the full SA dataset does not create
+ * one oversized Supabase .in() query.
  */
 async function fetchAvailableSlotCounts(clinicIds) {
   if (!Array.isArray(clinicIds) || clinicIds.length === 0) {
@@ -96,7 +93,7 @@ async function fetchAvailableSlotCounts(clinicIds) {
 
 /**
  * Normalizes a clinic row from Supabase into the clean shape expected by the frontend.
- * Empty optional fields become empty strings, while coordinates stay null when missing.
+ * Empty optional text fields become empty strings, while coordinates and timestamps stay null when missing.
  */
 function normalizeClinic(clinic, availableSlotCounts) {
   return {
@@ -140,8 +137,6 @@ async function fetchClinics(filters = {}) {
     const facility_type = cleanFilter(filters.facility_type);
     const services_offered = cleanFilter(filters.services_offered);
 
-    // Start building the query against the clinics table.
-    // Include the patient-facing dataset fields used by the clinic search cards.
     let query = supabase
       .from('clinics')
       .select(`
@@ -155,10 +150,6 @@ async function fetchClinics(filters = {}) {
         facility_type,
         address,
         services_offered,
-        region,
-        municipality,
-        contact_website,
-        is_active,
         latitude,
         longitude,
         contact_number,
@@ -222,24 +213,9 @@ async function fetchClinics(filters = {}) {
       clinics.map((clinic) => clinic.id).filter(Boolean)
     );
 
-    // Normalize the returned clinic objects so the frontend gets a consistent shape
-    const normalizedClinics = clinics.map((clinic) => ({
-      id: clinic.id,
-      name: clinic.name || '',
-      province: clinic.province || '',
-      district: clinic.district || '',
-      area: clinic.area || '',
-      facility_type: clinic.facility_type || '',
-      address: clinic.address || '',
-      services_offered: clinic.services_offered || '',
-      region: clinic.region || '',
-      municipality: clinic.municipality || '',
-      contact_website: clinic.contact_website || '',
-      is_active: clinic.is_active !== false,
-      latitude: clinic.latitude ?? null,
-      longitude: clinic.longitude ?? null,
-      available_slots_count: availableSlotCounts[clinic.id] || 0
-    }));
+    const normalizedClinics = clinics.map((clinic) =>
+      normalizeClinic(clinic, availableSlotCounts)
+    );
 
     return sortClinicsByAvailability(normalizedClinics);
   } catch (error) {

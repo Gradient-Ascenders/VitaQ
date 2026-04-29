@@ -1160,6 +1160,9 @@
   .pr-16 {
     padding-right: calc(var(--spacing) * 16);
   }
+  .pb-4 {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
   .pb-8 {
     padding-bottom: calc(var(--spacing) * 8);
   }
@@ -1626,6 +1629,13 @@
     &:hover {
       @media (hover: hover) {
         color: #bb9af7;
+      }
+    }
+  }
+  .hover\:text-\[\#c0caf5\] {
+    &:hover {
+      @media (hover: hover) {
+        color: #c0caf5;
       }
     }
   }

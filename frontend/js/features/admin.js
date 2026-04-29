@@ -8,6 +8,11 @@ const STAFF_REQUEST_STATUSES = {
 
 const ADMIN_PENDING_REQUESTS_ENDPOINT = '/api/admin/staff-requests/pending';
 const ADMIN_CLINICS_ENDPOINT = '/api/admin/clinics';
+const ADMIN_TABS = {
+  DASHBOARD: 'dashboard',
+  CLINIC_MANAGEMENT: 'clinic-management'
+};
+const DEFAULT_ADMIN_TAB = ADMIN_TABS.DASHBOARD;
 const CLINIC_FORM_FIELD_IDS = {
   name: 'clinicNameInput',
   province: 'clinicProvinceInput',
@@ -42,8 +47,80 @@ const adminState = {
   isClinicDetailLoading: false,
   clinicDetailError: null,
   isClinicSaveLoading: false,
-  clinicDetailRequestToken: 0
+  clinicDetailRequestToken: 0,
+  activeAdminTab: DEFAULT_ADMIN_TAB
 };
+const ADMIN_TAB_ACTIVE_CLASSES = [
+  'border-[#7aa2f7]/30',
+  'bg-[#7aa2f7]/12',
+  'text-[#c0caf5]'
+];
+const ADMIN_TAB_INACTIVE_CLASSES = [
+  'border-[#414868]',
+  'bg-[#24283b]/80',
+  'text-[#a9b1d6]',
+  'hover:border-[#7aa2f7]/40',
+  'hover:bg-[#2a2f45]',
+  'hover:text-[#c0caf5]'
+];
+
+function isValidAdminTab(tabId) {
+  return Object.values(ADMIN_TABS).includes(tabId);
+}
+
+function getAdminTabElements() {
+  return {
+    triggers: Array.from(document.querySelectorAll('[data-admin-tab-trigger]')),
+    panels: Array.from(document.querySelectorAll('[data-admin-tab-panel]'))
+  };
+}
+
+function getAdminTabFromHash(hashValue = window.location.hash) {
+  const tabId = String(hashValue || '').replace(/^#/, '');
+  return isValidAdminTab(tabId) ? tabId : DEFAULT_ADMIN_TAB;
+}
+
+function updateAdminTabHash(tabId) {
+  const nextHash = `#${tabId}`;
+
+  if (window.location.hash === nextHash) {
+    return;
+  }
+
+  window.location.hash = tabId;
+}
+
+function renderAdminTabs() {
+  const { triggers, panels } = getAdminTabElements();
+
+  triggers.forEach((trigger) => {
+    const isActive = trigger.dataset.adminTabTrigger === adminState.activeAdminTab;
+
+    trigger.classList.remove(...ADMIN_TAB_ACTIVE_CLASSES, ...ADMIN_TAB_INACTIVE_CLASSES);
+    trigger.classList.add(...(isActive ? ADMIN_TAB_ACTIVE_CLASSES : ADMIN_TAB_INACTIVE_CLASSES));
+    trigger.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    trigger.tabIndex = isActive ? 0 : -1;
+  });
+
+  panels.forEach((panel) => {
+    const isActive = panel.dataset.adminTabPanel === adminState.activeAdminTab;
+
+    panel.classList.toggle('hidden', !isActive);
+    panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+  });
+}
+
+function setActiveAdminTab(tabId, options = {}) {
+  const { updateHash = false } = options;
+  const nextTabId = isValidAdminTab(tabId) ? tabId : DEFAULT_ADMIN_TAB;
+
+  adminState.activeAdminTab = nextTabId;
+  renderAdminTabs();
+
+  if (updateHash) {
+    updateAdminTabHash(nextTabId);
+  }
+}
 
 function formatRequestDate(dateString) {
   if (!dateString) {
@@ -1031,9 +1108,37 @@ function initialiseClinicManagementActions() {
   }
 }
 
+function initialiseAdminTabNavigation() {
+  const { triggers } = getAdminTabElements();
+
+  triggers.forEach((trigger) => {
+    trigger.addEventListener('click', function () {
+      const nextTabId = trigger.dataset.adminTabTrigger;
+
+      if (!isValidAdminTab(nextTabId)) {
+        return;
+      }
+
+      if (window.location.hash === `#${nextTabId}`) {
+        setActiveAdminTab(nextTabId);
+        return;
+      }
+
+      setActiveAdminTab(nextTabId, { updateHash: true });
+    });
+  });
+
+  window.addEventListener('hashchange', function () {
+    setActiveAdminTab(getAdminTabFromHash());
+  });
+
+  setActiveAdminTab(getAdminTabFromHash());
+}
+
 async function initialiseAdminPage() {
   initialiseLogoutButton('logoutButton');
   initialiseLogoutButton('logoutCardButton');
+  initialiseAdminTabNavigation();
 
   const session = await requireAuthenticatedUser();
 

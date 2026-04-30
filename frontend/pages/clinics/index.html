@@ -130,6 +130,84 @@
       </section>
 
       <section class="mx-auto max-w-7xl px-6 pb-10 md:px-8 lg:px-10">
+        <section class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(122,162,247,0.16),rgba(31,35,53,0.94),rgba(36,40,59,0.92))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="max-w-3xl">
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                Nearest clinic
+              </p>
+              <h2 class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                Use your location for a quicker clinic match
+              </h2>
+              <p class="mt-4 max-w-2xl text-sm leading-7 text-[#a9b1d6] sm:text-base">
+                VitaQ can use your browser location to highlight the closest mapped clinics in the current results. Manual search still works if you skip location access.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <button
+                id="useLocationButton"
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#7dcfff] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Use my location
+              </button>
+
+              <button
+                id="clearLocationButton"
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#1f2335]/90 px-5 py-3 text-sm font-semibold text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled
+              >
+                Clear nearest view
+              </button>
+            </div>
+          </div>
+
+          <section
+            id="locationStatus"
+            class="mt-6 rounded-[1.5rem] border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-5 py-4 text-sm text-[#b8ecff]"
+            aria-live="polite"
+          >
+            Location sorting is off. Use the button above to sort clinics by proximity.
+          </section>
+
+          <section
+            id="nearestClinicResults"
+            class="mt-6 hidden grid gap-6 lg:grid-cols-[1.08fr_0.92fr]"
+            aria-live="polite"
+          >
+            <article
+              id="nearestClinicCard"
+              class="rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/88 p-6 shadow-lg shadow-black/10"
+            ></article>
+
+            <aside class="space-y-4">
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/80 p-5 shadow-lg shadow-black/10">
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8b93b8]">
+                  Nearby snapshot
+                </p>
+                <div id="nearestClinicStats" class="mt-4 grid gap-3 sm:grid-cols-2"></div>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/80 p-5 shadow-lg shadow-black/10">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8b93b8]">
+                      Nearby options
+                    </p>
+                    <p class="mt-2 text-sm text-[#a9b1d6]">
+                      These clinics are the closest mapped matches in your current search results.
+                    </p>
+                  </div>
+                </div>
+
+                <div id="nearbyClinicsList" class="mt-5 space-y-3"></div>
+              </article>
+            </aside>
+          </section>
+        </section>
+
         <section class="rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -246,6 +324,12 @@
             id="clinicsList"
             class="mt-6 grid gap-6 xl:grid-cols-2"
             aria-label="Clinic search results"
+          ></section>
+
+          <section
+            id="loadMoreState"
+            class="mt-6 hidden rounded-3xl border border-[#414868] bg-[#1f2335]/85 px-6 py-5 text-center text-sm text-[#a9b1d6]"
+            aria-live="polite"
           ></section>
         </section>
       </section>

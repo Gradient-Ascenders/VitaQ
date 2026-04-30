@@ -5,6 +5,7 @@
  */
 const {
   createSlotTemplateForStaff,
+  deleteSlotTemplateForStaff,
   generateUpcomingSlotsForStaff,
   listSlotTemplatesForStaff,
   updateSlotTemplateForStaff
@@ -98,6 +99,29 @@ async function updateSlotTemplate(req, res) {
   }
 }
 
+// Deletes an availability template while keeping staff limited to their assigned clinic.
+async function deleteSlotTemplate(req, res) {
+  try {
+    const { templateId } = req.params;
+
+    const deletedTemplate = await deleteSlotTemplateForStaff({
+      staffUserId: req.user.id,
+      templateId
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Slot template deleted successfully.',
+      data: deletedTemplate
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to delete slot template.'
+    });
+  }
+}
+
 // Expands active templates into real appointment_slots rows for the upcoming window.
 async function generateUpcomingSlots(req, res) {
   try {
@@ -123,6 +147,7 @@ async function generateUpcomingSlots(req, res) {
 
 module.exports = {
   createSlotTemplate,
+  deleteSlotTemplate,
   generateUpcomingSlots,
   getSlotTemplates,
   updateSlotTemplate

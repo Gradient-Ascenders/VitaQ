@@ -2,6 +2,7 @@ const express = require('express');
 const { submitStaffRequest } = require('./staff.controller');
 const {
   createSlotTemplate,
+  deleteSlotTemplate,
   generateUpcomingSlots,
   getSlotTemplates,
   updateSlotTemplate
@@ -39,6 +40,15 @@ router.patch(
   authMiddleware,
   authMiddleware.requireStaff,
   updateSlotTemplate
+);
+
+// DELETE /api/staff/slot-templates/:templateId
+// Deletes an availability template for the staff member's assigned clinic.
+router.delete(
+  '/slot-templates/:templateId',
+  authMiddleware,
+  authMiddleware.requireStaff,
+  deleteSlotTemplate
 );
 
 // POST /api/staff/slot-templates/generate

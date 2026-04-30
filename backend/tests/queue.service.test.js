@@ -2257,6 +2257,121 @@ describe('updateQueueEntryStatus', () => {
     expect(supabase.from).toHaveBeenCalledWith('staff_requests');
   });
 
+  test('sets consultation_started_at when moving a patient into consultation', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-16T08:15:00.000Z').getTime());
+
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:00:00Z'
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
+    const updatedEntry = {
+      ...existingEntry,
+      status: 'in_consultation',
+      consultation_started_at: '2026-04-16T08:15:00.000Z',
+      updated_at: '2026-04-16T08:15:00.000Z'
+    };
+
+    const updateQuery = createMockQuery({
+      data: updatedEntry,
+      error: null
+    });
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(updateQuery);
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'in_consultation',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(updateQuery.update).toHaveBeenCalledWith({
+      status: 'in_consultation',
+      consultation_started_at: '2026-04-16T08:15:00.000Z',
+      updated_at: '2026-04-16T08:15:00.000Z'
+    });
+
+    jest.useRealTimers();
+  });
+
+  test('sets completed_at when moving a patient to complete', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-16T08:45:00.000Z').getTime());
+
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'in_consultation',
+      estimated_wait_minutes: 0,
+      consultation_started_at: '2026-04-16T08:15:00.000Z',
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:15:00Z'
+    };
+
+    const approvedStaffRequest = {
+      id: 'staff-request-1',
+      user_id: 'staff-1',
+      clinic_id: 'clinic-1',
+      status: 'approved'
+    };
+
+    const updatedEntry = {
+      ...existingEntry,
+      status: 'complete',
+      completed_at: '2026-04-16T08:45:00.000Z',
+      updated_at: '2026-04-16T08:45:00.000Z'
+    };
+
+    const updateQuery = createMockQuery({
+      data: updatedEntry,
+      error: null
+    });
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(updateQuery);
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'complete',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(updateQuery.update).toHaveBeenCalledWith({
+      status: 'complete',
+      completed_at: '2026-04-16T08:45:00.000Z',
+      updated_at: '2026-04-16T08:45:00.000Z'
+    });
+
+    jest.useRealTimers();
+  });
+
   test('blocks staff from updating a queue entry for another clinic', async () => {
     const existingEntry = {
       id: 'queue-1',

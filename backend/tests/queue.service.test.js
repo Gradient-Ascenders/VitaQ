@@ -226,6 +226,8 @@ describe('joinQueueFromAppointment', () => {
   });
 
   test('throws an error when queue entry insertion fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const appointmentQuery = createMockQuery({ data: null, error: null });
     const appointment = {
       id: 'appointment-1',
       patient_id: 'patient-1',
@@ -241,8 +243,10 @@ describe('joinQueueFromAppointment', () => {
       }
     };
 
+    appointmentQuery.single.mockResolvedValue({ data: appointment, error: null });
+
     supabase.from
-      .mockReturnValueOnce(createMockQuery({ data: appointment, error: null }))
+      .mockReturnValueOnce(appointmentQuery)
       .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
       .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
       .mockReturnValueOnce(createMockQuery({ data: [], error: null }))
@@ -260,8 +264,32 @@ describe('joinQueueFromAppointment', () => {
       })
     ).rejects.toMatchObject({
       message: 'Failed to join the queue.',
-      statusCode: 500
+      statusCode: 500,
+      stage: 'queue_entry_insert',
+      supabaseError: {
+        message: 'Insert failed'
+      }
     });
+
+    expect(appointmentQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('slot:appointment_slots!appointments_slot_id_fkey')
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Queue service operation failed:',
+      expect.objectContaining({
+        stage: 'queue_entry_insert',
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1',
+        clinicId: 'clinic-1',
+        queueDate: '2026-04-16',
+        queueNumber: 1,
+        supabaseError: expect.objectContaining({
+          message: 'Insert failed'
+        })
+      })
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   test('creates and returns a queue entry for a valid appointment', async () => {

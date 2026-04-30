@@ -261,12 +261,119 @@ function formatWaitTime(minutes, queueState) {
   return `${minutes} min${minutes === 1 ? '' : 's'}`;
 }
 
+function getResolvedWaitEstimate(queueData) {
+  const waitEstimateCandidates = [
+    queueData?.predicted_wait_minutes,
+    queueData?.estimated_wait_minutes,
+    queueData?.queue_entry?.estimated_wait_minutes
+  ];
+
+  for (const candidate of waitEstimateCandidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function getQueueEstimateDisplay(queueState, waitEstimateMinutes) {
+  if (queueState === QUEUE_STATES.IN_CONSULTATION) {
+    return {
+      metricValue: 'Now',
+      heading: 'Clinic staff are attending to you now',
+      value: 'Now',
+      message: 'You do not need to rely on an estimate while your consultation is in progress.',
+      footnote: 'Live queue movement can still affect other patients waiting behind you.'
+    };
+  }
+
+  if (queueState === QUEUE_STATES.WAITING && waitEstimateMinutes !== null) {
+    const formattedWaitTime = formatWaitTime(waitEstimateMinutes, queueState);
+
+    return {
+      metricValue: formattedWaitTime,
+      heading: 'Estimated time until your turn',
+      value: formattedWaitTime,
+      message: 'Use this as a guide while you keep watching your queue status on this page.',
+      footnote: 'This is an estimate, not a guaranteed call time. It may change as the queue moves.'
+    };
+  }
+
+  if (queueState === QUEUE_STATES.WAITING) {
+    return {
+      metricValue: '--',
+      heading: 'Wait time estimate not available yet',
+      value: '--',
+      message: 'Your queue number, status, and position will still keep updating here.',
+      footnote: 'An estimate will appear once current queue timing data is available.'
+    };
+  }
+
+  if (queueState === QUEUE_STATES.NOT_IN_QUEUE) {
+    return {
+      metricValue: '--',
+      heading: 'No active wait estimate for this visit',
+      value: '--',
+      message: 'You do not currently have an active queue entry for this clinic visit.',
+      footnote: 'If you join the queue later, an estimate may appear here when available.'
+    };
+  }
+
+  if (queueState === QUEUE_STATES.COMPLETE) {
+    return {
+      metricValue: '--',
+      heading: 'This visit is complete',
+      value: '--',
+      message: 'Your queue process for this clinic visit has finished.',
+      footnote: 'No additional wait time estimate is needed for a completed visit.'
+    };
+  }
+
+  if (queueState === QUEUE_STATES.CANCELLED) {
+    return {
+      metricValue: '--',
+      heading: 'This queue entry has been cancelled',
+      value: '--',
+      message: 'Cancelled queue entries no longer receive active wait time estimates.',
+      footnote: 'Contact clinic staff if you need help with this visit.'
+    };
+  }
+
+  return {
+    metricValue: '--',
+    heading: 'Wait time estimate unavailable',
+    value: '--',
+    message: 'The queue page is still available, but the wait estimate could not be shown right now.',
+    footnote: 'Please refresh later if you need the latest estimate.'
+  };
+}
+
+function renderQueueEstimate(queueState, waitEstimateMinutes) {
+  const queueWaitValue = document.getElementById('queueWaitValue');
+  const heading = document.getElementById('queueEstimateHeading');
+  const value = document.getElementById('queueEstimateValue');
+  const message = document.getElementById('queueEstimateMessage');
+  const footnote = document.getElementById('queueEstimateFootnote');
+
+  if (!queueWaitValue || !heading || !value || !message || !footnote) {
+    return;
+  }
+
+  const config = getQueueEstimateDisplay(queueState, waitEstimateMinutes);
+
+  queueWaitValue.textContent = config.metricValue;
+  heading.textContent = config.heading;
+  value.textContent = config.value;
+  message.textContent = config.message;
+  footnote.textContent = config.footnote;
+}
+
 function renderQueueMetrics(queueEntry, position, queueState) {
   const positionValue = document.getElementById('queuePositionValue');
   const queueNumberValue = document.getElementById('queueNumberValue');
-  const queueWaitValue = document.getElementById('queueWaitValue');
 
-  if (!positionValue || !queueNumberValue || !queueWaitValue) {
+  if (!positionValue || !queueNumberValue) {
     return;
   }
 
@@ -279,7 +386,6 @@ function renderQueueMetrics(queueEntry, position, queueState) {
   }
 
   queueNumberValue.textContent = queueEntry?.queue_number || '--';
-  queueWaitValue.textContent = formatWaitTime(queueEntry?.estimated_wait_minutes, queueState);
 }
 
 function buildPatientLabel(entry) {
@@ -408,6 +514,7 @@ async function loadQueuePage() {
   if (!clinicId || !date) {
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
+    renderQueueEstimate(QUEUE_STATES.UNAVAILABLE, null);
     renderNearTurnAlert({
       queueState: QUEUE_STATES.UNAVAILABLE,
       position: null,
@@ -449,9 +556,11 @@ async function loadQueuePage() {
     const queueState = queueData.is_in_queue
       ? queueData.queue_entry?.status || QUEUE_STATES.WAITING
       : QUEUE_STATES.NOT_IN_QUEUE;
+    const waitEstimateMinutes = getResolvedWaitEstimate(queueData);
 
     renderQueueState(queueState);
     renderQueueMetrics(queueData.queue_entry, queueData.position, queueState);
+    renderQueueEstimate(queueState, waitEstimateMinutes);
     renderNearTurnAlert({
       queueState,
       position: queueData.position,
@@ -469,6 +578,7 @@ async function loadQueuePage() {
     console.error(error);
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
+    renderQueueEstimate(QUEUE_STATES.UNAVAILABLE, null);
     renderNearTurnAlert({
       queueState: QUEUE_STATES.UNAVAILABLE,
       position: null,

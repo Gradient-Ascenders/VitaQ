@@ -91,17 +91,6 @@ function buildClinicIssues(clinic) {
     issues.push('This clinic listing is marked inactive. Confirm the clinic status before visiting.');
   }
 
-  const missingImportantFields = [
-    !cleanTextValue(clinic.address),
-    !cleanTextValue(clinic.services_offered),
-    !cleanTextValue(clinic.contact_website),
-    !cleanTextValue(clinic.municipality) && !cleanTextValue(clinic.region)
-  ].filter(Boolean).length;
-
-  if (missingImportantFields >= 2) {
-    issues.push('Some clinic details are still being completed in the dataset.');
-  }
-
   return issues;
 }
 

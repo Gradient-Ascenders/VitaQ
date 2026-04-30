@@ -839,7 +839,7 @@ async function submitCancellation(appointmentId) {
 
   try {
     const response = await fetch(`/api/appointments/${encodeURIComponent(appointment.id)}/cancel`, {
-      method: 'POST',
+      method: 'PATCH',
       headers: buildRequestHeaders(true),
       body: JSON.stringify({})
     });
@@ -913,10 +913,10 @@ async function submitReschedule(appointmentId) {
 
   try {
     const response = await fetch(`/api/appointments/${encodeURIComponent(appointment.id)}/reschedule`, {
-      method: 'POST',
+      method: 'PATCH',
       headers: buildRequestHeaders(true),
       body: JSON.stringify({
-        slot_id: selectedSlot.id
+        new_slot_id: selectedSlot.id
       })
     });
     const payload = await parseResponsePayload(response);

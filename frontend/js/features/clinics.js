@@ -17,10 +17,16 @@ const loadingState = document.getElementById("loadingState");
 const errorState = document.getElementById("errorState");
 const emptyState = document.getElementById("emptyState");
 const clinicsList = document.getElementById("clinicsList");
+const loadMoreState = document.getElementById("loadMoreState");
+
+const CLINIC_RESULTS_PAGE_SIZE = 40;
 
 let allClinics = [];
 let userLocation = null;
 let isLocationRequestPending = false;
+let visibleClinicCount = CLINIC_RESULTS_PAGE_SIZE;
+let lastRenderedClinics = [];
+let loadMoreObserver = null;
 
 // Support both raw arrays and { data: [...] } payloads while backend responses stay lightweight.
 function normaliseClinicResponse(payload) {
@@ -430,6 +436,47 @@ function setLocationStatus(message, tone = "info") {
   locationStatus.textContent = message;
 }
 
+function resetVisibleClinicCount() {
+  visibleClinicCount = CLINIC_RESULTS_PAGE_SIZE;
+}
+
+function getVisibleClinics(clinics) {
+  return clinics.slice(0, visibleClinicCount);
+}
+
+function showLoadMoreState(message) {
+  loadMoreState.textContent = message;
+  loadMoreState.classList.remove("hidden");
+}
+
+function hideLoadMoreState() {
+  loadMoreState.textContent = "";
+  loadMoreState.classList.add("hidden");
+}
+
+function updateLoadMoreState(totalClinicCount, visibleClinicTotal) {
+  if (totalClinicCount <= 0) {
+    hideLoadMoreState();
+    return;
+  }
+
+  if (visibleClinicTotal < totalClinicCount) {
+    const remainingClinicCount = totalClinicCount - visibleClinicTotal;
+    const nextBatchSize = Math.min(CLINIC_RESULTS_PAGE_SIZE, remainingClinicCount);
+    showLoadMoreState(
+      `Scroll down to load ${nextBatchSize} more clinic${nextBatchSize === 1 ? "" : "s"}. Showing ${visibleClinicTotal} of ${totalClinicCount}.`
+    );
+    return;
+  }
+
+  if (totalClinicCount > CLINIC_RESULTS_PAGE_SIZE) {
+    showLoadMoreState(`Showing all ${totalClinicCount} clinics.`);
+    return;
+  }
+
+  hideLoadMoreState();
+}
+
 function updateLocationButtons() {
   useLocationButton.disabled = isLocationRequestPending || allClinics.length === 0;
   useLocationButton.textContent = isLocationRequestPending
@@ -598,25 +645,28 @@ function renderNearestClinicPanel(clinics) {
 
 // Render the currently visible clinic cards from the filtered clinic set.
 function renderClinics(clinics) {
+  lastRenderedClinics = clinics;
   clinicsList.innerHTML = "";
 
   if (clinics.length === 0) {
     clinicsList.classList.add("hidden");
     emptyState.classList.remove("hidden");
+    hideLoadMoreState();
     resultsCount.textContent = userLocation
       ? "0 clinics found • nearest view still available when results return"
       : "0 clinics found";
     return;
   }
 
+  const visibleClinics = getVisibleClinics(clinics);
   clinicsList.classList.remove("hidden");
   emptyState.classList.add("hidden");
   const clinicsWithDistance = clinics.filter((clinic) => Number.isFinite(clinic.distance_km)).length;
   resultsCount.textContent = userLocation
-    ? `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • nearest first for ${clinicsWithDistance} mapped result${clinicsWithDistance === 1 ? "" : "s"}`
-    : `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found`;
+    ? `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • showing ${visibleClinics.length} • nearest first for ${clinicsWithDistance} mapped result${clinicsWithDistance === 1 ? "" : "s"}`
+    : `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • showing ${visibleClinics.length}`;
 
-  const cardsMarkup = clinics
+  const cardsMarkup = visibleClinics
     .map((clinic) => {
       const locationText = buildClinicLocationText(clinic);
       const facilityType = cleanTextValue(clinic.facility_type) || "Facility type not available";
@@ -715,10 +765,28 @@ function renderClinics(clinics) {
     .join("");
 
   clinicsList.innerHTML = cardsMarkup;
+  updateLoadMoreState(clinics.length, visibleClinics.length);
+}
+
+function loadMoreClinics() {
+  if (lastRenderedClinics.length === 0 || visibleClinicCount >= lastRenderedClinics.length) {
+    return;
+  }
+
+  visibleClinicCount = Math.min(
+    visibleClinicCount + CLINIC_RESULTS_PAGE_SIZE,
+    lastRenderedClinics.length
+  );
+
+  renderClinics(lastRenderedClinics);
 }
 
 // Search and dropdown filters run entirely client-side after the first clinic fetch.
-function applyFilters() {
+function applyFilters({ resetVisibleResults = true } = {}) {
+  if (resetVisibleResults) {
+    resetVisibleClinicCount();
+  }
+
   const filteredClinics = getFilteredClinics();
   const decoratedClinics = decorateClinicsWithDistance(filteredClinics);
   const visibleClinics = userLocation
@@ -752,6 +820,7 @@ async function loadClinics() {
   errorState.classList.add("hidden");
   emptyState.classList.add("hidden");
   clinicsList.classList.add("hidden");
+  hideLoadMoreState();
   resultsCount.textContent = "Loading clinics...";
   loadingState.textContent = "Loading clinics and location details...";
   updateLocationButtons();
@@ -776,12 +845,57 @@ async function loadClinics() {
     loadingState.classList.add("hidden");
     clinicsList.classList.add("hidden");
     emptyState.classList.add("hidden");
+    hideLoadMoreState();
     errorState.classList.remove("hidden");
     errorState.textContent = "We could not load clinic directory details right now. Please try again.";
     resultsCount.textContent = "Unable to load clinics";
     setLocationStatus("Location sorting is unavailable until the clinic directory loads successfully.", "error");
     updateLocationButtons();
   }
+}
+
+function initialiseInfiniteScroll() {
+  if (!loadMoreState) {
+    return;
+  }
+
+  if ("IntersectionObserver" in window) {
+    loadMoreObserver = new IntersectionObserver(
+      (entries) => {
+        const loadMoreEntry = entries.find((entry) => entry.target === loadMoreState);
+
+        if (!loadMoreEntry?.isIntersecting) {
+          return;
+        }
+
+        loadMoreClinics();
+      },
+      {
+        root: null,
+        rootMargin: "0px 0px 180px 0px",
+        threshold: 0.1
+      }
+    );
+
+    loadMoreObserver.observe(loadMoreState);
+    return;
+  }
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (loadMoreState.classList.contains("hidden")) {
+        return;
+      }
+
+      const loadMoreBounds = loadMoreState.getBoundingClientRect();
+
+      if (loadMoreBounds.top <= window.innerHeight + 180) {
+        loadMoreClinics();
+      }
+    },
+    { passive: true }
+  );
 }
 
 function handleLocationSuccess(position) {
@@ -874,4 +988,7 @@ nearestClinicResults.addEventListener("click", handleServiceToggle);
 useLocationButton.addEventListener("click", requestUserLocation);
 clearLocationButton.addEventListener("click", clearLocationView);
 
-document.addEventListener("DOMContentLoaded", loadClinics);
+document.addEventListener("DOMContentLoaded", () => {
+  initialiseInfiniteScroll();
+  loadClinics();
+});

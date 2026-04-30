@@ -330,6 +330,16 @@ async function fetchBookedSlotIds(session, clinicId) {
   return new Set(bookedSlotIds);
 }
 
+// Viewing open slots should still work even if the patient's appointment lookup fails.
+async function fetchBookedSlotIdsSafely(session, clinicId) {
+  try {
+    return await fetchBookedSlotIds(session, clinicId);
+  } catch (error) {
+    console.warn('Booked slot lookup failed; continuing without booked-slot highlighting.', error);
+    return new Set();
+  }
+}
+
 // Button handlers are attached after each render because the slot card markup is regenerated.
 function attachBookHandlers() {
   const buttons = document.querySelectorAll('.book-slot-btn');
@@ -427,10 +437,12 @@ async function loadClinicPage() {
       return;
     }
 
+    const bookedSlotIdsPromise = fetchBookedSlotIdsSafely(session, clinicId);
+
     const [clinicResponse, slotsResponse, bookedSlotIds] = await Promise.all([
       fetch(`/api/clinics/${clinicId}`),
       fetch(`/api/clinics/${clinicId}/slots`),
-      fetchBookedSlotIds(session, clinicId)
+      bookedSlotIdsPromise
     ]);
 
     if (!clinicResponse.ok) {

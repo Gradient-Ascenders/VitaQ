@@ -216,6 +216,17 @@
   .visible {
     visibility: visible;
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
   .absolute {
     position: absolute;
   }
@@ -429,6 +440,9 @@
   .hidden {
     display: none;
   }
+  .inline {
+    display: inline;
+  }
   .inline-flex {
     display: inline-flex;
   }
@@ -639,6 +653,9 @@
   .cursor-not-allowed {
     cursor: not-allowed;
   }
+  .cursor-pointer {
+    cursor: pointer;
+  }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
@@ -762,6 +779,9 @@
   .rounded-\[1\.25rem\] {
     border-radius: 1.25rem;
   }
+  .rounded-\[1\.35rem\] {
+    border-radius: 1.35rem;
+  }
   .rounded-\[1\.75rem\] {
     border-radius: 1.75rem;
   }
@@ -874,6 +894,9 @@
   .border-\[\#f7768e\]\/30 {
     border-color: color-mix(in oklab, #f7768e 30%, transparent);
   }
+  .border-\[\#f7768e\]\/35 {
+    border-color: color-mix(in oklab, #f7768e 35%, transparent);
+  }
   .border-\[\#f7768e\]\/40 {
     border-color: color-mix(in oklab, #f7768e 40%, transparent);
   }
@@ -888,6 +911,9 @@
   }
   .bg-\[\#1a1b26\] {
     background-color: #1a1b26;
+  }
+  .bg-\[\#1d2337\] {
+    background-color: #1d2337;
   }
   .bg-\[\#1f3d2e\] {
     background-color: #1f3d2e;
@@ -949,6 +975,9 @@
   .bg-\[\#9ece6a\]\/15 {
     background-color: color-mix(in oklab, #9ece6a 15%, transparent);
   }
+  .bg-\[\#241c2d\] {
+    background-color: #241c2d;
+  }
   .bg-\[\#24283b\] {
     background-color: #24283b;
   }
@@ -1002,6 +1031,9 @@
   }
   .bg-\[\#e0af68\]\/24 {
     background-color: color-mix(in oklab, #e0af68 24%, transparent);
+  }
+  .bg-\[\#f7768e\] {
+    background-color: #f7768e;
   }
   .bg-\[\#f7768e\]\/10 {
     background-color: color-mix(in oklab, #f7768e 10%, transparent);
@@ -1355,6 +1387,9 @@
   .text-\[\#f7768e\] {
     color: #f7768e;
   }
+  .text-\[\#ffe0e6\] {
+    color: #ffe0e6;
+  }
   .text-white {
     color: var(--color-white);
   }
@@ -1377,6 +1412,9 @@
   }
   .accent-\[\#7aa2f7\] {
     accent-color: #7aa2f7;
+  }
+  .opacity-60 {
+    opacity: 60%;
   }
   .opacity-70 {
     opacity: 70%;
@@ -1541,10 +1579,24 @@
       }
     }
   }
+  .hover\:border-\[\#7aa2f7\]\/50 {
+    &:hover {
+      @media (hover: hover) {
+        border-color: color-mix(in oklab, #7aa2f7 50%, transparent);
+      }
+    }
+  }
   .hover\:border-\[\#7dcfff\]\/40 {
     &:hover {
       @media (hover: hover) {
         border-color: color-mix(in oklab, #7dcfff 40%, transparent);
+      }
+    }
+  }
+  .hover\:border-\[\#f7768e\] {
+    &:hover {
+      @media (hover: hover) {
+        border-color: #f7768e;
       }
     }
   }
@@ -1611,6 +1663,13 @@
       }
     }
   }
+  .hover\:bg-\[\#f7768e\]\/18 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in oklab, #f7768e 18%, transparent);
+      }
+    }
+  }
   .hover\:text-\[\#7aa2f7\] {
     &:hover {
       @media (hover: hover) {
@@ -1670,6 +1729,11 @@
     &:focus {
       --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
       box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    }
+  }
+  .focus\:ring-\[\#7aa2f7\] {
+    &:focus {
+      --tw-ring-color: #7aa2f7;
     }
   }
   .focus\:ring-\[\#7aa2f7\]\/20 {
@@ -1769,6 +1833,11 @@
   .md\:col-span-2 {
     @media (width >= 48rem) {
       grid-column: span 2 / span 2;
+    }
+  }
+  .md\:col-span-3 {
+    @media (width >= 48rem) {
+      grid-column: span 3 / span 3;
     }
   }
   .md\:block {
@@ -2094,9 +2163,24 @@
       grid-template-columns: 0.92fr 1.08fr;
     }
   }
+  .xl\:flex-row {
+    @media (width >= 80rem) {
+      flex-direction: row;
+    }
+  }
+  .xl\:items-center {
+    @media (width >= 80rem) {
+      align-items: center;
+    }
+  }
   .xl\:items-start {
     @media (width >= 80rem) {
       align-items: flex-start;
+    }
+  }
+  .xl\:justify-between {
+    @media (width >= 80rem) {
+      justify-content: space-between;
     }
   }
   .xl\:px-16 {

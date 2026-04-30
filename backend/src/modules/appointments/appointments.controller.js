@@ -1,6 +1,8 @@
 const {
   createAppointmentBooking,
-  fetchAppointmentsByPatientId
+  fetchAppointmentsByPatientId,
+  cancelAppointment,
+  rescheduleAppointment
 } = require('./appointments.service');
 
 /**
@@ -63,7 +65,67 @@ async function getMyAppointments(req, res) {
   }
 }
 
+/**
+ * Cancels one appointment for the logged-in patient.
+ * The service checks that the patient owns the appointment before changing anything.
+ */
+async function cancelMyAppointment(req, res) {
+  try {
+    const patientId = req.user.id;
+    const { appointmentId } = req.params;
+    const { cancellation_reason: cancellationReason } = req.body || {};
+
+    const result = await cancelAppointment({
+      patientId,
+      appointmentId,
+      cancellationReason
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Appointment cancelled successfully.',
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to cancel appointment.'
+    });
+  }
+}
+
+/**
+ * Reschedules one appointment for the logged-in patient.
+ * Expects new_slot_id in the request body.
+ */
+async function rescheduleMyAppointment(req, res) {
+  try {
+    const patientId = req.user.id;
+    const { appointmentId } = req.params;
+    const { new_slot_id: newSlotId } = req.body;
+
+    const result = await rescheduleAppointment({
+      patientId,
+      appointmentId,
+      newSlotId
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Appointment rescheduled successfully.',
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to reschedule appointment.'
+    });
+  }
+}
+
 module.exports = {
   bookAppointment,
-  getMyAppointments
+  getMyAppointments,
+  cancelMyAppointment,
+  rescheduleMyAppointment
 };

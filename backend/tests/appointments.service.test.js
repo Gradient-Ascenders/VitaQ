@@ -8,6 +8,8 @@ const mockAppointmentsInsert = jest.fn();
 const mockAppointmentsDelete = jest.fn();
 const mockQueueEntriesSelect = jest.fn();
 const mockQueueEntriesInsert = jest.fn();
+const mockAppointmentsUpdate = jest.fn();
+const mockQueueEntriesUpdate = jest.fn();
 
 // Each named result object controls one stage of the chained Supabase workflow.
 let slotFetchResult;
@@ -22,6 +24,9 @@ let queueNumberCountResult;
 let queueOrderedEntriesResult;
 let queueEntryInsertResult;
 let appointmentDeleteResult;
+let appointmentFetchResult;
+let appointmentUpdateResult;
+let queueEntryUpdateResult;
 
 const slotSelectEq = jest.fn();
 const slotSelectSingle = jest.fn();
@@ -34,6 +39,11 @@ const appointmentsSelectSingle = jest.fn();
 const appointmentsInsertSelect = jest.fn();
 const appointmentsInsertSingle = jest.fn();
 const appointmentsDeleteEq = jest.fn();
+const appointmentsUpdateEq = jest.fn();
+const appointmentsUpdateSelect = jest.fn();
+const appointmentsUpdateSingle = jest.fn();
+const queueEntriesUpdateEq = jest.fn();
+const queueEntriesUpdateSelect = jest.fn();
 
 const slotSelectSingleChain = {
     single: slotSelectSingle,
@@ -80,6 +90,28 @@ const appointmentsInsertChain = {
     },
 };
 
+const appointmentsUpdateSingleChain = {
+    single: appointmentsUpdateSingle,
+};
+
+const appointmentsUpdateChain = {
+    eq(column, value) {
+        return appointmentsUpdateEq(column, value);
+    },
+    select(selection) {
+        return appointmentsUpdateSelect(selection);
+    },
+};
+
+const queueEntriesUpdateChain = {
+    eq(column, value) {
+        return queueEntriesUpdateEq(column, value);
+    },
+    select(selection) {
+        return queueEntriesUpdateSelect(selection);
+    },
+};
+
 const appointmentsDeleteChain = {
     eq(column, value) {
         return appointmentsDeleteEq(column, value);
@@ -115,6 +147,8 @@ jest.mock('../src/lib/supabaseClient', () => ({
 const {
     createAppointmentBooking,
     fetchAppointmentsByPatientId,
+    cancelAppointment,
+    rescheduleAppointment,
 } = require('../src/modules/appointments/appointments.service');
 
 function futureSlot(overrides = {}) {
@@ -153,6 +187,55 @@ describe('appointments.service', () => {
             },
             error: null,
         };
+
+        appointmentFetchResult = {
+            data: {
+                id: 'appointment-1',
+                patient_id: 'patient-1',
+                clinic_id: 'clinic-1',
+                slot_id: 'slot-1',
+                status: 'booked',
+                created_at: '2026-04-15T08:00:00.000Z',
+                updated_at: '2026-04-15T08:00:00.000Z',
+                cancelled_at: null,
+                cancellation_reason: null,
+                rescheduled_from_slot_id: null,
+                rescheduled_at: null,
+                notes: null,
+            },
+            error: null,
+        };
+
+        appointmentUpdateResult = {
+            data: {
+                ...appointmentFetchResult.data,
+                status: 'cancelled',
+                cancelled_at: '2026-04-15T09:00:00.000Z',
+                cancellation_reason: 'No longer available',
+                updated_at: '2026-04-15T09:00:00.000Z',
+            },
+            error: null,
+        };
+
+        queueEntryUpdateResult = {
+            data: [
+                {
+                    id: 'queue-1',
+                    clinic_id: 'clinic-1',
+                    patient_id: 'patient-1',
+                    appointment_id: 'appointment-1',
+                    queue_number: 1,
+                    queue_date: '2099-06-01',
+                    source: 'appointment',
+                    status: 'cancelled',
+                    estimated_wait_minutes: 0,
+                    created_at: '2026-04-15T08:05:00.000Z',
+                    updated_at: '2026-04-15T09:00:00.000Z',
+                },
+            ],
+            error: null,
+        };
+
         patientAppointmentsResult = { data: [], error: null };
         queueAppointmentFetchResult = {
             data: {
@@ -213,6 +296,7 @@ describe('appointments.service', () => {
                 return {
                     select: mockAppointmentsSelect,
                     insert: mockAppointmentsInsert,
+                    update: mockAppointmentsUpdate,
                     delete: mockAppointmentsDelete,
                 };
             }
@@ -220,6 +304,7 @@ describe('appointments.service', () => {
             if (tableName === 'queue_entries') {
                 return {
                     select: mockQueueEntriesSelect,
+                    update: mockQueueEntriesUpdate,
                     insert: mockQueueEntriesInsert,
                 };
             }
@@ -245,6 +330,11 @@ describe('appointments.service', () => {
         appointmentsInsertSelect.mockReturnValue(appointmentsInsertSingleChain);
         appointmentsInsertSingle.mockImplementation(() => Promise.resolve(appointmentInsertResult));
 
+        mockAppointmentsUpdate.mockReturnValue(appointmentsUpdateChain);
+        appointmentsUpdateEq.mockImplementation(() => appointmentsUpdateChain);
+        appointmentsUpdateSelect.mockReturnValue(appointmentsUpdateSingleChain);
+        appointmentsUpdateSingle.mockImplementation(() => Promise.resolve(appointmentUpdateResult));
+
         mockAppointmentsDelete.mockReturnValue(appointmentsDeleteChain);
         appointmentsDeleteEq.mockImplementation(() => Promise.resolve(appointmentDeleteResult));
 
@@ -256,6 +346,9 @@ describe('appointments.service', () => {
         queueEntriesInsertSingleChain.single.mockImplementation(() =>
             Promise.resolve(queueEntryInsertResult)
         );
+        mockQueueEntriesUpdate.mockReturnValue(queueEntriesUpdateChain);
+        queueEntriesUpdateEq.mockImplementation(() => queueEntriesUpdateChain);
+        queueEntriesUpdateSelect.mockImplementation(() => Promise.resolve(queueEntryUpdateResult));
     });
 
     describe('createAppointmentBooking', () => {
@@ -605,6 +698,415 @@ describe('appointments.service', () => {
             await expect(fetchAppointmentsByPatientId('patient-1')).rejects.toMatchObject({
                 message: 'Failed to fetch patient appointments.',
                 statusCode: 500,
+            });
+        });
+
+        describe('cancelAppointment', () => {
+            beforeEach(() => {
+                appointmentsSelectSingle.mockImplementation(() =>
+                    Promise.resolve(appointmentFetchResult)
+                );
+
+                slotSelectSingle.mockImplementation(() =>
+                    Promise.resolve({
+                        data: futureSlot({ id: 'slot-1', booked_count: 2 }),
+                        error: null,
+                    })
+                );
+
+                slotUpdateSelect.mockImplementation(() =>
+                    Promise.resolve({
+                        data: [futureSlot({ id: 'slot-1', booked_count: 1 })],
+                        error: null,
+                    })
+                );
+            });
+
+            test('throws when required cancel fields are missing', async () => {
+                await expect(
+                    cancelAppointment({
+                        patientId: 'patient-1',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'patient_id and appointment_id are required.',
+                    statusCode: 400,
+                });
+            });
+
+            test('throws when a patient tries to cancel another patient appointment', async () => {
+                appointmentFetchResult = {
+                    data: {
+                        ...appointmentFetchResult.data,
+                        patient_id: 'other-patient',
+                    },
+                    error: null,
+                };
+
+                await expect(
+                    cancelAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'You can only modify your own appointments.',
+                    statusCode: 403,
+                });
+            });
+
+            test('throws when appointment is already cancelled', async () => {
+                appointmentFetchResult = {
+                    data: {
+                        ...appointmentFetchResult.data,
+                        status: 'cancelled',
+                    },
+                    error: null,
+                };
+
+                await expect(
+                    cancelAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'Appointment is already cancelled.',
+                    statusCode: 409,
+                });
+            });
+
+            test('cancels appointment, decreases slot count, and cancels linked queue entry', async () => {
+                const result = await cancelAppointment({
+                    patientId: 'patient-1',
+                    appointmentId: 'appointment-1',
+                    cancellationReason: 'No longer available',
+                });
+
+                expect(mockSlotUpdate).toHaveBeenCalledWith({
+                    booked_count: 1,
+                });
+
+                expect(mockAppointmentsUpdate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        status: 'cancelled',
+                        cancellation_reason: 'No longer available',
+                    })
+                );
+
+                expect(mockQueueEntriesUpdate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        status: 'cancelled',
+                        estimated_wait_minutes: 0,
+                    })
+                );
+
+                expect(result.appointment.status).toBe('cancelled');
+                expect(result.slot.availability).toBe(4);
+                expect(result.queue.status).toBe('cancelled');
+            });
+
+            test('rolls back slot count when appointment cancellation update fails', async () => {
+                appointmentUpdateResult = {
+                    data: null,
+                    error: { message: 'update failed' },
+                };
+
+                await expect(
+                    cancelAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        cancellationReason: 'No longer available',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'Failed to cancel appointment.',
+                    statusCode: 500,
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(1, {
+                    booked_count: 1,
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(2, {
+                    booked_count: 2,
+                });
+            });
+        });
+
+        describe('rescheduleAppointment', () => {
+            beforeEach(() => {
+                appointmentsSelectSingle.mockImplementation(() =>
+                    Promise.resolve(appointmentFetchResult)
+                );
+
+                slotSelectSingle
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: futureSlot({
+                                id: 'slot-1',
+                                clinic_id: 'clinic-1',
+                                booked_count: 2,
+                            }),
+                            error: null,
+                        })
+                    )
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: futureSlot({
+                                id: 'slot-2',
+                                clinic_id: 'clinic-2',
+                                date: '2099-06-02',
+                                booked_count: 1,
+                                capacity: 4,
+                            }),
+                            error: null,
+                        })
+                    );
+
+                slotUpdateSelect
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: [
+                                futureSlot({
+                                    id: 'slot-1',
+                                    clinic_id: 'clinic-1',
+                                    booked_count: 1,
+                                }),
+                            ],
+                            error: null,
+                        })
+                    )
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: [
+                                futureSlot({
+                                    id: 'slot-2',
+                                    clinic_id: 'clinic-2',
+                                    date: '2099-06-02',
+                                    booked_count: 2,
+                                    capacity: 4,
+                                }),
+                            ],
+                            error: null,
+                        })
+                    );
+
+                appointmentUpdateResult = {
+                    data: {
+                        ...appointmentFetchResult.data,
+                        clinic_id: 'clinic-2',
+                        slot_id: 'slot-2',
+                        status: 'booked',
+                        rescheduled_from_slot_id: 'slot-1',
+                        rescheduled_at: '2026-04-15T09:00:00.000Z',
+                        updated_at: '2026-04-15T09:00:00.000Z',
+                    },
+                    error: null,
+                };
+
+                queueExistingEntriesResult = {
+                    data: [{ queue_number: 4 }],
+                    error: null,
+                };
+
+                queueEntryUpdateResult = {
+                    data: [
+                        {
+                            id: 'queue-1',
+                            clinic_id: 'clinic-2',
+                            patient_id: 'patient-1',
+                            appointment_id: 'appointment-1',
+                            queue_number: 5,
+                            queue_date: '2099-06-02',
+                            source: 'appointment',
+                            status: 'waiting',
+                            estimated_wait_minutes: 0,
+                            created_at: '2026-04-15T08:05:00.000Z',
+                            updated_at: '2026-04-15T09:00:00.000Z',
+                        },
+                    ],
+                    error: null,
+                };
+            });
+
+            test('throws when required reschedule fields are missing', async () => {
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'patient_id, appointment_id, and new_slot_id are required.',
+                    statusCode: 400,
+                });
+            });
+
+            test('throws when patient tries to reschedule another patient appointment', async () => {
+                appointmentFetchResult = {
+                    data: {
+                        ...appointmentFetchResult.data,
+                        patient_id: 'other-patient',
+                    },
+                    error: null,
+                };
+
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        newSlotId: 'slot-2',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'You can only modify your own appointments.',
+                    statusCode: 403,
+                });
+            });
+
+            test('throws when rescheduling to the same slot', async () => {
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        newSlotId: 'slot-1',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'New slot must be different from the current slot.',
+                    statusCode: 400,
+                });
+            });
+
+            test('throws when selected new slot is full', async () => {
+                slotSelectSingle
+                    .mockReset()
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: futureSlot({
+                                id: 'slot-1',
+                                clinic_id: 'clinic-1',
+                                booked_count: 2,
+                            }),
+                            error: null,
+                        })
+                    )
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: futureSlot({
+                                id: 'slot-2',
+                                clinic_id: 'clinic-2',
+                                booked_count: 4,
+                                capacity: 4,
+                            }),
+                            error: null,
+                        })
+                    );
+
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        newSlotId: 'slot-2',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'Selected new slot is already full.',
+                    statusCode: 409,
+                });
+            });
+
+            test('throws when patient already has a different appointment for the new slot', async () => {
+                existingBookingsResult = {
+                    data: [{ id: 'appointment-2', status: 'booked' }],
+                    error: null,
+                };
+
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        newSlotId: 'slot-2',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'You already have an appointment for the selected new slot.',
+                    statusCode: 409,
+                });
+            });
+
+            test('reschedules appointment, moves slot counts, and updates linked queue entry', async () => {
+                const result = await rescheduleAppointment({
+                    patientId: 'patient-1',
+                    appointmentId: 'appointment-1',
+                    newSlotId: 'slot-2',
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(1, {
+                    booked_count: 1,
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(2, {
+                    booked_count: 2,
+                });
+
+                expect(mockAppointmentsUpdate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        clinic_id: 'clinic-2',
+                        slot_id: 'slot-2',
+                        status: 'booked',
+                        rescheduled_from_slot_id: 'slot-1',
+                    })
+                );
+
+                expect(mockQueueEntriesUpdate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        clinic_id: 'clinic-2',
+                        queue_date: '2099-06-02',
+                        queue_number: 5,
+                        status: 'waiting',
+                        estimated_wait_minutes: 0,
+                    })
+                );
+
+                expect(result.appointment.slot_id).toBe('slot-2');
+                expect(result.old_slot.availability).toBe(4);
+                expect(result.new_slot.availability).toBe(2);
+                expect(result.queue.queue_number).toBe(5);
+            });
+
+            test('rolls back old slot when reserving the new slot fails', async () => {
+                slotUpdateSelect
+                    .mockReset()
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: [
+                                futureSlot({
+                                    id: 'slot-1',
+                                    clinic_id: 'clinic-1',
+                                    booked_count: 1,
+                                }),
+                            ],
+                            error: null,
+                        })
+                    )
+                    .mockImplementationOnce(() =>
+                        Promise.resolve({
+                            data: null,
+                            error: { message: 'new slot update failed' },
+                        })
+                    );
+
+                await expect(
+                    rescheduleAppointment({
+                        patientId: 'patient-1',
+                        appointmentId: 'appointment-1',
+                        newSlotId: 'slot-2',
+                    })
+                ).rejects.toMatchObject({
+                    message: 'Failed to reserve the new appointment slot.',
+                    statusCode: 500,
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(1, {
+                    booked_count: 1,
+                });
+
+                expect(mockSlotUpdate).toHaveBeenNthCalledWith(3, {
+                    booked_count: 2,
+                });
             });
         });
     });

@@ -111,6 +111,28 @@ describe('authMiddleware', () => {
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
   });
+
+  test('returns a server error when token verification throws unexpectedly', async () => {
+    const req = {
+      headers: {
+        authorization: 'Bearer broken-token'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.auth.getUser.mockRejectedValueOnce(new Error('Supabase auth failed'));
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Authentication check failed.',
+      error: 'Supabase auth failed'
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
 });
 
 describe('authMiddleware.requireStaff', () => {
@@ -211,5 +233,154 @@ describe('authMiddleware.requireStaff', () => {
     expect(req.userRole).toBe('staff');
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('returns a server error when staff role lookup throws unexpectedly', async () => {
+    const req = {
+      user: {
+        id: 'staff-1'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.from.mockImplementationOnce(() => {
+      throw new Error('Profile lookup failed');
+    });
+
+    await authMiddleware.requireStaff(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Staff access check failed.',
+      error: 'Profile lookup failed'
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('authMiddleware.requireAdmin', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('blocks admin check when no authenticated user exists', async () => {
+    const req = {};
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    await authMiddleware.requireAdmin(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Authentication is required before checking admin access.'
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('blocks admin access when the user profile does not exist', async () => {
+    const req = {
+      user: {
+        id: 'user-1'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.from.mockReturnValueOnce(
+      createMockProfileQuery({
+        data: null,
+        error: { message: 'Profile not found' }
+      })
+    );
+
+    await authMiddleware.requireAdmin(req, res, next);
+
+    expect(supabase.from).toHaveBeenCalledWith('profiles');
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin access is required.'
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('blocks admin access when the user is not admin', async () => {
+    const req = {
+      user: {
+        id: 'staff-1'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.from.mockReturnValueOnce(
+      createMockProfileQuery({
+        data: {
+          role: 'staff'
+        },
+        error: null
+      })
+    );
+
+    await authMiddleware.requireAdmin(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin access is required.'
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('allows access when the user has an admin role', async () => {
+    const req = {
+      user: {
+        id: 'admin-1'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.from.mockReturnValueOnce(
+      createMockProfileQuery({
+        data: {
+          role: 'admin'
+        },
+        error: null
+      })
+    );
+
+    await authMiddleware.requireAdmin(req, res, next);
+
+    expect(req.userRole).toBe('admin');
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('returns a server error when admin role lookup throws unexpectedly', async () => {
+    const req = {
+      user: {
+        id: 'admin-1'
+      }
+    };
+    const res = createMockResponse();
+    const next = jest.fn();
+
+    supabase.from.mockImplementationOnce(() => {
+      throw new Error('Profile lookup failed');
+    });
+
+    await authMiddleware.requireAdmin(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Admin access check failed.',
+      error: 'Profile lookup failed'
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 });

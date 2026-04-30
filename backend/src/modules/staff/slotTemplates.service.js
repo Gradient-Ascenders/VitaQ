@@ -90,19 +90,27 @@ function isOverlappingTimeRange(leftStart, leftEnd, rightStart, rightEnd) {
 }
 
 // Staff scheduling is limited to approved staff requests so the clinic assignment is trusted.
+// Staff scheduling uses the approved profile as the source of truth.
+// The profile row stores both the user's role and assigned clinic_id.
 async function fetchApprovedStaffAssignment(staffUserId) {
-  const { data: staffRequest, error } = await supabase
-    .from('staff_requests')
-    .select('id, user_id, clinic_id, status')
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('user_id, role, clinic_id')
     .eq('user_id', staffUserId)
-    .eq('status', 'approved')
     .single();
 
-  if (error || !staffRequest) {
-    throw createServiceError('Approved staff access is required.', 403);
+  if (error || !profile || profile.role !== 'staff' || !profile.clinic_id) {
+    throw createServiceError(
+      'Approved staff access with an assigned clinic is required.',
+      403
+    );
   }
 
-  return staffRequest;
+  return {
+    user_id: profile.user_id,
+    role: profile.role,
+    clinic_id: profile.clinic_id
+  };
 }
 
 // Reuse this when updates need to confirm ownership before mutating a template.
@@ -367,6 +375,46 @@ async function updateSlotTemplateForStaff({
   return updatedTemplate;
 }
 
+async function deleteSlotTemplateForStaff({ staffUserId, templateId }) {
+  if (!staffUserId || !templateId) {
+    throw createServiceError('staff user id and template id are required.', 400);
+  }
+
+  const staffAssignment = await fetchApprovedStaffAssignment(staffUserId);
+  const existingTemplate = await fetchSlotTemplateById(templateId);
+
+  // Staff may only delete availability records for their assigned clinic.
+  if (String(existingTemplate.clinic_id) !== String(staffAssignment.clinic_id)) {
+    throw createServiceError(
+      'You can only manage slot templates for your assigned clinic.',
+      403
+    );
+  }
+
+  const { data: deletedTemplate, error } = await supabase
+    .from('slot_templates')
+    .delete()
+    .eq('id', templateId)
+    .select(`
+      id,
+      clinic_id,
+      day_of_week,
+      start_time,
+      end_time,
+      capacity,
+      status,
+      created_at,
+      updated_at
+    `)
+    .single();
+
+  if (error || !deletedTemplate) {
+    throw createServiceError('Failed to delete slot template.', 500);
+  }
+
+  return deletedTemplate;
+}
+
 async function generateUpcomingSlotsForStaff({
   staffUserId,
   daysAhead = 14,
@@ -494,15 +542,16 @@ async function generateUpcomingSlotsForStaff({
   return {
     clinic_id: staffAssignment.clinic_id,
     from_date: today,
-      through_date: throughDate,
-      template_count: templates.length,
-      created: createdCount,
-      skipped_existing: skippedExistingCount
-    };
+    through_date: throughDate,
+    template_count: templates.length,
+    created: createdCount,
+    skipped_existing: skippedExistingCount
+  };
 }
 
 module.exports = {
   createSlotTemplateForStaff,
+  deleteSlotTemplateForStaff,
   generateUpcomingSlotsForStaff,
   listSlotTemplatesForStaff,
   updateSlotTemplateForStaff

@@ -588,7 +588,7 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       patient_id,
       clinic_id,
       status,
-      slot:appointment_slots (
+      slot:appointment_slots!appointments_slot_id_fkey (
         date,
         start_time,
         end_time

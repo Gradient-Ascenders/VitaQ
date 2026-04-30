@@ -220,7 +220,7 @@ async function fetchAppointmentsByPatientId(patientId) {
         contact_email,
         contact_website
       ),
-      slot:appointment_slots (
+      slot:appointment_slots!appointments_slot_id_fkey (
         date,
         start_time,
         end_time

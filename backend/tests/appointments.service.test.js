@@ -583,6 +583,9 @@ describe('appointments.service', () => {
             const result = await fetchAppointmentsByPatientId('patient-1');
 
             expect(mockFrom).toHaveBeenCalledWith('appointments');
+            expect(mockAppointmentsSelect).toHaveBeenCalledWith(
+                expect.stringContaining('slot:appointment_slots!appointments_slot_id_fkey')
+            );
             expect(appointmentsSelectEq).toHaveBeenCalledWith('patient_id', 'patient-1');
             expect(appointmentsSelectOrder).toHaveBeenCalledWith('created_at', {
                 ascending: false,

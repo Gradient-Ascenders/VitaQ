@@ -13,9 +13,12 @@ const nearestClinicStats = document.getElementById("nearestClinicStats");
 const nearbyClinicsList = document.getElementById("nearbyClinicsList");
 
 const resultsCount = document.getElementById("resultsCount");
+const resultsFeedback = document.getElementById("resultsFeedback");
 const loadingState = document.getElementById("loadingState");
 const errorState = document.getElementById("errorState");
 const emptyState = document.getElementById("emptyState");
+const emptyStateTitle = document.getElementById("emptyStateTitle");
+const emptyStateMessage = document.getElementById("emptyStateMessage");
 const clinicsList = document.getElementById("clinicsList");
 const loadMoreState = document.getElementById("loadMoreState");
 
@@ -26,6 +29,13 @@ let userLocation = null;
 let isLocationRequestPending = false;
 let visibleClinicCount = CLINIC_RESULTS_PAGE_SIZE;
 let lastRenderedClinics = [];
+let lastNearestContext = {
+  mode: "manual",
+  hasNearestOrdering: false,
+  clinicsWithDistanceCount: 0,
+  clinicsWithNearestRankCount: 0,
+  clinicsWithoutDistanceCount: 0
+};
 let loadMoreObserver = null;
 
 // Support both raw arrays and { data: [...] } payloads while backend responses stay lightweight.
@@ -58,6 +68,16 @@ function cleanTextValue(value) {
 function parseCoordinate(value) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function parsePositiveNumber(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return null;
+  }
+
+  return numericValue;
 }
 
 function fillSelectOptions(selectElement, values, defaultLabel) {
@@ -365,6 +385,53 @@ function buildClinicDistanceBadge(clinic) {
   `;
 }
 
+function getBackendDistanceKm(clinic) {
+  const kilometerDistanceFields = [
+    clinic?.distance_km,
+    clinic?.distanceKm,
+    clinic?.distance
+  ];
+
+  for (const value of kilometerDistanceFields) {
+    const parsedValue = parsePositiveNumber(value);
+
+    if (parsedValue !== null) {
+      return parsedValue;
+    }
+  }
+
+  const meterDistanceFields = [clinic?.distance_meters, clinic?.distanceMeters];
+
+  for (const value of meterDistanceFields) {
+    const parsedValue = parsePositiveNumber(value);
+
+    if (parsedValue !== null) {
+      return parsedValue / 1000;
+    }
+  }
+
+  return null;
+}
+
+function getBackendNearestRank(clinic) {
+  const parsedValue = parsePositiveNumber(clinic?.nearest_rank ?? clinic?.nearestRank);
+
+  if (parsedValue === null) {
+    return null;
+  }
+
+  const nearestRank = Math.floor(parsedValue);
+  return nearestRank >= 1 ? nearestRank : null;
+}
+
+function hasClinicDistance(clinic) {
+  return Number.isFinite(clinic?.distance_km);
+}
+
+function hasClinicNearestRank(clinic) {
+  return Number.isFinite(clinic?.nearest_rank);
+}
+
 // Sort clinics with the most available slots first so patients see bookable options sooner.
 function sortClinicsByAvailability(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
@@ -381,10 +448,24 @@ function sortClinicsByAvailability(clinics) {
 
 function decorateClinicsWithDistance(clinics) {
   return clinics.map((clinic) => {
+    const backendDistanceKm = getBackendDistanceKm(clinic);
+    const backendNearestRank = getBackendNearestRank(clinic);
+
+    if (backendDistanceKm !== null) {
+      return {
+        ...clinic,
+        distance_km: backendDistanceKm,
+        distance_source: "backend",
+        nearest_rank: backendNearestRank
+      };
+    }
+
     if (!userLocation || !hasClinicCoordinates(clinic)) {
       return {
         ...clinic,
-        distance_km: null
+        distance_km: null,
+        distance_source: null,
+        nearest_rank: backendNearestRank
       };
     }
 
@@ -395,13 +476,26 @@ function decorateClinicsWithDistance(clinics) {
         userLocation.longitude,
         Number(clinic.latitude),
         Number(clinic.longitude)
-      )
+      ),
+      distance_source: "browser",
+      nearest_rank: backendNearestRank
     };
   });
 }
 
 function sortClinicsByDistance(clinics) {
   return [...clinics].sort((leftClinic, rightClinic) => {
+    const leftRank = hasClinicNearestRank(leftClinic)
+      ? leftClinic.nearest_rank
+      : Number.POSITIVE_INFINITY;
+    const rightRank = hasClinicNearestRank(rightClinic)
+      ? rightClinic.nearest_rank
+      : Number.POSITIVE_INFINITY;
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
     const leftDistance = Number.isFinite(leftClinic?.distance_km)
       ? leftClinic.distance_km
       : Number.POSITIVE_INFINITY;
@@ -424,6 +518,39 @@ function sortClinicsByDistance(clinics) {
   });
 }
 
+function buildNearestSearchContext(clinics) {
+  const clinicsWithDistanceCount = clinics.filter(hasClinicDistance).length;
+  const clinicsWithNearestRankCount = clinics.filter(hasClinicNearestRank).length;
+  const hasBrowserNearestData = clinics.some((clinic) => clinic.distance_source === "browser");
+  const hasBackendNearestData = clinics.some(
+    (clinic) => clinic.distance_source === "backend" || hasClinicNearestRank(clinic)
+  );
+  const hasNearestOrdering = clinicsWithDistanceCount > 0 || clinicsWithNearestRankCount > 0;
+
+  return {
+    mode: hasBrowserNearestData ? "browser" : hasBackendNearestData ? "backend" : "manual",
+    hasNearestOrdering,
+    clinicsWithDistanceCount,
+    clinicsWithNearestRankCount,
+    clinicsWithoutDistanceCount: Math.max(clinics.length - clinicsWithDistanceCount, 0)
+  };
+}
+
+function annotateNearestDisplayRank(clinics) {
+  const nearestRankByClinicId = new Map();
+
+  sortClinicsByDistance(
+    clinics.filter((clinic) => hasClinicDistance(clinic) || hasClinicNearestRank(clinic))
+  ).forEach((clinic, index) => {
+    nearestRankByClinicId.set(clinic.id, index + 1);
+  });
+
+  return clinics.map((clinic) => ({
+    ...clinic,
+    nearest_display_rank: nearestRankByClinicId.get(clinic.id) || null
+  }));
+}
+
 function setLocationStatus(message, tone = "info") {
   const toneStyles = {
     info: "border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]",
@@ -434,6 +561,31 @@ function setLocationStatus(message, tone = "info") {
 
   locationStatus.className = `mt-6 rounded-[1.5rem] border px-5 py-4 text-sm ${toneStyles[tone] || toneStyles.info}`;
   locationStatus.textContent = message;
+}
+
+function setResultsFeedback(message, tone = "info") {
+  if (!message) {
+    resultsFeedback.textContent = "";
+    resultsFeedback.className = "mt-6 hidden rounded-3xl border px-6 py-5 text-sm";
+    return;
+  }
+
+  const toneStyles = {
+    info: "border-[#7dcfff]/20 bg-[#7dcfff]/10 text-[#b8ecff]",
+    success: "border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]",
+    warning: "border-[#e0af68]/20 bg-[#e0af68]/10 text-[#f6d8a8]",
+    error: "border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]"
+  };
+
+  resultsFeedback.className = `mt-6 rounded-3xl border px-6 py-5 text-sm ${toneStyles[tone] || toneStyles.info}`;
+  resultsFeedback.textContent = message;
+}
+
+function clearNearestClinicPanel() {
+  nearestClinicResults.classList.add("hidden");
+  nearestClinicCard.innerHTML = "";
+  nearestClinicStats.innerHTML = "";
+  nearbyClinicsList.innerHTML = "";
 }
 
 function resetVisibleClinicCount() {
@@ -525,40 +677,53 @@ function getFilteredClinics() {
   });
 }
 
-function renderNearestClinicPanel(clinics) {
-  if (!userLocation) {
-    nearestClinicResults.classList.add("hidden");
-    nearestClinicCard.innerHTML = "";
-    nearestClinicStats.innerHTML = "";
-    nearbyClinicsList.innerHTML = "";
+function renderNearestClinicPanel(clinics, nearestContext) {
+  if (!nearestContext.hasNearestOrdering) {
+    clearNearestClinicPanel();
+
+    if (nearestContext.mode === "browser") {
+      if (clinics.length === 0) {
+        setLocationStatus(
+          "Your location is ready. No clinics match the current search yet, so manual filters are still controlling what appears.",
+          "info"
+        );
+      } else {
+        setLocationStatus(
+          "Your location was found, but the current clinic matches do not include usable distance details. Manual search results remain available.",
+          "warning"
+        );
+      }
+    } else {
+      setLocationStatus(
+        "Location sorting is off. Use the button above to sort clinics by proximity.",
+        "info"
+      );
+    }
+
     return;
   }
 
-  const clinicsWithDistance = sortClinicsByDistance(
-    clinics.filter((clinic) => Number.isFinite(clinic.distance_km))
+  const clinicsInNearestOrder = sortClinicsByDistance(
+    clinics.filter((clinic) => hasClinicDistance(clinic) || hasClinicNearestRank(clinic))
   );
-
-  if (clinicsWithDistance.length === 0) {
-    nearestClinicResults.classList.add("hidden");
-    nearestClinicCard.innerHTML = "";
-    nearestClinicStats.innerHTML = "";
-    nearbyClinicsList.innerHTML = "";
-    setLocationStatus(
-      "Your location was found, but none of the clinics in the current filtered results have usable map coordinates.",
-      "warning"
-    );
-    return;
-  }
-
-  const closestClinic = clinicsWithDistance[0];
-  const additionalNearbyClinics = clinicsWithDistance.slice(1, 4);
+  const closestClinic = clinicsInNearestOrder[0];
+  const additionalNearbyClinics = clinicsInNearestOrder.slice(1, 4);
   const clinicsWithCoordinatesCount = allClinics.filter(hasClinicCoordinates).length;
-  const filteredWithCoordinatesCount = clinicsWithDistance.length;
+  const filteredWithDistanceCount = nearestContext.clinicsWithDistanceCount;
+  const sourceDescription = nearestContext.mode === "browser"
+    ? "Estimated from your browser location"
+    : "Nearest ordering supplied by the current clinic results";
 
   nearestClinicCard.innerHTML = `
     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#7dcfff]">
-      Closest mapped clinic
+      ${nearestContext.mode === "browser" ? "Closest clinic in your results" : "Nearest clinic in current results"}
     </p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <p class="inline-flex rounded-2xl border border-[#7aa2f7]/25 bg-[#7aa2f7]/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#c7d8ff]">
+        Nearest #1
+      </p>
+      ${buildClinicDistanceBadge(closestClinic)}
+    </div>
     <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h3 class="text-2xl font-semibold text-[#e0e5ff]">
@@ -571,7 +736,6 @@ function renderNearestClinicPanel(clinics) {
           ${escapeHtml(buildClinicAddressText(closestClinic))}
         </p>
       </div>
-      ${buildClinicDistanceBadge(closestClinic)}
     </div>
 
     <div class="mt-5 grid gap-3 sm:grid-cols-2">
@@ -590,6 +754,8 @@ function renderNearestClinicPanel(clinics) {
       ${renderServicesPreview(closestClinic.services_offered, `${closestClinic.id}-nearby`)}
     </div>
 
+    <p class="mt-5 text-xs uppercase tracking-[0.2em] text-[#8b93b8]">${escapeHtml(sourceDescription)}</p>
+
     <a
       href="/clinic/${encodeURIComponent(closestClinic.id)}"
       class="mt-6 inline-flex rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.02] hover:brightness-110"
@@ -605,9 +771,9 @@ function renderNearestClinicPanel(clinics) {
       <p class="mt-1 text-xs text-[#a9b1d6]">clinics in the full directory have coordinates</p>
     </div>
     <div class="rounded-2xl border border-[#414868] bg-[#1f2335]/88 px-4 py-4">
-      <p class="text-[0.65rem] uppercase tracking-[0.24em] text-[#8b93b8]">Current filter</p>
-      <p class="mt-2 text-lg font-semibold text-[#e0e5ff]">${escapeHtml(String(filteredWithCoordinatesCount))}</p>
-      <p class="mt-1 text-xs text-[#a9b1d6]">mapped clinics match your current search</p>
+      <p class="text-[0.65rem] uppercase tracking-[0.24em] text-[#8b93b8]">Nearby matches</p>
+      <p class="mt-2 text-lg font-semibold text-[#e0e5ff]">${escapeHtml(String(filteredWithDistanceCount))}</p>
+      <p class="mt-1 text-xs text-[#a9b1d6]">current results include readable distance details</p>
     </div>
   `;
 
@@ -620,40 +786,90 @@ function renderNearestClinicPanel(clinics) {
         >
           <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="text-sm font-semibold text-[#e0e5ff]">${escapeHtml(clinic.name || "Unnamed Clinic")}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="text-sm font-semibold text-[#e0e5ff]">${escapeHtml(clinic.name || "Unnamed Clinic")}</p>
+                <span class="rounded-full border border-[#7aa2f7]/25 bg-[#7aa2f7]/12 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#c7d8ff]">
+                  Nearest #${escapeHtml(String(clinic.nearest_display_rank || ""))}
+                </span>
+              </div>
               <p class="mt-1 text-xs text-[#a9b1d6]">${escapeHtml(buildClinicLocationText(clinic))}</p>
             </div>
-            <span class="rounded-full border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-1 text-xs font-semibold text-[#b8ecff]">
-              ${escapeHtml(formatDistanceLabel(clinic.distance_km))}
-            </span>
+            ${hasClinicDistance(clinic)
+              ? `
+                  <span class="rounded-full border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-1 text-xs font-semibold text-[#b8ecff]">
+                    ${escapeHtml(formatDistanceLabel(clinic.distance_km))}
+                  </span>
+                `
+              : ""}
           </div>
         </a>
       `)
       .join("")
     : `
       <div class="rounded-2xl border border-[#414868] bg-[#1f2335]/88 px-4 py-4 text-sm text-[#a9b1d6]">
-        The closest clinic is the only mapped result in your current search.
+        The nearest clinic is the only distance-ready match in your current search.
       </div>
     `;
 
   nearestClinicResults.classList.remove("hidden");
   setLocationStatus(
-    `Location sorting is active. Clinic results are now ordered nearest first using ${filteredWithCoordinatesCount} mapped match${filteredWithCoordinatesCount === 1 ? "" : "es"}.`,
+    nearestContext.mode === "browser"
+      ? `Location sorting is active. Clinic results are ordered nearest first using ${filteredWithDistanceCount} mapped match${filteredWithDistanceCount === 1 ? "" : "es"}.`
+      : `Nearest ordering is active in the current clinic results. ${filteredWithDistanceCount} clinic${filteredWithDistanceCount === 1 ? "" : "s"} include distance details.`,
+    "success"
+  );
+}
+
+function updateResultsFeedback(clinics, nearestContext) {
+  if (isLocationRequestPending) {
+    setResultsFeedback(
+      "Finding the nearest clinics to you. Manual search and filters stay available while VitaQ checks your location.",
+      "info"
+    );
+    return;
+  }
+
+  if (!nearestContext.hasNearestOrdering) {
+    setResultsFeedback("");
+    return;
+  }
+
+  if (nearestContext.mode === "browser") {
+    const distanceFallbackMessage = nearestContext.clinicsWithoutDistanceCount > 0
+      ? ` ${nearestContext.clinicsWithoutDistanceCount} clinic${nearestContext.clinicsWithoutDistanceCount === 1 ? "" : "s"} without distance details stay after the nearby matches.`
+      : "";
+
+    setResultsFeedback(
+      `Showing nearest clinics first using your browser location. ${nearestContext.clinicsWithDistanceCount} result${nearestContext.clinicsWithDistanceCount === 1 ? "" : "s"} include readable distance details.${distanceFallbackMessage}`,
+      "success"
+    );
+    return;
+  }
+
+  setResultsFeedback(
+    `Showing nearest-first clinic results from the current search response. ${nearestContext.clinicsWithDistanceCount} clinic${nearestContext.clinicsWithDistanceCount === 1 ? "" : "s"} include readable distance details.`,
     "success"
   );
 }
 
 // Render the currently visible clinic cards from the filtered clinic set.
-function renderClinics(clinics) {
+function renderClinics(clinics, nearestContext) {
   lastRenderedClinics = clinics;
+  lastNearestContext = nearestContext;
   clinicsList.innerHTML = "";
 
   if (clinics.length === 0) {
     clinicsList.classList.add("hidden");
     emptyState.classList.remove("hidden");
     hideLoadMoreState();
-    resultsCount.textContent = userLocation
-      ? "0 clinics found • nearest view still available when results return"
+    emptyStateTitle.textContent = nearestContext.mode === "browser"
+      ? "No clinics match this search yet"
+      : "No clinics found";
+    emptyStateMessage.textContent = nearestContext.mode === "browser"
+      ? "Try changing your search or filters. Manual clinic search is still available even when nearby sorting is turned on."
+      : "Try changing your search or filters to see more clinics.";
+    resultsCount.textContent = nearestContext.mode === "browser"
+      ? "0 clinics found • nearby sorting is ready when results return"
       : "0 clinics found";
     return;
   }
@@ -661,10 +877,16 @@ function renderClinics(clinics) {
   const visibleClinics = getVisibleClinics(clinics);
   clinicsList.classList.remove("hidden");
   emptyState.classList.add("hidden");
-  const clinicsWithDistance = clinics.filter((clinic) => Number.isFinite(clinic.distance_km)).length;
-  resultsCount.textContent = userLocation
-    ? `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • showing ${visibleClinics.length} • nearest first for ${clinicsWithDistance} mapped result${clinicsWithDistance === 1 ? "" : "s"}`
-    : `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • showing ${visibleClinics.length}`;
+  const resultSummary = `${clinics.length} clinic${clinics.length === 1 ? "" : "s"} found • showing ${visibleClinics.length}`;
+
+  if (nearestContext.hasNearestOrdering) {
+    const nearbySummary = nearestContext.clinicsWithDistanceCount > 0
+      ? ` • nearest-first for ${nearestContext.clinicsWithDistanceCount} clinic${nearestContext.clinicsWithDistanceCount === 1 ? "" : "s"} with distance`
+      : " • nearest-first active";
+    resultsCount.textContent = `${resultSummary}${nearbySummary}`;
+  } else {
+    resultsCount.textContent = resultSummary;
+  }
 
   const cardsMarkup = visibleClinics
     .map((clinic) => {
@@ -686,6 +908,13 @@ function renderClinics(clinics) {
       const websiteUrl = normaliseWebsiteUrl(clinic.contact_website);
       const dataNote = getClinicDataNote(clinic);
       const distanceBadge = buildClinicDistanceBadge(clinic);
+      const nearestOrderBadge = nearestContext.hasNearestOrdering && clinic.nearest_display_rank
+        ? `
+            <p class="inline-flex rounded-2xl border border-[#7aa2f7]/25 bg-[#7aa2f7]/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#c7d8ff]">
+              Nearest #${escapeHtml(String(clinic.nearest_display_rank))}
+            </p>
+          `
+        : "";
       const statusBadge = clinic.is_active === false
         ? `
             <p class="inline-flex rounded-2xl border border-[#f7768e]/25 bg-[#f7768e]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#f4b5c0]">
@@ -712,6 +941,13 @@ function renderClinics(clinics) {
             </div>
           `
         : "";
+      const distanceFallbackMarkup = nearestContext.hasNearestOrdering && !hasClinicDistance(clinic)
+        ? `
+            <p class="mt-3 text-xs text-[#8b93b8]">
+              Distance not available for this clinic. It stays visible after the nearby matches so manual browsing still works.
+            </p>
+          `
+        : "";
 
       return `
         <article class="flex h-full flex-col rounded-[2rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-[#7aa2f7]/40 hover:bg-[#24283b]/82">
@@ -720,6 +956,7 @@ function renderClinics(clinics) {
               <p class="inline-flex rounded-2xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7dcfff]">
                 ${escapeHtml(facilityType)}
               </p>
+              ${nearestOrderBadge}
               ${distanceBadge}
             </div>
             ${statusBadge}
@@ -748,6 +985,7 @@ function renderClinics(clinics) {
 
           ${websiteMarkup}
           ${dataNoteMarkup}
+          ${distanceFallbackMarkup}
 
           <p class="mt-4 text-sm font-medium text-[#b8ecff]">
             ${escapeHtml(availableSlotsLabel)}
@@ -778,7 +1016,7 @@ function loadMoreClinics() {
     lastRenderedClinics.length
   );
 
-  renderClinics(lastRenderedClinics);
+  renderClinics(lastRenderedClinics, lastNearestContext);
 }
 
 // Search and dropdown filters run entirely client-side after the first clinic fetch.
@@ -789,12 +1027,15 @@ function applyFilters({ resetVisibleResults = true } = {}) {
 
   const filteredClinics = getFilteredClinics();
   const decoratedClinics = decorateClinicsWithDistance(filteredClinics);
-  const visibleClinics = userLocation
-    ? sortClinicsByDistance(decoratedClinics)
-    : sortClinicsByAvailability(decoratedClinics);
+  const nearestContext = buildNearestSearchContext(decoratedClinics);
+  const annotatedClinics = annotateNearestDisplayRank(decoratedClinics);
+  const visibleClinics = nearestContext.hasNearestOrdering
+    ? sortClinicsByDistance(annotatedClinics)
+    : sortClinicsByAvailability(annotatedClinics);
 
-  renderNearestClinicPanel(decoratedClinics);
-  renderClinics(visibleClinics);
+  updateResultsFeedback(visibleClinics, nearestContext);
+  renderNearestClinicPanel(visibleClinics, nearestContext);
+  renderClinics(visibleClinics, nearestContext);
 }
 
 // Build filter options from the live clinic dataset instead of hard-coding provinces or facility types.
@@ -820,9 +1061,11 @@ async function loadClinics() {
   errorState.classList.add("hidden");
   emptyState.classList.add("hidden");
   clinicsList.classList.add("hidden");
+  clearNearestClinicPanel();
+  setResultsFeedback("");
   hideLoadMoreState();
   resultsCount.textContent = "Loading clinics...";
-  loadingState.textContent = "Loading clinics and location details...";
+  loadingState.textContent = "Loading clinic directory...";
   updateLocationButtons();
 
   try {
@@ -845,6 +1088,8 @@ async function loadClinics() {
     loadingState.classList.add("hidden");
     clinicsList.classList.add("hidden");
     emptyState.classList.add("hidden");
+    clearNearestClinicPanel();
+    setResultsFeedback("");
     hideLoadMoreState();
     errorState.classList.remove("hidden");
     errorState.textContent = "We could not load clinic directory details right now. Please try again.";
@@ -911,6 +1156,7 @@ function handleLocationSuccess(position) {
 function handleLocationError(error) {
   isLocationRequestPending = false;
   updateLocationButtons();
+  setResultsFeedback("");
   const hasExistingLocation = Boolean(userLocation);
 
   if (error?.code === 1) {
@@ -953,12 +1199,17 @@ function handleLocationError(error) {
 
 function requestUserLocation() {
   if (!navigator.geolocation) {
+    setResultsFeedback("");
     setLocationStatus("This browser does not support geolocation. Use the clinic filters to search manually.", "warning");
     return;
   }
 
   isLocationRequestPending = true;
   updateLocationButtons();
+  setResultsFeedback(
+    "Finding the nearest clinics to you. Manual search and filters stay available while VitaQ checks your location.",
+    "info"
+  );
   setLocationStatus("Requesting your location so VitaQ can sort clinics by proximity...", "info");
 
   navigator.geolocation.getCurrentPosition(
@@ -975,6 +1226,7 @@ function requestUserLocation() {
 function clearLocationView() {
   userLocation = null;
   updateLocationButtons();
+  setResultsFeedback("");
   setLocationStatus("Location sorting is off. Use the button above to sort clinics by proximity.", "info");
   applyFilters();
 }

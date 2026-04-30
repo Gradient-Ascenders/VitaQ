@@ -220,7 +220,7 @@
             </div>
 
             <p class="text-sm text-[#8b93b8]">
-              Refine by search, province, district, or facility type
+              Refine by search, province, district, or facility type. Manual search always stays available.
             </p>
           </div>
 
@@ -294,11 +294,17 @@
           </div>
 
           <section
+            id="resultsFeedback"
+            class="mt-6 hidden rounded-3xl border px-6 py-5 text-sm"
+            aria-live="polite"
+          ></section>
+
+          <section
             id="loadingState"
             class="mt-6 rounded-3xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-6 py-5 text-[#b8ecff]"
             aria-live="polite"
           >
-            Loading clinics and location details...
+            Loading clinic directory...
           </section>
 
           <section
@@ -314,9 +320,9 @@
             class="mt-6 hidden rounded-3xl border border-[#414868] bg-[#24283b]/70 px-6 py-8 text-center backdrop-blur-sm"
             aria-live="polite"
           >
-            <h3 class="text-xl font-semibold text-[#e0e5ff]">No clinics found</h3>
-            <p class="mt-2 text-[#a9b1d6]">
-              Try changing your search or filters to see more results.
+            <h3 id="emptyStateTitle" class="text-xl font-semibold text-[#e0e5ff]">No clinics found</h3>
+            <p id="emptyStateMessage" class="mt-2 text-[#a9b1d6]">
+              Try changing your search or filters. Manual search and nearest-clinic sorting can both be used here.
             </p>
           </section>
 

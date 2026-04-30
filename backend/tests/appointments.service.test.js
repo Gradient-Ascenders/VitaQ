@@ -584,6 +584,8 @@ describe('appointments.service', () => {
         });
 
         test('rolls back appointment and slot when queue entry creation fails', async () => {
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
             queueEntryInsertResult = {
                 data: null,
                 error: { message: 'queue insert failed' },
@@ -605,6 +607,23 @@ describe('appointments.service', () => {
             expect(mockSlotUpdate).toHaveBeenNthCalledWith(2, {
                 booked_count: 2,
             });
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                'Queue creation after booking failed:',
+                expect.objectContaining({
+                    message: 'Failed to join the queue.',
+                    statusCode: 500,
+                    stage: 'queue_entry_insert',
+                    patientId: 'patient-1',
+                    clinicId: 'clinic-1',
+                    slotId: 'slot-1',
+                    appointmentId: 'appointment-1',
+                    supabaseError: expect.objectContaining({
+                        message: 'queue insert failed',
+                    }),
+                })
+            );
+
+            consoleErrorSpy.mockRestore();
         });
     });
 
@@ -657,6 +676,9 @@ describe('appointments.service', () => {
             const result = await fetchAppointmentsByPatientId('patient-1');
 
             expect(mockFrom).toHaveBeenCalledWith('appointments');
+            expect(mockAppointmentsSelect).toHaveBeenCalledWith(
+                expect.stringContaining('slot:appointment_slots!appointments_slot_id_fkey')
+            );
             expect(appointmentsSelectEq).toHaveBeenCalledWith('patient_id', 'patient-1');
             expect(appointmentsSelectOrder).toHaveBeenCalledWith('created_at', {
                 ascending: false,

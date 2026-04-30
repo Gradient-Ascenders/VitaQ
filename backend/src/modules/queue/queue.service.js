@@ -25,10 +25,34 @@ const ACTIVE_QUEUE_STATUSES = ['waiting', 'in_consultation'];
  * Creates a standard service error with an HTTP status code.
  * This lets the controller return the correct response code.
  */
-function createServiceError(message, statusCode = 400) {
+function createServiceError(message, statusCode = 400, details = {}) {
   const error = new Error(message);
   error.statusCode = statusCode;
+  Object.assign(error, details);
   return error;
+}
+
+/**
+ * Keeps Supabase diagnostics compact and safe for server-side logs.
+ */
+function formatSupabaseError(error) {
+  if (!error) {
+    return null;
+  }
+
+  return {
+    message: error.message,
+    code: error.code,
+    details: error.details,
+    hint: error.hint
+  };
+}
+
+function logQueueStageFailure(stage, context = {}) {
+  console.error('Queue service operation failed:', {
+    stage,
+    ...context
+  });
 }
 
 /**
@@ -564,7 +588,7 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       patient_id,
       clinic_id,
       status,
-      slot:appointment_slots (
+      slot:appointment_slots!appointments_slot_id_fkey (
         date,
         start_time,
         end_time
@@ -582,7 +606,18 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
     .single();
 
   if (appointmentError || !appointment) {
-    throw createServiceError('Appointment not found.', 404);
+    if (appointmentError) {
+      logQueueStageFailure('appointment_lookup', {
+        patientId,
+        appointmentId,
+        supabaseError: formatSupabaseError(appointmentError)
+      });
+    }
+
+    throw createServiceError('Appointment not found.', 404, {
+      stage: 'appointment_lookup',
+      supabaseError: formatSupabaseError(appointmentError)
+    });
   }
 
   // Patients must only join the queue for their own appointment.
@@ -619,7 +654,17 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
     .limit(1);
 
   if (existingError) {
-    throw createServiceError('Failed to check existing queue entry.', 500);
+    logQueueStageFailure('existing_queue_entry_lookup', {
+      patientId,
+      appointmentId,
+      clinicId: appointment.clinic_id,
+      supabaseError: formatSupabaseError(existingError)
+    });
+
+    throw createServiceError('Failed to check existing queue entry.', 500, {
+      stage: 'existing_queue_entry_lookup',
+      supabaseError: formatSupabaseError(existingError)
+    });
   }
 
   if (existingEntries && existingEntries.length > 0) {
@@ -714,8 +759,20 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
     `)
     .single();
 
-  if (queueError) {
-    throw createServiceError('Failed to join the queue.', 500);
+  if (queueError || !queueEntry) {
+    logQueueStageFailure('queue_entry_insert', {
+      patientId,
+      appointmentId,
+      clinicId: appointment.clinic_id,
+      queueDate,
+      queueNumber,
+      supabaseError: formatSupabaseError(queueError)
+    });
+
+    throw createServiceError('Failed to join the queue.', 500, {
+      stage: 'queue_entry_insert',
+      supabaseError: formatSupabaseError(queueError)
+    });
   }
 
   // Return enough information for the controller/frontend to show

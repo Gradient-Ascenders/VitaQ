@@ -11,6 +11,22 @@ function createServiceError(message, statusCode = 400) {
 }
 
 /**
+ * Logs enough booking context to debug queue failures without exposing it to patients.
+ */
+function logBookingQueueFailure({ queueError, patientId, clinicId, slotId, appointmentId }) {
+  console.error('Queue creation after booking failed:', {
+    message: queueError?.message,
+    statusCode: queueError?.statusCode,
+    stage: queueError?.stage,
+    supabaseError: queueError?.supabaseError,
+    patientId,
+    clinicId,
+    slotId,
+    appointmentId
+  });
+}
+
+/**
  * Checks whether a slot has already passed.
  */
 function isSlotExpired(slot) {
@@ -132,7 +148,13 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
       appointmentId: appointment.id
     });
   } catch (queueError) {
-    console.error('Queue creation after booking failed:', queueError);
+    logBookingQueueFailure({
+      queueError,
+      patientId,
+      clinicId: slot.clinic_id,
+      slotId,
+      appointmentId: appointment.id
+    });
 
     // Remove the appointment if the queue entry could not be created.
     await supabase
@@ -216,5 +238,6 @@ async function fetchAppointmentsByPatientId(patientId) {
 
 module.exports = {
   createAppointmentBooking,
-  fetchAppointmentsByPatientId
+  fetchAppointmentsByPatientId,
+  logBookingQueueFailure
 };

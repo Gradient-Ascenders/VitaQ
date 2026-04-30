@@ -226,6 +226,7 @@ describe('joinQueueFromAppointment', () => {
   });
 
   test('throws an error when queue entry insertion fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const appointment = {
       id: 'appointment-1',
       patient_id: 'patient-1',
@@ -260,8 +261,29 @@ describe('joinQueueFromAppointment', () => {
       })
     ).rejects.toMatchObject({
       message: 'Failed to join the queue.',
-      statusCode: 500
+      statusCode: 500,
+      stage: 'queue_entry_insert',
+      supabaseError: {
+        message: 'Insert failed'
+      }
     });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Queue service operation failed:',
+      expect.objectContaining({
+        stage: 'queue_entry_insert',
+        patientId: 'patient-1',
+        appointmentId: 'appointment-1',
+        clinicId: 'clinic-1',
+        queueDate: '2026-04-16',
+        queueNumber: 1,
+        supabaseError: expect.objectContaining({
+          message: 'Insert failed'
+        })
+      })
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   test('creates and returns a queue entry for a valid appointment', async () => {

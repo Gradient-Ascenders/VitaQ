@@ -6,6 +6,10 @@ const {
   updateQueueEntryStatus
 } = require('./queue.service');
 
+const {
+  getPredictedWaitTimeForQueueEntry
+} = require('./queuePrediction.service');
+
 /**
  * Handles POST /api/queue/join.
  * The patient must be logged in and must provide an appointment_id.
@@ -111,6 +115,32 @@ async function getMyQueueStatus(req, res) {
 }
 
 /**
+ * Handles GET /api/queue/:id/predicted-wait-time.
+ * Returns an explainable predicted wait time for the logged-in patient.
+ */
+async function getPredictedWaitTime(req, res) {
+  try {
+    const queueEntryId = req.params.id;
+    const patientId = req.user.id;
+
+    const result = await getPredictedWaitTimeForQueueEntry({
+      queueEntryId,
+      patientId
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to calculate predicted wait time.'
+    });
+  }
+}
+
+/**
  * Handles GET /api/queue/staff.
  * Returns the clinic queue for a staff member using their assigned clinic and queue date.
  */
@@ -171,6 +201,7 @@ module.exports = {
   joinQueue,
   addStaffWalkIn,
   getMyQueueStatus,
+  getPredictedWaitTime,
   getStaffQueue,
   updateStaffQueueStatus
 };

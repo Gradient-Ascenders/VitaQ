@@ -540,7 +540,8 @@ async function createWalkInQueueEntry({
         queue_date: resolvedQueueDate,
         source: 'walk_in',
         status: 'waiting',
-        estimated_wait_minutes: estimatedWaitMinutes
+        estimated_wait_minutes: estimatedWaitMinutes,
+        joined_at: new Date().toISOString()
       }
     ])
     .select(`
@@ -741,7 +742,8 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
         queue_date: queueDate,
         source: 'appointment',
         status: 'waiting',
-        estimated_wait_minutes: estimatedWaitMinutes
+        estimated_wait_minutes: estimatedWaitMinutes,
+        joined_at: new Date().toISOString()
       }
     ])
     .select(`
@@ -998,6 +1000,28 @@ function isAllowedStatusTransition(currentStatus, nextStatus) {
 }
 
 /**
+ * Adds timestamp fields when staff move a patient through the queue.
+ * These timestamps are used later for historical wait-time prediction.
+ */
+function buildQueueStatusTimestampPatch(nextStatus) {
+  const now = new Date().toISOString();
+
+  if (nextStatus === 'in_consultation') {
+    return {
+      consultation_started_at: now
+    };
+  }
+
+  if (nextStatus === 'complete') {
+    return {
+      completed_at: now
+    };
+  }
+
+  return {};
+}
+
+/**
  * Fetches one queue entry before updating it.
  * We need the existing clinic_id and status before deciding whether the update is allowed.
  */
@@ -1065,10 +1089,14 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
     );
   }
 
+  const timestampPatch = buildQueueStatusTimestampPatch(status);
+
   const { data, error } = await supabase
     .from('queue_entries')
     .update({
-      status
+      status,
+      ...timestampPatch,
+      updated_at: new Date().toISOString()
     })
     .eq('id', entryId)
     .select(`
@@ -1081,6 +1109,9 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
       source,
       status,
       estimated_wait_minutes,
+      joined_at,
+      consultation_started_at,
+      completed_at,
       created_at,
       updated_at
     `)

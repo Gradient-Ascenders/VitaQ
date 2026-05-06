@@ -135,7 +135,7 @@ function normalizeClinicUpdatePayload(payload) {
     throw createServiceError('Clinic name is required.', 400);
   }
 
-  return {
+  const normalizedPayload = {
     name,
     province: cleanOptionalClinicText(payload.province),
     district: cleanOptionalClinicText(payload.district),
@@ -146,6 +146,16 @@ function normalizeClinicUpdatePayload(payload) {
     services_offered: cleanOptionalClinicText(payload.services_offered),
     contact_website: cleanOptionalClinicText(payload.contact_website)
   };
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'is_active')) {
+    if (typeof payload.is_active !== 'boolean') {
+      throw createServiceError('Clinic active status must be true or false.', 400);
+    }
+
+    normalizedPayload.is_active = payload.is_active;
+  }
+
+  return normalizedPayload;
 }
 
 /**

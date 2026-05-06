@@ -283,6 +283,14 @@ function createAuthHeaders(extraHeaders = {}) {
   };
 }
 
+function buildAdminClinicEndpoint(clinicId = '') {
+  if (!clinicId) {
+    return ADMIN_CLINICS_ENDPOINT;
+  }
+
+  return `${ADMIN_CLINICS_ENDPOINT}/${encodeURIComponent(clinicId)}`;
+}
+
 function cleanClinicFieldValue(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -867,7 +875,8 @@ function renderClinicFormState() {
     saveButton.textContent = adminState.isClinicSaveLoading ? 'Saving...' : 'Save clinic updates';
   }
 
-  if (adminState.selectedClinic) {
+  // Keep in-progress edits visible while the save request is running.
+  if (adminState.selectedClinic && !adminState.isClinicSaveLoading) {
     setClinicFormValues(adminState.selectedClinic);
     return;
   }
@@ -1003,7 +1012,10 @@ async function loadAdminClinicDetails(clinicId) {
   refreshClinicManagement();
 
   try {
-    const response = await fetch(`/api/clinics/${encodeURIComponent(clinicId)}`);
+    const response = await fetch(buildAdminClinicEndpoint(clinicId), {
+      headers: createAuthHeaders(),
+      cache: 'no-store'
+    });
     const payload = await readJsonSafely(response);
 
     if (redirectForAdminApiResponseStatus(response.status)) {
@@ -1050,7 +1062,8 @@ async function loadAdminClinics() {
 
   try {
     const response = await fetch(ADMIN_CLINICS_ENDPOINT, {
-      headers: createAuthHeaders()
+      headers: createAuthHeaders(),
+      cache: 'no-store'
     });
     const payload = await readJsonSafely(response);
 
@@ -1112,6 +1125,8 @@ async function handleClinicSave(event) {
     return;
   }
 
+  const formPayload = getClinicFormPayload();
+
   adminState.isClinicSaveLoading = true;
   adminState.clinicFeedback = {
     type: 'loading',
@@ -1120,16 +1135,13 @@ async function handleClinicSave(event) {
   refreshClinicManagement();
 
   try {
-    const response = await fetch(
-      `${ADMIN_CLINICS_ENDPOINT}/${encodeURIComponent(adminState.selectedClinicId)}`,
-      {
-        method: 'PATCH',
-        headers: createAuthHeaders({
-          'Content-Type': 'application/json'
-        }),
-        body: JSON.stringify(getClinicFormPayload())
-      }
-    );
+    const response = await fetch(buildAdminClinicEndpoint(adminState.selectedClinicId), {
+      method: 'PATCH',
+      headers: createAuthHeaders({
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify(formPayload)
+    });
     const payload = await readJsonSafely(response);
 
     if (redirectForAdminApiResponseStatus(response.status)) {

@@ -24,6 +24,15 @@ const CLINIC_FORM_FIELD_IDS = {
   services_offered: 'clinicServicesInput',
   contact_website: 'clinicWebsiteInput'
 };
+const CLINIC_LOCATION_FIELD_ORDER = ['province', 'district', 'area', 'municipality', 'region'];
+const CLINIC_DROPDOWN_PLACEHOLDERS = {
+  province: 'Select province',
+  district: 'Select district',
+  area: 'Select area',
+  municipality: 'Select municipality',
+  region: 'Select region',
+  facility_type: 'Select facility type'
+};
 
 const adminState = {
   requests: [],
@@ -212,6 +221,7 @@ function normalizeClinicSummary(rawClinic) {
     name: rawClinic?.name || 'Unnamed clinic',
     province: rawClinic?.province || '',
     district: rawClinic?.district || '',
+    area: rawClinic?.area || '',
     municipality: rawClinic?.municipality || '',
     region: rawClinic?.region || '',
     facility_type: rawClinic?.facility_type || '',
@@ -273,6 +283,114 @@ function createAuthHeaders(extraHeaders = {}) {
     Authorization: `Bearer ${adminState.accessToken}`,
     ...extraHeaders
   };
+}
+
+function cleanClinicFieldValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isClinicDropdownField(fieldName) {
+  return Object.prototype.hasOwnProperty.call(CLINIC_DROPDOWN_PLACEHOLDERS, fieldName);
+}
+
+function getDistinctSortedClinicValues(values) {
+  return [...new Set(values.map(cleanClinicFieldValue).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right)
+  );
+}
+
+function getClinicDropdownSelections(preferredSelections = null) {
+  const { fields } = getClinicFormElements();
+  const selections = {};
+
+  Object.keys(CLINIC_DROPDOWN_PLACEHOLDERS).forEach((fieldName) => {
+    const preferredValue = preferredSelections?.[fieldName];
+    selections[fieldName] = cleanClinicFieldValue(
+      preferredValue !== undefined ? preferredValue : fields[fieldName]?.value
+    );
+  });
+
+  return selections;
+}
+
+function getClinicsMatchingDropdownParents(fieldName, selections) {
+  if (fieldName === 'facility_type') {
+    return adminState.clinics;
+  }
+
+  const fieldIndex = CLINIC_LOCATION_FIELD_ORDER.indexOf(fieldName);
+
+  if (fieldIndex === -1) {
+    return adminState.clinics;
+  }
+
+  return adminState.clinics.filter((clinic) =>
+    CLINIC_LOCATION_FIELD_ORDER.slice(0, fieldIndex).every((parentFieldName) => {
+      const selectedParentValue = cleanClinicFieldValue(selections[parentFieldName]);
+
+      if (!selectedParentValue) {
+        return true;
+      }
+
+      return cleanClinicFieldValue(clinic?.[parentFieldName]) === selectedParentValue;
+    })
+  );
+}
+
+function buildClinicDropdownOptions(fieldName, selections) {
+  return getDistinctSortedClinicValues(
+    getClinicsMatchingDropdownParents(fieldName, selections).map((clinic) => clinic?.[fieldName])
+  );
+}
+
+function populateClinicDropdown(fieldName, options, selectedValue) {
+  const { fields } = getClinicFormElements();
+  const field = fields[fieldName];
+
+  if (!field) {
+    return '';
+  }
+
+  const nextValue = cleanClinicFieldValue(selectedValue);
+
+  field.innerHTML = '';
+
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = CLINIC_DROPDOWN_PLACEHOLDERS[fieldName];
+  field.appendChild(placeholderOption);
+
+  options.forEach((optionValue) => {
+    const option = document.createElement('option');
+    option.value = optionValue;
+    option.textContent = optionValue;
+    field.appendChild(option);
+  });
+
+  field.value = nextValue && options.includes(nextValue) ? nextValue : '';
+  return field.value;
+}
+
+// Rebuild child option lists whenever location selections change so invalid combinations disappear.
+function renderClinicDropdownOptions(preferredSelections = null) {
+  const resolvedSelections = getClinicDropdownSelections(preferredSelections);
+
+  CLINIC_LOCATION_FIELD_ORDER.forEach((fieldName) => {
+    const options = buildClinicDropdownOptions(fieldName, resolvedSelections);
+    resolvedSelections[fieldName] = populateClinicDropdown(
+      fieldName,
+      options,
+      resolvedSelections[fieldName]
+    );
+  });
+
+  resolvedSelections.facility_type = populateClinicDropdown(
+    'facility_type',
+    getDistinctSortedClinicValues(adminState.clinics.map((clinic) => clinic?.facility_type)),
+    resolvedSelections.facility_type
+  );
+
+  return resolvedSelections;
 }
 
 function redirectForAdminApiResponseStatus(status) {
@@ -509,10 +627,17 @@ function getClinicStatusLabel(clinic) {
 function setClinicFormValues(clinic) {
   const { fields } = getClinicFormElements();
 
+  renderClinicDropdownOptions(clinic);
+
   Object.keys(CLINIC_FORM_FIELD_IDS).forEach((fieldName) => {
     const element = fields[fieldName];
 
     if (!element) {
+      return;
+    }
+
+    if (isClinicDropdownField(fieldName)) {
+      element.value = cleanClinicFieldValue(clinic?.[fieldName]);
       return;
     }
 
@@ -1076,7 +1201,7 @@ function initialiseAdminActions() {
 }
 
 function initialiseClinicManagementActions() {
-  const { form, select } = getClinicFormElements();
+  const { form, select, fields } = getClinicFormElements();
 
   if (select) {
     select.addEventListener('change', async function (event) {
@@ -1084,6 +1209,18 @@ function initialiseClinicManagementActions() {
       await loadAdminClinicDetails(nextClinicId);
     });
   }
+
+  Object.keys(CLINIC_DROPDOWN_PLACEHOLDERS).forEach((fieldName) => {
+    const field = fields[fieldName];
+
+    if (!field) {
+      return;
+    }
+
+    field.addEventListener('change', function () {
+      renderClinicDropdownOptions();
+    });
+  });
 
   if (form) {
     form.addEventListener('submit', handleClinicSave);

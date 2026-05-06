@@ -3,6 +3,7 @@ const {
   joinQueue,
   addStaffWalkIn,
   getMyQueueStatus,
+  getPredictedWaitTime,
   getStaffQueue,
   updateStaffQueueStatus
 } = require('./queue.controller');
@@ -14,6 +15,10 @@ const router = express.Router();
 // GET /api/queue/my-status
 // Returns the logged-in patient's queue status for a clinic visit date.
 router.get('/my-status', authMiddleware, getMyQueueStatus);
+
+// GET /api/queue/:id/predicted-wait-time
+// Returns the logged-in patient's predicted wait time for a queue entry.
+router.get('/:id/predicted-wait-time', authMiddleware, getPredictedWaitTime);
 
 // POST /api/queue/join
 // Allows the logged-in patient to join the queue using an appointment.

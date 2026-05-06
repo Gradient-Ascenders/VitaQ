@@ -13,11 +13,26 @@ function cleanTextValue(value) {
   return String(value).trim();
 }
 
-// Services can arrive as a semicolon- or comma-separated string from the clinic dataset.
-function formatServices(services) {
-  if (!services) return [];
+// Some imported dataset rows contain generic notes instead of real service names.
+// Treat those notes as unavailable services so the UI shows a clean fallback message.
+function isUnavailableServiceText(value) {
+  const text = String(value || '').toLowerCase().trim();
 
-  return services
+  return (
+    !text ||
+    text.includes('could not be found') ||
+    text.includes('visit their website') ||
+    text.includes('relevant private facility services') ||
+    text.includes('services for this public hospital')
+  );
+}
+
+function formatServices(services) {
+  if (isUnavailableServiceText(services)) {
+    return [];
+  }
+
+  return String(services)
     .split(/[;,]/)
     .map((service) => service.replace(/_/g, ' ').trim())
     .filter(Boolean);
@@ -114,6 +129,7 @@ function renderClinicDataNotice(clinic) {
   notice.classList.remove('hidden');
 }
 
+// Render a clinic website as a short readable label, while keeping the full URL in the link.
 function renderWebsite(value) {
   const websiteElement = document.getElementById('clinicWebsite');
 
@@ -128,13 +144,18 @@ function renderWebsite(value) {
     websiteElement.removeAttribute('href');
     websiteElement.removeAttribute('target');
     websiteElement.removeAttribute('rel');
+    websiteElement.removeAttribute('title');
     websiteElement.classList.remove('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
     websiteElement.classList.add('cursor-default', 'text-[#8b93b8]', 'no-underline');
     return;
   }
 
-  websiteElement.textContent = websiteUrl.replace(/^https?:\/\//i, '');
+  const url = new URL(websiteUrl);
+  const readableWebsite = url.hostname.replace(/^www\./i, '');
+
+  websiteElement.textContent = readableWebsite || 'Open clinic website';
   websiteElement.href = websiteUrl;
+  websiteElement.title = websiteUrl;
   websiteElement.target = '_blank';
   websiteElement.rel = 'noopener noreferrer';
   websiteElement.classList.remove('cursor-default', 'text-[#8b93b8]', 'no-underline');
@@ -146,30 +167,82 @@ function renderServices(services) {
   servicesContainer.innerHTML = '';
 
   const cleanedServices = formatServices(services);
+  const visibleServiceLimit = 12;
 
   if (cleanedServices.length === 0) {
     servicesContainer.innerHTML = `
-      <p class="text-[#8b93b8]">No services listed for this clinic.</p>
+      <p class="text-[#8b93b8]">Services not available for this clinic.</p>
     `;
     return;
   }
 
-  cleanedServices.forEach((service, index) => {
-    const badge = document.createElement('span');
+  const badgeStyles = [
+    'border-[#7dcfff]/25 bg-[#7dcfff]/12 text-[#b8ecff]',
+    'border-[#7aa2f7]/25 bg-[#7aa2f7]/12 text-[#c7d8ff]',
+    'border-[#bb9af7]/25 bg-[#bb9af7]/12 text-[#dfcbff]',
+    'border-[#9ece6a]/25 bg-[#9ece6a]/12 text-[#d6f3b8]',
+    'border-[#e0af68]/25 bg-[#e0af68]/12 text-[#f6d8a8]',
+    'border-[#f7768e]/25 bg-[#f7768e]/12 text-[#f4b5c0]'
+  ];
 
-    const badgeStyles = [
-      'border-[#7dcfff]/25 bg-[#7dcfff]/12 text-[#b8ecff]',
-      'border-[#7aa2f7]/25 bg-[#7aa2f7]/12 text-[#c7d8ff]',
-      'border-[#bb9af7]/25 bg-[#bb9af7]/12 text-[#dfcbff]',
-      'border-[#9ece6a]/25 bg-[#9ece6a]/12 text-[#d6f3b8]',
-      'border-[#e0af68]/25 bg-[#e0af68]/12 text-[#f6d8a8]',
-      'border-[#f7768e]/25 bg-[#f7768e]/12 text-[#f4b5c0]'
-    ];
+  // Reuse the same badge creation logic for the preview services and the hidden services.
+  function createServiceBadge(service, index) {
+    const badge = document.createElement('span');
 
     badge.className = `rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-sm backdrop-blur-sm ${badgeStyles[index % badgeStyles.length]}`;
     badge.textContent = service;
-    servicesContainer.appendChild(badge);
+
+    return badge;
+  }
+
+  const previewServices = cleanedServices.slice(0, visibleServiceLimit);
+  const hiddenServices = cleanedServices.slice(visibleServiceLimit);
+
+  previewServices.forEach((service, index) => {
+    servicesContainer.appendChild(createServiceBadge(service, index));
   });
+
+  if (hiddenServices.length === 0) {
+    return;
+  }
+
+  const hiddenServicesWrapper = document.createElement('div');
+  hiddenServicesWrapper.className = 'hidden w-full flex-wrap gap-3';
+
+  hiddenServices.forEach((service, index) => {
+    hiddenServicesWrapper.appendChild(
+      createServiceBadge(service, visibleServiceLimit + index)
+    );
+  });
+
+  const toggleButtonWrapper = document.createElement('div');
+  toggleButtonWrapper.className = 'w-full pt-2';
+
+  const toggleButton = document.createElement('button');
+  toggleButton.type = 'button';
+  toggleButton.className =
+    'rounded-full border border-[#414868] bg-[#24283b]/80 px-4 py-2 text-sm font-semibold text-[#a9b1d6] transition hover:border-[#7aa2f7]/40 hover:text-[#e0e5ff]';
+
+  toggleButton.textContent = `Show all services (+${hiddenServices.length})`;
+
+  toggleButton.addEventListener('click', () => {
+    const isHidden = hiddenServicesWrapper.classList.contains('hidden');
+
+    if (isHidden) {
+      hiddenServicesWrapper.classList.remove('hidden');
+      hiddenServicesWrapper.classList.add('flex');
+      toggleButton.textContent = 'Show fewer services';
+      return;
+    }
+
+    hiddenServicesWrapper.classList.add('hidden');
+    hiddenServicesWrapper.classList.remove('flex');
+    toggleButton.textContent = `Show all services (+${hiddenServices.length})`;
+  });
+
+  toggleButtonWrapper.appendChild(toggleButton);
+  servicesContainer.appendChild(hiddenServicesWrapper);
+  servicesContainer.appendChild(toggleButtonWrapper);
 }
 
 function renderClinic(clinic) {

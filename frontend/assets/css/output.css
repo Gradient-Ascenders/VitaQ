@@ -443,6 +443,9 @@
   .inline {
     display: inline;
   }
+  .inline-block {
+    display: inline-block;
+  }
   .inline-flex {
     display: inline-flex;
   }
@@ -523,6 +526,12 @@
   }
   .h-px {
     height: 1px;
+  }
+  .min-h-\[2\.5rem\] {
+    min-height: 2.5rem;
+  }
+  .min-h-\[6\.75rem\] {
+    min-height: 6.75rem;
   }
   .min-h-\[560px\] {
     min-height: 560px;
@@ -757,6 +766,11 @@
   }
   .self-start {
     align-self: flex-start;
+  }
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .overflow-hidden {
     overflow: hidden;
@@ -1142,6 +1156,9 @@
   .p-8 {
     padding: calc(var(--spacing) * 8);
   }
+  .px-2\.5 {
+    padding-inline: calc(var(--spacing) * 2.5);
+  }
   .px-3 {
     padding-inline: calc(var(--spacing) * 3);
   }
@@ -1196,6 +1213,9 @@
   .py-20 {
     padding-block: calc(var(--spacing) * 20);
   }
+  .pt-2 {
+    padding-top: calc(var(--spacing) * 2);
+  }
   .pt-4 {
     padding-top: calc(var(--spacing) * 4);
   }
@@ -1222,6 +1242,9 @@
   }
   .text-center {
     text-align: center;
+  }
+  .text-left {
+    text-align: left;
   }
   .text-right {
     text-align: right;
@@ -1291,6 +1314,10 @@
   .leading-\[1\.04\] {
     --tw-leading: 1.04;
     line-height: 1.04;
+  }
+  .leading-none {
+    --tw-leading: 1;
+    line-height: 1;
   }
   .leading-tight {
     --tw-leading: var(--leading-tight);
@@ -1411,6 +1438,10 @@
   }
   .uppercase {
     text-transform: uppercase;
+  }
+  .tabular-nums {
+    --tw-numeric-spacing: tabular-nums;
+    font-variant-numeric: var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,);
   }
   .no-underline {
     text-decoration-line: none;
@@ -1892,6 +1923,11 @@
       height: calc(var(--spacing) * 16);
     }
   }
+  .md\:min-w-\[11rem\] {
+    @media (width >= 48rem) {
+      min-width: 11rem;
+    }
+  }
   .md\:grid-cols-2 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1927,6 +1963,11 @@
       align-items: center;
     }
   }
+  .md\:items-start {
+    @media (width >= 48rem) {
+      align-items: flex-start;
+    }
+  }
   .md\:justify-between {
     @media (width >= 48rem) {
       justify-content: space-between;
@@ -1955,6 +1996,11 @@
   .md\:px-8 {
     @media (width >= 48rem) {
       padding-inline: calc(var(--spacing) * 8);
+    }
+  }
+  .md\:text-right {
+    @media (width >= 48rem) {
+      text-align: right;
     }
   }
   .md\:text-4xl {
@@ -2048,9 +2094,9 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
-  .lg\:grid-cols-\[0\.9fr_1\.25fr_0\.95fr_0\.95fr_0\.95fr_1\.35fr\] {
+  .lg\:grid-cols-\[0\.85fr_1\.2fr_0\.95fr_0\.95fr_0\.85fr_0\.95fr_1\.35fr\] {
     @media (width >= 64rem) {
-      grid-template-columns: 0.9fr 1.25fr 0.95fr 0.95fr 0.95fr 1.35fr;
+      grid-template-columns: 0.85fr 1.2fr 0.95fr 0.95fr 0.85fr 0.95fr 1.35fr;
     }
   }
   .lg\:grid-cols-\[0\.95fr_1\.05fr\] {
@@ -2382,6 +2428,26 @@
   syntax: "*";
   inherits: false;
 }
+@property --tw-ordinal {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-slashed-zero {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-numeric-figure {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-numeric-spacing {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-numeric-fraction {
+  syntax: "*";
+  inherits: false;
+}
 @property --tw-shadow {
   syntax: "*";
   inherits: false;
@@ -2602,6 +2668,11 @@
       --tw-leading: initial;
       --tw-font-weight: initial;
       --tw-tracking: initial;
+      --tw-ordinal: initial;
+      --tw-slashed-zero: initial;
+      --tw-numeric-figure: initial;
+      --tw-numeric-spacing: initial;
+      --tw-numeric-fraction: initial;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;
       --tw-shadow-alpha: 100%;

@@ -165,6 +165,37 @@ function formatAppointmentTime(startTime, endTime, source, timeLabel) {
   return 'N/A';
 }
 
+function getResolvedWaitEstimate(entry) {
+  const waitEstimateCandidates = [
+    entry?.predicted_wait_minutes,
+    entry?.estimated_wait_minutes
+  ];
+
+  for (const candidate of waitEstimateCandidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function formatWaitEstimate(waitEstimateMinutes, status) {
+  if (status === STAFF_QUEUE_STATUSES.IN_CONSULTATION) {
+    return 'Now';
+  }
+
+  if (
+    status === STAFF_QUEUE_STATUSES.COMPLETE
+    || status === STAFF_QUEUE_STATUSES.CANCELLED
+    || waitEstimateMinutes === null
+  ) {
+    return '--';
+  }
+
+  return `${waitEstimateMinutes} min${waitEstimateMinutes === 1 ? '' : 's'}`;
+}
+
 function formatQueueDate(dateString) {
   if (!dateString) {
     return 'today';
@@ -287,7 +318,10 @@ function renderClinicSnapshot() {
       nextWaitingEntry.appointment_end_time,
       nextWaitingEntry.source,
       nextWaitingEntry.time_label
-    )}${nextWaitingEntry.visit_type ? ` for ${nextWaitingEntry.visit_type}` : ''} is next in the waiting queue.`
+    )}${nextWaitingEntry.visit_type ? ` for ${nextWaitingEntry.visit_type}` : ''} is next in the waiting queue. Estimated wait: ${formatWaitEstimate(
+      getResolvedWaitEstimate(nextWaitingEntry),
+      nextWaitingEntry.status
+    )}.`
   );
 }
 
@@ -380,9 +414,12 @@ function renderQueueTable() {
     const isBusy = staffState.actionInProgressId === entry.id;
     const patientLabel = escapeHtml(buildPatientLabel(entry));
     const patientSecondaryLabel = escapeHtml(buildPatientSecondaryLabel(entry));
+    const waitEstimateLabel = escapeHtml(
+      formatWaitEstimate(getResolvedWaitEstimate(entry), entry.status)
+    );
     const row = document.createElement('article');
 
-    row.className = 'grid gap-5 px-5 py-5 lg:grid-cols-[0.9fr_1.25fr_0.95fr_0.95fr_0.95fr_1.35fr] lg:items-center';
+    row.className = 'grid gap-5 px-5 py-5 lg:grid-cols-[0.85fr_1.2fr_0.95fr_0.95fr_0.85fr_0.95fr_1.35fr] lg:items-center';
     row.innerHTML = `
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Queue no.</p>
@@ -405,6 +442,11 @@ function renderQueueTable() {
       <section class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Time</p>
         <p class="text-sm text-[#c0caf5]">${formatAppointmentTime(entry.appointment_time, entry.appointment_end_time, entry.source, entry.time_label)}</p>
+      </section>
+
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] lg:hidden">Estimated wait</p>
+        <p class="text-sm font-semibold text-[#e0e5ff]">${waitEstimateLabel}</p>
       </section>
 
       <section class="space-y-2">

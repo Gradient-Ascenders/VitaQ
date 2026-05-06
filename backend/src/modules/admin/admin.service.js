@@ -117,7 +117,6 @@ function normalizeClinicUpdatePayload(payload) {
     'municipality',
     'region',
     'facility_type',
-    'address',
     'services_offered',
     'contact_website',
     'contact_number',
@@ -148,7 +147,6 @@ function normalizeClinicUpdatePayload(payload) {
     municipality: cleanOptionalClinicText(payload.municipality),
     region: cleanOptionalClinicText(payload.region),
     facility_type: cleanOptionalClinicText(payload.facility_type),
-    address: cleanOptionalClinicText(payload.address),
     services_offered: cleanOptionalClinicText(payload.services_offered),
     contact_website: cleanOptionalClinicText(payload.contact_website)
   };

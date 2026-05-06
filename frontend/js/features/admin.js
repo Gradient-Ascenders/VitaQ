@@ -21,7 +21,6 @@ const CLINIC_FORM_FIELD_IDS = {
   municipality: 'clinicMunicipalityInput',
   region: 'clinicRegionInput',
   facility_type: 'clinicFacilityTypeInput',
-  address: 'clinicAddressInput',
   services_offered: 'clinicServicesInput',
   contact_website: 'clinicWebsiteInput'
 };
@@ -231,7 +230,6 @@ function normalizeClinicDetail(rawClinic) {
     municipality: rawClinic?.municipality || '',
     region: rawClinic?.region || '',
     facility_type: rawClinic?.facility_type || '',
-    address: rawClinic?.address || '',
     services_offered: rawClinic?.services_offered || '',
     latitude: rawClinic?.latitude ?? null,
     longitude: rawClinic?.longitude ?? null,
@@ -531,7 +529,6 @@ function resetClinicFormValues() {
     municipality: '',
     region: '',
     facility_type: '',
-    address: '',
     services_offered: '',
     contact_website: ''
   });
@@ -548,7 +545,6 @@ function getClinicFormPayload() {
     municipality: fields.municipality?.value || '',
     region: fields.region?.value || '',
     facility_type: fields.facility_type?.value || '',
-    address: fields.address?.value || '',
     services_offered: fields.services_offered?.value || '',
     contact_website: fields.contact_website?.value || ''
   };
@@ -884,9 +880,7 @@ async function loadAdminClinicDetails(clinicId) {
   refreshClinicManagement();
 
   try {
-    const response = await fetch(`${ADMIN_CLINICS_ENDPOINT}/${encodeURIComponent(clinicId)}`, {
-      headers: createAuthHeaders()
-    });
+    const response = await fetch(`/api/clinics/${encodeURIComponent(clinicId)}`);
     const payload = await readJsonSafely(response);
 
     if (redirectForAdminApiResponseStatus(response.status)) {

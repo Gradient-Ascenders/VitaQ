@@ -584,7 +584,6 @@ describe('updateAdminClinic', () => {
         municipality: 'City of Johannesburg',
         region: 'Johannesburg Metro',
         facility_type: 'Clinic',
-        address: '12 Claim Street',
         services_offered: 'Primary Care;Immunisation',
         contact_website: 'https://clinic.example.org',
         contact_number: '011 123 4567',
@@ -627,7 +626,6 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
           contact_website: ''
         }
@@ -650,7 +648,6 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
           contact_website: '',
           latitude: '-26.1'
@@ -681,7 +678,6 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
           contact_website: ''
         }

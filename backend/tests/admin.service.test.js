@@ -586,9 +586,14 @@ describe('updateAdminClinic', () => {
         facility_type: 'Clinic',
         address: '12 Claim Street',
         services_offered: 'Primary Care;Immunisation',
-        contact_website: 'https://clinic.example.org'
+        contact_website: 'https://clinic.example.org',
+        contact_number: '011 123 4567',
+        contact_email: 'admin@clinic.org',
+        is_active: false
       }
     });
+
+    const savedUpdates = updateQuery.update.mock.calls[0][0];
 
     expect(updateQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -598,6 +603,9 @@ describe('updateAdminClinic', () => {
         updated_at: expect.any(String)
       })
     );
+    expect(savedUpdates).not.toHaveProperty('contact_number');
+    expect(savedUpdates).not.toHaveProperty('contact_email');
+    expect(savedUpdates).not.toHaveProperty('is_active');
 
     expect(result).toMatchObject({
       id: 'clinic-1',

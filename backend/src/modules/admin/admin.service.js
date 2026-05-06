@@ -26,8 +26,6 @@ const ADMIN_CLINIC_DETAIL_FIELDS = `
   latitude,
   longitude,
   contact_website,
-  contact_number,
-  contact_email,
   is_active,
   source_dataset,
   source_record_id,
@@ -121,7 +119,10 @@ function normalizeClinicUpdatePayload(payload) {
     'facility_type',
     'address',
     'services_offered',
-    'contact_website'
+    'contact_website',
+    'contact_number',
+    'contact_email',
+    'is_active'
   ];
   const payloadKeys = Object.keys(payload);
   const invalidFields = payloadKeys.filter((key) => !allowedFields.includes(key));

@@ -475,13 +475,10 @@ describe('fetchAdminClinicById', () => {
       municipality: 'City of Johannesburg',
       region: 'Johannesburg Metro',
       facility_type: 'Clinic',
-      address: null,
       services_offered: 'Primary Care',
       latitude: -26.2041,
       longitude: 28.0473,
       contact_website: null,
-      contact_number: '011 123 4567',
-      contact_email: null,
       is_active: false,
       source_dataset: 'dataset.csv',
       source_record_id: 'row-1',
@@ -498,6 +495,7 @@ describe('fetchAdminClinicById', () => {
     );
 
     const result = await fetchAdminClinicById('clinic-1');
+    const clinicSelect = supabase.from.mock.results[0].value.select.mock.calls[0][0];
 
     expect(result).toEqual({
       id: 'clinic-1',
@@ -508,13 +506,10 @@ describe('fetchAdminClinicById', () => {
       municipality: 'City of Johannesburg',
       region: 'Johannesburg Metro',
       facility_type: 'Clinic',
-      address: '',
       services_offered: 'Primary Care',
       latitude: -26.2041,
       longitude: 28.0473,
       contact_website: '',
-      contact_number: '011 123 4567',
-      contact_email: '',
       is_active: false,
       source_dataset: 'dataset.csv',
       source_record_id: 'row-1',
@@ -522,6 +517,9 @@ describe('fetchAdminClinicById', () => {
       created_at: '2026-04-20T10:00:00.000Z',
       updated_at: '2026-04-25T10:00:00.000Z'
     });
+    expect(clinicSelect).not.toContain('address');
+    expect(clinicSelect).not.toContain('contact_number');
+    expect(clinicSelect).not.toContain('contact_email');
   });
 
   test('returns 404 when the clinic does not exist', async () => {
@@ -554,13 +552,10 @@ describe('updateAdminClinic', () => {
       municipality: 'City of Johannesburg',
       region: 'Johannesburg Metro',
       facility_type: 'Clinic',
-      address: '12 Claim Street',
       services_offered: 'Primary Care;Immunisation',
       latitude: -26.2041,
       longitude: 28.0473,
       contact_website: 'https://clinic.example.org',
-      contact_number: '011 123 4567',
-      contact_email: 'admin@clinic.org',
       is_active: true,
       source_dataset: 'dataset.csv',
       source_record_id: 'row-1',
@@ -588,8 +583,6 @@ describe('updateAdminClinic', () => {
         facility_type: 'Clinic',
         services_offered: 'Primary Care;Immunisation',
         contact_website: 'https://clinic.example.org',
-        contact_number: '011 123 4567',
-        contact_email: 'admin@clinic.org',
         is_active: false
       }
     });
@@ -652,11 +645,12 @@ describe('updateAdminClinic', () => {
           facility_type: '',
           services_offered: '',
           contact_website: '',
-          latitude: '-26.1'
+          contact_number: '011 123 4567',
+          contact_email: 'admin@clinic.org'
         }
       })
     ).rejects.toMatchObject({
-      message: 'Unsupported clinic field(s): latitude',
+      message: 'Unsupported clinic field(s): contact_number, contact_email',
       statusCode: 400
     });
   });

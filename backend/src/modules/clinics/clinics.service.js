@@ -35,7 +35,7 @@ function cleanFilter(value) {
 
 /**
  * Builds a Supabase OR search filter.
- * This allows one search term to match clinic name, address, area, district, region, or municipality.
+ * This allows one search term to match clinic name, area, district, region, or municipality.
  */
 function buildClinicSearchFilter(search) {
   // Commas have special meaning in Supabase .or() filters, so replace them with spaces.
@@ -43,7 +43,6 @@ function buildClinicSearchFilter(search) {
 
   return [
     `name.ilike.%${safeSearch}%`,
-    `address.ilike.%${safeSearch}%`,
     `area.ilike.%${safeSearch}%`,
     `district.ilike.%${safeSearch}%`,
     `region.ilike.%${safeSearch}%`,
@@ -105,12 +104,9 @@ function normalizeClinic(clinic, availableSlotCounts) {
     municipality: clinic.municipality || '',
     region: clinic.region || '',
     facility_type: clinic.facility_type || '',
-    address: clinic.address || '',
     services_offered: clinic.services_offered || '',
     latitude: clinic.latitude ?? null,
     longitude: clinic.longitude ?? null,
-    contact_number: clinic.contact_number || '',
-    contact_email: clinic.contact_email || '',
     contact_website: clinic.contact_website || '',
     source_dataset: clinic.source_dataset || '',
     source_record_id: clinic.source_record_id || '',
@@ -148,12 +144,9 @@ async function fetchClinics(filters = {}) {
         municipality,
         region,
         facility_type,
-        address,
         services_offered,
         latitude,
         longitude,
-        contact_number,
-        contact_email,
         contact_website,
         source_dataset,
         source_record_id,

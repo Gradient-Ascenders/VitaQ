@@ -274,6 +274,8 @@ describe('joinQueueFromAppointment', () => {
     expect(appointmentQuery.select).toHaveBeenCalledWith(
       expect.stringContaining('slot:appointment_slots!appointments_slot_id_fkey')
     );
+    const appointmentSelect = appointmentQuery.select.mock.calls[0][0];
+    expect(appointmentSelect).not.toContain('address');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Queue service operation failed:',
       expect.objectContaining({

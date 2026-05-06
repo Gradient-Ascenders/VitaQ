@@ -209,15 +209,12 @@ async function fetchAppointmentsByPatientId(patientId) {
       notes,
       clinic:clinics!appointments_clinic_id_fkey (
         name,
-        address,
         province,
         district,
         area,
         municipality,
         region,
         facility_type,
-        contact_number,
-        contact_email,
         contact_website
       ),
       slot:appointment_slots!appointments_slot_id_fkey (

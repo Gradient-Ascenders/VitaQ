@@ -22,7 +22,6 @@ const ADMIN_CLINIC_DETAIL_FIELDS = `
   municipality,
   region,
   facility_type,
-  address,
   services_offered,
   latitude,
   longitude,
@@ -71,13 +70,10 @@ function normalizeClinicRecord(clinic) {
     municipality: clinic?.municipality || '',
     region: clinic?.region || '',
     facility_type: clinic?.facility_type || '',
-    address: clinic?.address || '',
     services_offered: clinic?.services_offered || '',
     latitude: clinic?.latitude ?? null,
     longitude: clinic?.longitude ?? null,
     contact_website: clinic?.contact_website || '',
-    contact_number: clinic?.contact_number || '',
-    contact_email: clinic?.contact_email || '',
     is_active: clinic?.is_active ?? true,
     source_dataset: clinic?.source_dataset || '',
     source_record_id: clinic?.source_record_id || '',
@@ -121,8 +117,6 @@ function normalizeClinicUpdatePayload(payload) {
     'facility_type',
     'services_offered',
     'contact_website',
-    'contact_number',
-    'contact_email',
     'is_active'
   ];
   const payloadKeys = Object.keys(payload);

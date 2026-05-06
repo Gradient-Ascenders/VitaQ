@@ -652,15 +652,12 @@ describe('appointments.service', () => {
                         notes: 'Bring your previous prescription.',
                         clinic: {
                             name: 'Mangaung Clinic',
-                            address: '123 Main Rd',
                             province: 'Free State',
                             district: 'Mangaung',
                             area: 'Botshabelo',
                             municipality: 'Mangaung',
                             region: 'Mangaung Metro',
                             facility_type: 'clinic',
-                            contact_number: '051 000 0000',
-                            contact_email: 'bookings@mangaung.example.org',
                             contact_website: 'https://mangaung.example.org',
                         },
                         slot: {
@@ -679,6 +676,10 @@ describe('appointments.service', () => {
             expect(mockAppointmentsSelect).toHaveBeenCalledWith(
                 expect.stringContaining('slot:appointment_slots!appointments_slot_id_fkey')
             );
+            const appointmentSelect = mockAppointmentsSelect.mock.calls[0][0];
+            expect(appointmentSelect).not.toContain('address');
+            expect(appointmentSelect).not.toContain('contact_number');
+            expect(appointmentSelect).not.toContain('contact_email');
             expect(appointmentsSelectEq).toHaveBeenCalledWith('patient_id', 'patient-1');
             expect(appointmentsSelectOrder).toHaveBeenCalledWith('created_at', {
                 ascending: false,

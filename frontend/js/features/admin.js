@@ -244,8 +244,6 @@ function normalizeClinicDetail(rawClinic) {
     latitude: rawClinic?.latitude ?? null,
     longitude: rawClinic?.longitude ?? null,
     contact_website: rawClinic?.contact_website || '',
-    contact_number: rawClinic?.contact_number || '',
-    contact_email: rawClinic?.contact_email || '',
     is_active: rawClinic?.is_active ?? true,
     source_dataset: rawClinic?.source_dataset || '',
     source_record_id: rawClinic?.source_record_id || '',

@@ -596,7 +596,6 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
       ),
       clinic:clinics (
         name,
-        address,
         province,
         district,
         area,

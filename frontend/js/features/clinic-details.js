@@ -13,11 +13,26 @@ function cleanTextValue(value) {
   return String(value).trim();
 }
 
-// Services can arrive as a semicolon- or comma-separated string from the clinic dataset.
-function formatServices(services) {
-  if (!services) return [];
+// Some imported dataset rows contain generic notes instead of real service names.
+// Treat those notes as unavailable services so the UI shows a clean fallback message.
+function isUnavailableServiceText(value) {
+  const text = String(value || '').toLowerCase().trim();
 
-  return services
+  return (
+    !text ||
+    text.includes('could not be found') ||
+    text.includes('visit their website') ||
+    text.includes('relevant private facility services') ||
+    text.includes('services for this public hospital')
+  );
+}
+
+function formatServices(services) {
+  if (isUnavailableServiceText(services)) {
+    return [];
+  }
+
+  return String(services)
     .split(/[;,]/)
     .map((service) => service.replace(/_/g, ' ').trim())
     .filter(Boolean);
@@ -149,7 +164,7 @@ function renderServices(services) {
 
   if (cleanedServices.length === 0) {
     servicesContainer.innerHTML = `
-      <p class="text-[#8b93b8]">No services listed for this clinic.</p>
+      <p class="text-[#8b93b8]">Services not available for this clinic.</p>
     `;
     return;
   }

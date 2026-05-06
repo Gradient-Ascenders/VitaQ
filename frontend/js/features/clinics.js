@@ -118,8 +118,22 @@ function formatServiceLabel(service) {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
+// Some imported dataset rows contain generic notes instead of real service names.
+// Treat those notes as unavailable services so the UI shows a clean fallback message.
+function isUnavailableServiceText(value) {
+  const text = String(value || "").toLowerCase().trim();
+
+  return (
+    !text ||
+    text.includes("could not be found") ||
+    text.includes("visit their website") ||
+    text.includes("relevant private facility services") ||
+    text.includes("services for this public hospital")
+  );
+}
+
 function parseServiceList(services) {
-  if (!services) {
+  if (isUnavailableServiceText(services)) {
     return [];
   }
 
@@ -163,7 +177,7 @@ function renderServicesPreview(services, clinicId) {
   if (serviceList.length === 0) {
     return `
       <p class="text-sm leading-6 text-[#8b93b8]">
-        Services information not available
+        Services not available for this clinic
       </p>
     `;
   }

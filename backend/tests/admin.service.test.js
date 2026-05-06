@@ -556,7 +556,7 @@ describe('updateAdminClinic', () => {
       latitude: -26.2041,
       longitude: 28.0473,
       contact_website: 'https://clinic.example.org',
-      is_active: true,
+      is_active: false,
       source_dataset: 'dataset.csv',
       source_record_id: 'row-1',
       source_last_updated: '2026-04-10T00:00:00.000Z',
@@ -593,20 +593,69 @@ describe('updateAdminClinic', () => {
       expect.objectContaining({
         name: 'Updated Clinic',
         province: 'Gauteng',
+        is_active: false,
         contact_website: 'https://clinic.example.org',
         updated_at: expect.any(String)
       })
     );
     expect(savedUpdates).not.toHaveProperty('contact_number');
     expect(savedUpdates).not.toHaveProperty('contact_email');
-    expect(savedUpdates).not.toHaveProperty('is_active');
 
     expect(result).toMatchObject({
       id: 'clinic-1',
       name: 'Updated Clinic',
-      is_active: true,
+      is_active: false,
       source_dataset: 'dataset.csv'
     });
+  });
+
+  test('does not overwrite active status when is_active is omitted from the payload', async () => {
+    const updatedClinic = {
+      id: 'clinic-1',
+      name: 'Updated Clinic',
+      province: 'Gauteng',
+      district: 'Johannesburg',
+      area: 'Hillbrow',
+      municipality: 'City of Johannesburg',
+      region: 'Johannesburg Metro',
+      facility_type: 'Clinic',
+      services_offered: 'Primary Care;Immunisation',
+      latitude: -26.2041,
+      longitude: 28.0473,
+      contact_website: 'https://clinic.example.org',
+      is_active: true,
+      source_dataset: 'dataset.csv',
+      source_record_id: 'row-1',
+      source_last_updated: '2026-04-10T00:00:00.000Z',
+      created_at: '2026-04-20T10:00:00.000Z',
+      updated_at: '2026-04-29T12:00:00.000Z'
+    };
+
+    const updateQuery = createMockQuery({
+      data: updatedClinic,
+      error: null
+    });
+
+    supabase.from.mockReturnValueOnce(updateQuery);
+
+    await updateAdminClinic({
+      clinicId: 'clinic-1',
+      updates: {
+        name: 'Updated Clinic',
+        province: 'Gauteng',
+        district: 'Johannesburg',
+        area: 'Hillbrow',
+        municipality: 'City of Johannesburg',
+        region: 'Johannesburg Metro',
+        facility_type: 'Clinic',
+        services_offered: 'Primary Care;Immunisation',
+        contact_website: 'https://clinic.example.org'
+      }
+    });
+
+    const savedUpdates = updateQuery.update.mock.calls[0][0];
+
+    expect(savedUpdates).not.toHaveProperty('is_active');
   });
 
   test('rejects an empty clinic name', async () => {
@@ -651,6 +700,29 @@ describe('updateAdminClinic', () => {
       })
     ).rejects.toMatchObject({
       message: 'Unsupported clinic field(s): contact_number, contact_email',
+      statusCode: 400
+    });
+  });
+
+  test('rejects a non-boolean active status', async () => {
+    await expect(
+      updateAdminClinic({
+        clinicId: 'clinic-1',
+        updates: {
+          name: 'Clinic',
+          province: '',
+          district: '',
+          area: '',
+          municipality: '',
+          region: '',
+          facility_type: '',
+          services_offered: '',
+          contact_website: '',
+          is_active: 'false'
+        }
+      })
+    ).rejects.toMatchObject({
+      message: 'Clinic active status must be true or false.',
       statusCode: 400
     });
   });

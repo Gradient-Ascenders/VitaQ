@@ -411,6 +411,7 @@ describe('fetchAdminClinics', () => {
         name: 'Hillbrow Clinic',
         province: 'Gauteng',
         district: 'Johannesburg',
+        area: 'Hillbrow',
         municipality: 'City of Johannesburg',
         region: 'Johannesburg Metro',
         facility_type: 'Clinic',
@@ -422,6 +423,7 @@ describe('fetchAdminClinics', () => {
         name: 'Orange Farm Clinic',
         province: 'Gauteng',
         district: 'Johannesburg',
+        area: 'Orange Farm',
         municipality: 'City of Johannesburg',
         region: 'Johannesburg South',
         facility_type: 'Community Health Centre',
@@ -584,23 +586,27 @@ describe('updateAdminClinic', () => {
         municipality: 'City of Johannesburg',
         region: 'Johannesburg Metro',
         facility_type: 'Clinic',
-        address: '12 Claim Street',
         services_offered: 'Primary Care;Immunisation',
         contact_website: 'https://clinic.example.org',
         contact_number: '011 123 4567',
         contact_email: 'admin@clinic.org',
-        is_active: true
+        is_active: false
       }
     });
+
+    const savedUpdates = updateQuery.update.mock.calls[0][0];
 
     expect(updateQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Updated Clinic',
         province: 'Gauteng',
-        is_active: true,
+        contact_website: 'https://clinic.example.org',
         updated_at: expect.any(String)
       })
     );
+    expect(savedUpdates).not.toHaveProperty('contact_number');
+    expect(savedUpdates).not.toHaveProperty('contact_email');
+    expect(savedUpdates).not.toHaveProperty('is_active');
 
     expect(result).toMatchObject({
       id: 'clinic-1',
@@ -622,12 +628,8 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
-          contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: true
+          contact_website: ''
         }
       })
     ).rejects.toMatchObject({
@@ -648,12 +650,8 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
           contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: true,
           latitude: '-26.1'
         }
       })
@@ -682,12 +680,8 @@ describe('updateAdminClinic', () => {
           municipality: '',
           region: '',
           facility_type: '',
-          address: '',
           services_offered: '',
-          contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: false
+          contact_website: ''
         }
       })
     ).rejects.toMatchObject({

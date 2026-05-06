@@ -125,12 +125,9 @@ describe("fetchClinics", () => {
         municipality: "City of Johannesburg",
         region: "Johannesburg Metro",
         facility_type: "Clinic",
-        address: "12 Claim St",
         services_offered: "Primary Care",
         latitude: -26.1,
         longitude: 28.04,
-        contact_number: "011 123 4567",
-        contact_email: "info@hillbrowclinic.gov.za",
         contact_website: "https://example.com/hillbrow",
         source_dataset: "DSFSI covid19za health_system_za_hospitals_v1.csv",
         source_record_id: "hillbrow-clinic-001",
@@ -190,12 +187,9 @@ describe("fetchClinics", () => {
         municipality: "",
         region: "",
         facility_type: "Clinic",
-        address: "",
         services_offered: "",
         latitude: null,
         longitude: null,
-        contact_number: "",
-        contact_email: "",
         contact_website: "",
         source_dataset: "",
         source_record_id: "",
@@ -224,7 +218,7 @@ describe("fetchClinics", () => {
     expect(mockClinicLimit).toHaveBeenCalledWith(1000);
 
     expect(mockClinicOr).toHaveBeenCalledWith(
-      "name.ilike.%Hill%,address.ilike.%Hill%,area.ilike.%Hill%,district.ilike.%Hill%,region.ilike.%Hill%,municipality.ilike.%Hill%"
+      "name.ilike.%Hill%,area.ilike.%Hill%,district.ilike.%Hill%,region.ilike.%Hill%,municipality.ilike.%Hill%"
     );
 
     expect(mockClinicIlike).toHaveBeenCalledWith("province", "Gauteng");

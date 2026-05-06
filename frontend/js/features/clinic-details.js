@@ -129,6 +129,7 @@ function renderClinicDataNotice(clinic) {
   notice.classList.remove('hidden');
 }
 
+// Render a clinic website as a short readable label, while keeping the full URL in the link.
 function renderWebsite(value) {
   const websiteElement = document.getElementById('clinicWebsite');
 
@@ -143,13 +144,18 @@ function renderWebsite(value) {
     websiteElement.removeAttribute('href');
     websiteElement.removeAttribute('target');
     websiteElement.removeAttribute('rel');
+    websiteElement.removeAttribute('title');
     websiteElement.classList.remove('text-[#7dcfff]', 'hover:text-[#b8ecff]', 'hover:underline');
     websiteElement.classList.add('cursor-default', 'text-[#8b93b8]', 'no-underline');
     return;
   }
 
-  websiteElement.textContent = websiteUrl.replace(/^https?:\/\//i, '');
+  const url = new URL(websiteUrl);
+  const readableWebsite = url.hostname.replace(/^www\./i, '');
+
+  websiteElement.textContent = readableWebsite || 'Open clinic website';
   websiteElement.href = websiteUrl;
+  websiteElement.title = websiteUrl;
   websiteElement.target = '_blank';
   websiteElement.rel = 'noopener noreferrer';
   websiteElement.classList.remove('cursor-default', 'text-[#8b93b8]', 'no-underline');

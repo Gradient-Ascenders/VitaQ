@@ -23,10 +23,7 @@ const CLINIC_FORM_FIELD_IDS = {
   facility_type: 'clinicFacilityTypeInput',
   address: 'clinicAddressInput',
   services_offered: 'clinicServicesInput',
-  contact_website: 'clinicWebsiteInput',
-  contact_number: 'clinicNumberInput',
-  contact_email: 'clinicEmailInput',
-  is_active: 'clinicActiveInput'
+  contact_website: 'clinicWebsiteInput'
 };
 
 const adminState = {
@@ -521,11 +518,6 @@ function setClinicFormValues(clinic) {
       return;
     }
 
-    if (fieldName === 'is_active') {
-      element.checked = Boolean(clinic?.is_active);
-      return;
-    }
-
     element.value = clinic?.[fieldName] || '';
   });
 }
@@ -541,10 +533,7 @@ function resetClinicFormValues() {
     facility_type: '',
     address: '',
     services_offered: '',
-    contact_website: '',
-    contact_number: '',
-    contact_email: '',
-    is_active: false
+    contact_website: ''
   });
 }
 
@@ -561,10 +550,7 @@ function getClinicFormPayload() {
     facility_type: fields.facility_type?.value || '',
     address: fields.address?.value || '',
     services_offered: fields.services_offered?.value || '',
-    contact_website: fields.contact_website?.value || '',
-    contact_number: fields.contact_number?.value || '',
-    contact_email: fields.contact_email?.value || '',
-    is_active: Boolean(fields.is_active?.checked)
+    contact_website: fields.contact_website?.value || ''
   };
 }
 

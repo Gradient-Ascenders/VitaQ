@@ -121,10 +121,7 @@ function normalizeClinicUpdatePayload(payload) {
     'facility_type',
     'address',
     'services_offered',
-    'contact_website',
-    'contact_number',
-    'contact_email',
-    'is_active'
+    'contact_website'
   ];
   const payloadKeys = Object.keys(payload);
   const invalidFields = payloadKeys.filter((key) => !allowedFields.includes(key));
@@ -142,10 +139,6 @@ function normalizeClinicUpdatePayload(payload) {
     throw createServiceError('Clinic name is required.', 400);
   }
 
-  if (typeof payload.is_active !== 'boolean') {
-    throw createServiceError('Clinic active status must be a boolean.', 400);
-  }
-
   return {
     name,
     province: cleanOptionalClinicText(payload.province),
@@ -156,10 +149,7 @@ function normalizeClinicUpdatePayload(payload) {
     facility_type: cleanOptionalClinicText(payload.facility_type),
     address: cleanOptionalClinicText(payload.address),
     services_offered: cleanOptionalClinicText(payload.services_offered),
-    contact_website: cleanOptionalClinicText(payload.contact_website),
-    contact_number: cleanOptionalClinicText(payload.contact_number),
-    contact_email: cleanOptionalClinicText(payload.contact_email),
-    is_active: payload.is_active
+    contact_website: cleanOptionalClinicText(payload.contact_website)
   };
 }
 

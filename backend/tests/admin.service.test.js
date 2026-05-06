@@ -586,10 +586,7 @@ describe('updateAdminClinic', () => {
         facility_type: 'Clinic',
         address: '12 Claim Street',
         services_offered: 'Primary Care;Immunisation',
-        contact_website: 'https://clinic.example.org',
-        contact_number: '011 123 4567',
-        contact_email: 'admin@clinic.org',
-        is_active: true
+        contact_website: 'https://clinic.example.org'
       }
     });
 
@@ -597,7 +594,7 @@ describe('updateAdminClinic', () => {
       expect.objectContaining({
         name: 'Updated Clinic',
         province: 'Gauteng',
-        is_active: true,
+        contact_website: 'https://clinic.example.org',
         updated_at: expect.any(String)
       })
     );
@@ -624,10 +621,7 @@ describe('updateAdminClinic', () => {
           facility_type: '',
           address: '',
           services_offered: '',
-          contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: true
+          contact_website: ''
         }
       })
     ).rejects.toMatchObject({
@@ -651,9 +645,6 @@ describe('updateAdminClinic', () => {
           address: '',
           services_offered: '',
           contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: true,
           latitude: '-26.1'
         }
       })
@@ -684,10 +675,7 @@ describe('updateAdminClinic', () => {
           facility_type: '',
           address: '',
           services_offered: '',
-          contact_website: '',
-          contact_number: '',
-          contact_email: '',
-          is_active: false
+          contact_website: ''
         }
       })
     ).rejects.toMatchObject({

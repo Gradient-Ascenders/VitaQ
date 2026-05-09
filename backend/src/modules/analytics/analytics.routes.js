@@ -1,6 +1,9 @@
 const express = require('express');
 const authMiddleware = require('../../middleware/auth');
-const { getWaitTimeAnalytics } = require('./analytics.controller');
+const {
+  getWaitTimeAnalytics,
+  getNoShowAnalytics
+} = require('./analytics.controller');
 
 const router = express.Router();
 
@@ -11,6 +14,15 @@ router.get(
   authMiddleware,
   authMiddleware.requireAdmin,
   getWaitTimeAnalytics
+);
+
+// GET /api/admin/analytics/no-shows
+// Admin-only endpoint for no-show rate cards, clinic comparisons, and date trends.
+router.get(
+  '/no-shows',
+  authMiddleware,
+  authMiddleware.requireAdmin,
+  getNoShowAnalytics
 );
 
 module.exports = router;

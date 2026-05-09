@@ -5,7 +5,10 @@ jest.mock('../src/lib/supabaseClient', () => ({
 }));
 
 const supabase = require('../src/lib/supabaseClient');
-const { fetchWaitTimeAnalytics } = require('../src/modules/analytics/analytics.service');
+const {
+  fetchWaitTimeAnalytics,
+  fetchNoShowAnalytics
+} = require('../src/modules/analytics/analytics.service');
 
 /**
  * Creates a fake Supabase query builder.
@@ -245,6 +248,202 @@ describe('fetchWaitTimeAnalytics', () => {
 
     await expect(fetchWaitTimeAnalytics()).rejects.toMatchObject({
       message: 'Failed to fetch wait-time analytics.',
+      statusCode: 500
+    });
+  });
+});
+
+describe('fetchNoShowAnalytics', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('calculates no-show totals, clinic comparisons, and date trends', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [
+          {
+            appointment_id: 'appointment-no-show',
+            clinic_id: 'clinic-a',
+            clinic_name: 'Alpha Clinic',
+            appointment_date: '2026-05-01',
+            appointment_status: 'booked',
+            queue_entry_count: 0,
+            has_queue_entry: false,
+            is_past_appointment: true,
+            is_no_show: true
+          },
+          {
+            appointment_id: 'appointment-cancelled',
+            clinic_id: 'clinic-a',
+            clinic_name: 'Alpha Clinic',
+            appointment_date: '2026-05-01',
+            appointment_status: 'cancelled',
+            queue_entry_count: 0,
+            has_queue_entry: false,
+            is_past_appointment: true,
+            is_no_show: false
+          },
+          {
+            appointment_id: 'appointment-completed',
+            clinic_id: 'clinic-a',
+            clinic_name: 'Alpha Clinic',
+            appointment_date: '2026-05-02',
+            appointment_status: 'completed',
+            queue_entry_count: 1,
+            has_queue_entry: true,
+            is_past_appointment: true,
+            is_no_show: false
+          },
+          {
+            appointment_id: 'appointment-late-queue-join',
+            clinic_id: 'clinic-b',
+            clinic_name: 'Beta Clinic',
+            appointment_date: '2026-05-02',
+            appointment_status: 'booked',
+            queue_entry_count: 1,
+            has_queue_entry: true,
+            is_past_appointment: true,
+            is_no_show: false
+          },
+          {
+            appointment_id: 'appointment-future',
+            clinic_id: 'clinic-b',
+            clinic_name: 'Beta Clinic',
+            appointment_date: '2026-05-03',
+            appointment_status: 'booked',
+            queue_entry_count: 0,
+            has_queue_entry: false,
+            is_past_appointment: false,
+            is_no_show: false
+          }
+        ],
+        error: null
+      })
+    );
+
+    const result = await fetchNoShowAnalytics();
+
+    expect(result).toEqual({
+      totalAppointments: 3,
+      noShowCount: 1,
+      attendedQueueCount: 2,
+      noShowRate: 33.33,
+      byClinic: [
+        {
+          clinicId: 'clinic-a',
+          clinicName: 'Alpha Clinic',
+          totalAppointments: 2,
+          noShowCount: 1,
+          attendedQueueCount: 1,
+          noShowRate: 50
+        },
+        {
+          clinicId: 'clinic-b',
+          clinicName: 'Beta Clinic',
+          totalAppointments: 1,
+          noShowCount: 0,
+          attendedQueueCount: 1,
+          noShowRate: 0
+        }
+      ],
+      byDate: [
+        {
+          date: '2026-05-01',
+          totalAppointments: 1,
+          noShowCount: 1,
+          attendedQueueCount: 0,
+          noShowRate: 100
+        },
+        {
+          date: '2026-05-02',
+          totalAppointments: 2,
+          noShowCount: 0,
+          attendedQueueCount: 2,
+          noShowRate: 0
+        }
+      ]
+    });
+
+    expect(supabase.from).toHaveBeenCalledWith('analytics_no_show_events');
+  });
+
+  test('returns an empty no-show analytics response when no rows exist', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: [],
+        error: null
+      })
+    );
+
+    const result = await fetchNoShowAnalytics();
+
+    expect(result).toEqual({
+      totalAppointments: 0,
+      noShowCount: 0,
+      attendedQueueCount: 0,
+      noShowRate: 0,
+      byClinic: [],
+      byDate: []
+    });
+  });
+
+  test('applies clinic and date range filters to the Supabase query', async () => {
+    const query = createMockQuery({
+      data: [],
+      error: null
+    });
+
+    supabase.from.mockReturnValueOnce(query);
+
+    await fetchNoShowAnalytics({
+      clinicId: ' clinic-1 ',
+      startDate: '2026-05-01',
+      endDate: '2026-05-31'
+    });
+
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', 'clinic-1');
+    expect(query.gte).toHaveBeenCalledWith('appointment_date', '2026-05-01');
+    expect(query.lte).toHaveBeenCalledWith('appointment_date', '2026-05-31');
+  });
+
+  test('rejects invalid no-show date filters before querying Supabase', async () => {
+    await expect(
+      fetchNoShowAnalytics({
+        startDate: '2026/05/01'
+      })
+    ).rejects.toMatchObject({
+      message: 'startDate must be in YYYY-MM-DD format.',
+      statusCode: 400
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('rejects invalid no-show date ranges before querying Supabase', async () => {
+    await expect(
+      fetchNoShowAnalytics({
+        startDate: '2026-05-31',
+        endDate: '2026-05-01'
+      })
+    ).rejects.toMatchObject({
+      message: 'startDate cannot be after endDate.',
+      statusCode: 400
+    });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('throws a service error when Supabase fails while fetching no-show analytics', async () => {
+    supabase.from.mockReturnValueOnce(
+      createMockQuery({
+        data: null,
+        error: { message: 'Database unavailable' }
+      })
+    );
+
+    await expect(fetchNoShowAnalytics()).rejects.toMatchObject({
+      message: 'Failed to fetch no-show analytics.',
       statusCode: 500
     });
   });

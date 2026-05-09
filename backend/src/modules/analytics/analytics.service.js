@@ -26,6 +26,32 @@ function toFiniteNumber(value) {
 }
 
 /**
+ * Converts database boolean values into real JavaScript booleans.
+ * This keeps the service safe if Supabase ever returns boolean-like strings.
+ */
+function toBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (value === null || value === undefined || value === '') {
+    return false;
+  }
+
+  const normalizedValue = String(value).trim().toLowerCase();
+
+  if (normalizedValue === 'true') {
+    return true;
+  }
+
+  if (normalizedValue === 'false') {
+    return false;
+  }
+
+  return Boolean(value);
+}
+
+/**
  * Rounds dashboard values to two decimals.
  * This matches the analytics SQL view style and keeps frontend cards readable.
  */
@@ -43,6 +69,18 @@ function average(total, count) {
   }
 
   return roundToTwo(total / count);
+}
+
+/**
+ * Returns a percentage from a numerator and denominator.
+ * Empty datasets should show 0 instead of NaN.
+ */
+function percentage(part, total) {
+  if (!total) {
+    return 0;
+  }
+
+  return roundToTwo((part / total) * 100);
 }
 
 /**
@@ -142,11 +180,31 @@ function normalizeWaitTimeFilters(filters = {}) {
 }
 
 /**
- * Converts a raw analytics view row into a safe calculation row.
+ * Validates and normalizes all no-show analytics filters.
+ * No-show analytics only needs clinic and date-range filters.
+ */
+function normalizeNoShowFilters(filters = {}) {
+  const clinicId = normalizeClinicId(filters.clinicId);
+  const startDate = validateDateFilter(filters.startDate, 'startDate');
+  const endDate = validateDateFilter(filters.endDate, 'endDate');
+
+  if (startDate && endDate && startDate > endDate) {
+    throw createServiceError('startDate cannot be after endDate.', 400);
+  }
+
+  return {
+    clinicId,
+    startDate,
+    endDate
+  };
+}
+
+/**
+ * Converts a raw wait-time analytics view row into a safe calculation row.
  * Invalid rows are ignored defensively, although the SQL view should already
  * filter out incomplete or invalid timing records.
  */
-function normalizeAnalyticsRow(row) {
+function normalizeWaitTimeAnalyticsRow(row) {
   const waitMinutes = toFiniteNumber(row?.wait_minutes);
   const consultationMinutes = toFiniteNumber(row?.consultation_minutes);
   const joinedHour = toFiniteNumber(row?.joined_hour);
@@ -167,10 +225,35 @@ function normalizeAnalyticsRow(row) {
 }
 
 /**
- * Adds one row to a grouping bucket.
+ * Converts a raw no-show analytics view row into a safe calculation row.
+ * The SQL view already defines is_no_show, but the service still normalizes
+ * the values so tests and frontend responses stay predictable.
+ */
+function normalizeNoShowAnalyticsRow(row) {
+  if (!row || !row.clinic_id || !row.appointment_date) {
+    return null;
+  }
+
+  const queueEntryCount = toFiniteNumber(row.queue_entry_count);
+
+  return {
+    appointmentId: row.appointment_id,
+    clinicId: row.clinic_id,
+    clinicName: row.clinic_name || 'Unknown clinic',
+    appointmentDate: row.appointment_date,
+    appointmentStatus: String(row.appointment_status || '').trim().toLowerCase(),
+    queueEntryCount: queueEntryCount ?? 0,
+    hasQueueEntry: toBoolean(row.has_queue_entry),
+    isPastAppointment: toBoolean(row.is_past_appointment),
+    isNoShow: toBoolean(row.is_no_show)
+  };
+}
+
+/**
+ * Adds one wait-time row to a grouping bucket.
  * This is reused for clinic, date, and hour grouping.
  */
-function addGroupedRow(groupMap, key, seedValues, row) {
+function addWaitTimeGroupedRow(groupMap, key, seedValues, row) {
   if (key === null || key === undefined || key === '') {
     return;
   }
@@ -192,18 +275,75 @@ function addGroupedRow(groupMap, key, seedValues, row) {
 }
 
 /**
- * Converts grouped totals into frontend-friendly average values.
+ * Converts wait-time grouped totals into frontend-friendly average values.
  */
-function finalizeGroup(group) {
+function finalizeWaitTimeGroup(group) {
+  const {
+    totalWaitMinutes,
+    totalConsultationMinutes,
+    ...safeGroup
+  } = group;
+
+  return {
+    ...safeGroup,
+    averageWaitMinutes: average(totalWaitMinutes, group.completedQueueCount),
+    averageConsultationMinutes: average(
+      totalConsultationMinutes,
+      group.completedQueueCount
+    )
+  };
+}
+
+/**
+ * Checks whether a no-show row should be counted in the tracked denominator.
+ * Cancelled appointments and future appointments are excluded.
+ */
+function isTrackedNoShowAppointment(row) {
+  return row.isPastAppointment === true && row.appointmentStatus !== 'cancelled';
+}
+
+/**
+ * Adds one no-show row to a grouping bucket.
+ * The no-show rate denominator is past, non-cancelled appointments.
+ */
+function addNoShowGroupedRow(groupMap, key, seedValues, row) {
+  if (key === null || key === undefined || key === '') {
+    return;
+  }
+
+  if (!isTrackedNoShowAppointment(row)) {
+    return;
+  }
+
+  if (!groupMap.has(key)) {
+    groupMap.set(key, {
+      ...seedValues,
+      totalAppointments: 0,
+      noShowCount: 0,
+      attendedQueueCount: 0
+    });
+  }
+
+  const group = groupMap.get(key);
+
+  group.totalAppointments += 1;
+
+  if (row.isNoShow) {
+    group.noShowCount += 1;
+  }
+
+  if (row.hasQueueEntry) {
+    group.attendedQueueCount += 1;
+  }
+}
+
+/**
+ * Converts no-show grouped totals into frontend-friendly percentage values.
+ */
+function finalizeNoShowGroup(group) {
   return {
     ...group,
-    averageWaitMinutes: average(group.totalWaitMinutes, group.completedQueueCount),
-    averageConsultationMinutes: average(
-      group.totalConsultationMinutes,
-      group.completedQueueCount
-    ),
-    totalWaitMinutes: undefined,
-    totalConsultationMinutes: undefined
+    noShowRate: percentage(group.noShowCount, group.totalAppointments)
   };
 }
 
@@ -225,7 +365,7 @@ function buildWaitTimeAnalyticsResponse(rows) {
     totalWaitMinutes += row.waitMinutes;
     totalConsultationMinutes += row.consultationMinutes;
 
-    addGroupedRow(
+    addWaitTimeGroupedRow(
       clinicGroups,
       row.clinicId,
       {
@@ -235,7 +375,7 @@ function buildWaitTimeAnalyticsResponse(rows) {
       row
     );
 
-    addGroupedRow(
+    addWaitTimeGroupedRow(
       hourGroups,
       row.joinedHour,
       {
@@ -244,7 +384,7 @@ function buildWaitTimeAnalyticsResponse(rows) {
       row
     );
 
-    addGroupedRow(
+    addWaitTimeGroupedRow(
       dateGroups,
       row.queueDate,
       {
@@ -259,13 +399,75 @@ function buildWaitTimeAnalyticsResponse(rows) {
     averageConsultationMinutes: average(totalConsultationMinutes, completedQueueCount),
     completedQueueCount,
     byClinic: Array.from(clinicGroups.values())
-      .map(finalizeGroup)
+      .map(finalizeWaitTimeGroup)
       .sort((left, right) => String(left.clinicName).localeCompare(String(right.clinicName))),
     byHour: Array.from(hourGroups.values())
-      .map(finalizeGroup)
+      .map(finalizeWaitTimeGroup)
       .sort((left, right) => left.hour - right.hour),
     byDate: Array.from(dateGroups.values())
-      .map(finalizeGroup)
+      .map(finalizeWaitTimeGroup)
+      .sort((left, right) => String(left.date).localeCompare(String(right.date)))
+  };
+}
+
+/**
+ * Builds the full no-show analytics response.
+ * Cancelled and future appointments are ignored in totals, while completed
+ * or attended appointments are counted as tracked appointments but not no-shows.
+ */
+function buildNoShowAnalyticsResponse(rows) {
+  const clinicGroups = new Map();
+  const dateGroups = new Map();
+
+  let totalAppointments = 0;
+  let noShowCount = 0;
+  let attendedQueueCount = 0;
+
+  rows.forEach((row) => {
+    if (!isTrackedNoShowAppointment(row)) {
+      return;
+    }
+
+    totalAppointments += 1;
+
+    if (row.isNoShow) {
+      noShowCount += 1;
+    }
+
+    if (row.hasQueueEntry) {
+      attendedQueueCount += 1;
+    }
+
+    addNoShowGroupedRow(
+      clinicGroups,
+      row.clinicId,
+      {
+        clinicId: row.clinicId,
+        clinicName: row.clinicName
+      },
+      row
+    );
+
+    addNoShowGroupedRow(
+      dateGroups,
+      row.appointmentDate,
+      {
+        date: row.appointmentDate
+      },
+      row
+    );
+  });
+
+  return {
+    totalAppointments,
+    noShowCount,
+    attendedQueueCount,
+    noShowRate: percentage(noShowCount, totalAppointments),
+    byClinic: Array.from(clinicGroups.values())
+      .map(finalizeNoShowGroup)
+      .sort((left, right) => String(left.clinicName).localeCompare(String(right.clinicName))),
+    byDate: Array.from(dateGroups.values())
+      .map(finalizeNoShowGroup)
       .sort((left, right) => String(left.date).localeCompare(String(right.date)))
   };
 }
@@ -317,12 +519,64 @@ async function fetchWaitTimeAnalytics(filters = {}) {
   }
 
   const rows = (Array.isArray(data) ? data : [])
-    .map(normalizeAnalyticsRow)
+    .map(normalizeWaitTimeAnalyticsRow)
     .filter(Boolean);
 
   return buildWaitTimeAnalyticsResponse(rows);
 }
 
+/**
+ * Fetches no-show analytics from the SQL analytics view.
+ * The database view determines whether each appointment is a no-show, while
+ * this service validates filters and shapes the response for the dashboard.
+ */
+async function fetchNoShowAnalytics(filters = {}) {
+  const normalizedFilters = normalizeNoShowFilters(filters);
+
+  let query = supabase
+    .from('analytics_no_show_events')
+    .select(`
+      appointment_id,
+      clinic_id,
+      clinic_name,
+      appointment_date,
+      appointment_status,
+      queue_entry_count,
+      has_queue_entry,
+      is_past_appointment,
+      is_no_show
+    `);
+
+  if (normalizedFilters.clinicId) {
+    query = query.eq('clinic_id', normalizedFilters.clinicId);
+  }
+
+  if (normalizedFilters.startDate) {
+    query = query.gte('appointment_date', normalizedFilters.startDate);
+  }
+
+  if (normalizedFilters.endDate) {
+    query = query.lte('appointment_date', normalizedFilters.endDate);
+  }
+
+  query = query
+    .order('appointment_date', { ascending: true })
+    .order('clinic_name', { ascending: true });
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw createServiceError('Failed to fetch no-show analytics.', 500);
+  }
+
+  const rows = (Array.isArray(data) ? data : [])
+    .map(normalizeNoShowAnalyticsRow)
+    .filter(Boolean);
+
+  return buildNoShowAnalyticsResponse(rows);
+}
+
 module.exports = {
-  fetchWaitTimeAnalytics
+  fetchWaitTimeAnalytics,
+  fetchNoShowAnalytics
 };

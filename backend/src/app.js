@@ -9,6 +9,7 @@ const appointmentsRoutes = require('./modules/appointments/appointments.routes')
 const queueRoutes = require('./modules/queue/queue.routes');
 const staffRoutes = require('./modules/staff/staff.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const analyticsRoutes = require('./modules/analytics/analytics.routes');
 
 // Create the Express application
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/clinics', slotRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Helper to serve page files

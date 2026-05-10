@@ -23,6 +23,7 @@ const clinicsList = document.getElementById("clinicsList");
 const loadMoreState = document.getElementById("loadMoreState");
 
 const CLINIC_RESULTS_PAGE_SIZE = 40;
+const SAVED_LOCATION_STORAGE_KEY = "vitaqUserLocation";
 
 let allClinics = [];
 let userLocation = null;
@@ -68,6 +69,60 @@ function cleanTextValue(value) {
 function parseCoordinate(value) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+// Save the user's browser location for the current tab session.
+// This keeps nearest-clinic sorting active after opening a clinic and returning to the clinic list.
+function saveUserLocationToSession(location) {
+  try {
+    sessionStorage.setItem(
+      SAVED_LOCATION_STORAGE_KEY,
+      JSON.stringify({
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+    );
+  } catch (error) {
+    console.warn("Could not save user location for this session.", error);
+  }
+}
+
+// Restore a previously approved location when the user returns to the clinic discovery page.
+function loadUserLocationFromSession() {
+  try {
+    const savedLocation = sessionStorage.getItem(SAVED_LOCATION_STORAGE_KEY);
+
+    if (!savedLocation) {
+      return null;
+    }
+
+    const parsedLocation = JSON.parse(savedLocation);
+    const latitude = parseCoordinate(parsedLocation.latitude);
+    const longitude = parseCoordinate(parsedLocation.longitude);
+
+    if (latitude === null || longitude === null) {
+      sessionStorage.removeItem(SAVED_LOCATION_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      latitude,
+      longitude
+    };
+  } catch (error) {
+    console.warn("Could not restore saved user location.", error);
+    sessionStorage.removeItem(SAVED_LOCATION_STORAGE_KEY);
+    return null;
+  }
+}
+
+// Clear the saved location when the patient manually turns nearest sorting off.
+function clearUserLocationFromSession() {
+  try {
+    sessionStorage.removeItem(SAVED_LOCATION_STORAGE_KEY);
+  } catch (error) {
+    console.warn("Could not clear saved user location.", error);
+  }
 }
 
 function parsePositiveNumber(value) {
@@ -1092,6 +1147,9 @@ async function loadClinics() {
     const payload = await response.json();
     allClinics = sortClinicsByAvailability(normaliseClinicResponse(payload));
 
+    // Restore nearest-clinic sorting if the patient already allowed location in this tab.
+    userLocation = loadUserLocationFromSession();
+
     initialiseFilters(allClinics);
     applyFilters();
 
@@ -1162,6 +1220,9 @@ function handleLocationSuccess(position) {
     latitude: position.coords.latitude,
     longitude: position.coords.longitude
   };
+
+  saveUserLocationToSession(userLocation);
+
   isLocationRequestPending = false;
   updateLocationButtons();
   applyFilters();
@@ -1239,6 +1300,8 @@ function requestUserLocation() {
 
 function clearLocationView() {
   userLocation = null;
+  clearUserLocationFromSession();
+
   updateLocationButtons();
   setResultsFeedback("");
   setLocationStatus("Location sorting is off. Use the button above to sort clinics by proximity.", "info");

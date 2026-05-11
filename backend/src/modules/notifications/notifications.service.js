@@ -13,6 +13,7 @@ const NOTIFICATION_SELECT_FIELDS = `
   user_id,
   appointment_id,
   staff_request_id,
+  slot_occurrence_key,
   recipient_email,
   subject,
   status,
@@ -52,6 +53,18 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function buildSlotOccurrenceKey(appointment) {
+  const appointmentId = String(appointment?.id || '').trim();
+  const slotDate = String(appointment?.slot?.date || '').trim();
+  const slotStartTime = String(appointment?.slot?.start_time || '').trim();
+
+  if (!appointmentId || !slotDate || !slotStartTime) {
+    return null;
+  }
+
+  return `${appointmentId}:${slotDate}:${slotStartTime}`;
+}
+
 /**
  * Fetches the recipient email from Supabase Auth.
  * We use Auth admin lookup instead of redesigning profiles just to store emails.
@@ -80,11 +93,20 @@ async function fetchUserEmail(userId) {
  * Finds an existing notification for duplicate handling.
  * This is mainly used after the database unique index blocks a duplicate insert.
  */
-async function findExistingNotification({ notificationType, appointmentId, staffRequestId }) {
+async function findExistingNotification({
+  notificationType,
+  appointmentId,
+  staffRequestId,
+  slotOccurrenceKey
+}) {
   let query = supabase
     .from('email_notifications')
     .select(NOTIFICATION_SELECT_FIELDS)
     .eq('notification_type', notificationType);
+
+  if (slotOccurrenceKey) {
+    query = query.eq('slot_occurrence_key', slotOccurrenceKey);
+  }
 
   if (appointmentId) {
     query = query.eq('appointment_id', appointmentId);
@@ -112,6 +134,7 @@ async function createNotification({
   userId,
   appointmentId = null,
   staffRequestId = null,
+  slotOccurrenceKey = null,
   recipientEmail,
   subject,
   scheduledFor = null,
@@ -145,6 +168,7 @@ async function createNotification({
         user_id: userId,
         appointment_id: appointmentId,
         staff_request_id: staffRequestId,
+        slot_occurrence_key: slotOccurrenceKey,
         recipient_email: normalizedRecipientEmail,
         subject,
         status: 'pending',
@@ -160,7 +184,8 @@ async function createNotification({
     const existingNotification = await findExistingNotification({
       notificationType,
       appointmentId,
-      staffRequestId
+      staffRequestId,
+      slotOccurrenceKey
     });
 
     return {
@@ -289,11 +314,13 @@ async function sendAppointmentReminder(appointment) {
 
   const recipientEmail = await fetchUserEmail(appointment.patient_id);
   const emailContent = buildAppointmentReminderEmail(appointment);
+  const slotOccurrenceKey = buildSlotOccurrenceKey(appointment);
 
   const notificationResult = await createNotification({
     notificationType: NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M,
     userId: appointment.patient_id,
     appointmentId: appointment.id,
+    slotOccurrenceKey,
     recipientEmail,
     subject: emailContent.subject,
     scheduledFor: appointment.appointment_start_at || null,
@@ -357,6 +384,7 @@ async function sendAppointmentReminder(appointment) {
 module.exports = {
   NOTIFICATION_TYPES,
   createServiceError,
+  buildSlotOccurrenceKey,
   fetchUserEmail,
   createNotification,
   markNotificationSent,

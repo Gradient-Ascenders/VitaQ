@@ -10,9 +10,6 @@ function createServiceError(message, statusCode = 400) {
   return error;
 }
 
-/**
- * Logs enough booking context to debug queue failures without exposing it to patients.
- */
 function logBookingQueueFailure({ queueError, patientId, clinicId, slotId, appointmentId }) {
   console.error('Queue creation after booking failed:', {
     message: queueError?.message,
@@ -37,7 +34,7 @@ function isSlotExpired(slot) {
 
 /**
  * Creates an appointment booking for a patient.
- * It also updates the slot's booked_count and automatically creates a queue entry.
+ * Booking also creates the queue entry so patients do not need a second join action.
  */
 async function createAppointmentBooking({ patientId, clinicId, slotId }) {
   if (!patientId || !clinicId || !slotId) {
@@ -141,8 +138,6 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
   let queueResult;
 
   try {
-    // Automatically create the queue entry after the appointment is booked.
-    // Team decision: booking an appointment also joins the patient queue.
     queueResult = await joinQueueFromAppointment({
       patientId,
       appointmentId: appointment.id
@@ -151,18 +146,16 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
     logBookingQueueFailure({
       queueError,
       patientId,
-      clinicId: slot.clinic_id,
+      clinicId,
       slotId,
       appointmentId: appointment.id
     });
 
-    // Remove the appointment if the queue entry could not be created.
     await supabase
       .from('appointments')
       .delete()
       .eq('id', appointment.id);
 
-    // Roll back the slot count so availability stays correct.
     await supabase
       .from('appointment_slots')
       .update({

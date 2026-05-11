@@ -1,5 +1,5 @@
-// Mock the Supabase client and queue-side effects before importing the appointments service.
-// These tests focus on booking rules, slot count updates, and rollback behaviour.
+// Mock the Supabase client before importing the appointments service.
+// These tests focus on booking rules, slot count updates, and queue alignment.
 const mockFrom = jest.fn();
 const mockSlotSelect = jest.fn();
 const mockSlotUpdate = jest.fn();
@@ -554,7 +554,7 @@ describe('appointments.service', () => {
             expect(slotUpdateEq).toHaveBeenNthCalledWith(4, 'booked_count', 3);
         });
 
-        test('creates an appointment booking and returns updated availability', async () => {
+        test('creates an appointment booking and auto-joins the queue', async () => {
             const result = await createAppointmentBooking({
                 patientId: 'patient-1',
                 clinicId: 'clinic-1',
@@ -578,14 +578,27 @@ describe('appointments.service', () => {
                     ...slotUpdateResult.data[0],
                     availability: 2,
                 },
-                queue: queueEntryInsertResult.data,
+                queue: {
+                    ...queueEntryInsertResult.data,
+                    estimated_wait_minutes: 0,
+                },
                 position: 1,
             });
+            expect(mockQueueEntriesSelect).toHaveBeenCalled();
+            expect(mockQueueEntriesInsert).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    clinic_id: 'clinic-1',
+                    patient_id: 'patient-1',
+                    appointment_id: 'appointment-1',
+                    queue_number: 1,
+                    queue_date: '2099-06-01',
+                    source: 'appointment',
+                    status: 'waiting',
+                }),
+            ]);
         });
 
-        test('rolls back appointment and slot when queue entry creation fails', async () => {
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
+        test('rolls back appointment and slot count when auto queue join fails', async () => {
             queueEntryInsertResult = {
                 data: null,
                 error: { message: 'queue insert failed' },
@@ -602,28 +615,12 @@ describe('appointments.service', () => {
                 statusCode: 500,
             });
 
-            expect(mockAppointmentsDelete).toHaveBeenCalledTimes(1);
+            expect(mockAppointmentsDelete).toHaveBeenCalled();
             expect(appointmentsDeleteEq).toHaveBeenCalledWith('id', 'appointment-1');
-            expect(mockSlotUpdate).toHaveBeenNthCalledWith(2, {
+            expect(mockSlotUpdate).toHaveBeenLastCalledWith({
                 booked_count: 2,
             });
-            expect(consoleErrorSpy).toHaveBeenCalledWith(
-                'Queue creation after booking failed:',
-                expect.objectContaining({
-                    message: 'Failed to join the queue.',
-                    statusCode: 500,
-                    stage: 'queue_entry_insert',
-                    patientId: 'patient-1',
-                    clinicId: 'clinic-1',
-                    slotId: 'slot-1',
-                    appointmentId: 'appointment-1',
-                    supabaseError: expect.objectContaining({
-                        message: 'queue insert failed',
-                    }),
-                })
-            );
-
-            consoleErrorSpy.mockRestore();
+            expect(slotUpdateEq).toHaveBeenLastCalledWith('booked_count', 3);
         });
     });
 

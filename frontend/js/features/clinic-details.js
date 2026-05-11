@@ -263,8 +263,30 @@ function renderClinic(clinic) {
   renderServices(clinic.services_offered);
 }
 
-// Slot cards depend on both real slot availability and whether the patient already booked that slot.
-function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
+function getPatientSlotStatus(patientSlotStatuses, slotId) {
+  const statuses = patientSlotStatuses.get(String(slotId));
+
+  if (!statuses || statuses.size === 0) {
+    return null;
+  }
+
+  if (statuses.has('booked')) {
+    return 'booked';
+  }
+
+  if (statuses.has('rescheduled')) {
+    return 'rescheduled';
+  }
+
+  if (statuses.has('cancelled')) {
+    return 'cancelled';
+  }
+
+  return 'used';
+}
+
+// Slot cards depend on real availability and any historical patient use of the slot.
+function renderSlots(slots, clinic, patientSlotStatuses = new Map()) {
   const slotsList = document.getElementById('slotsList');
   const slotsEmptyState = document.getElementById('slotsEmptyState');
   const slotsCount = document.getElementById('slotsCount');
@@ -283,14 +305,15 @@ function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
   slots.forEach((slot) => {
     const availability = Math.max((slot.capacity || 0) - (slot.booked_count || 0), 0);
     const isAvailable = availability > 0 && slot.status === 'available';
-    const isBookedByPatient = bookedSlotIds.has(String(slot.id));
-    const canBook = isAvailable && !isBookedByPatient;
+    const patientSlotStatus = getPatientSlotStatus(patientSlotStatuses, slot.id);
+    const isUsedByPatient = Boolean(patientSlotStatus);
+    const canBook = isAvailable && !isUsedByPatient;
 
     const slotCard = document.createElement('article');
     slotCard.className =
       'rounded-[2rem] border border-[#414868] bg-[linear-gradient(135deg,rgba(26,27,38,0.82),rgba(36,40,59,0.82))] px-5 py-5 shadow-lg shadow-black/10 backdrop-blur-sm';
 
-    const availabilityClass = isBookedByPatient
+    const availabilityClass = isUsedByPatient
       ? 'text-[#9ece6a]'
       : isAvailable
       ? 'text-[#38f2c2]'
@@ -298,16 +321,23 @@ function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
 
     const buttonClass = canBook
       ? 'border border-[#00b4d8]/50 bg-[#0a2540] text-[#b8ecff] hover:border-[#00b4d8] hover:bg-[#0d2d4d]'
-      : isBookedByPatient
+      : isUsedByPatient
       ? 'cursor-not-allowed border border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]'
       : 'cursor-not-allowed border border-[#414868] bg-[#24283b]/80 text-[#6b7194]';
 
-    const buttonLabel = isBookedByPatient ? 'Booked' : 'Book';
-    const availabilityLabel = isBookedByPatient
-      ? 'Booked'
+    const usedSlotLabel = patientSlotStatus === 'booked' ? 'Booked' : 'Already used';
+    const buttonLabel = isUsedByPatient ? usedSlotLabel : 'Book';
+    const availabilityLabel = isUsedByPatient
+      ? usedSlotLabel
       : isAvailable
       ? `${availability} space${availability === 1 ? '' : 's'} left`
       : 'Unavailable';
+
+    const slotStatusTitle = patientSlotStatus === 'booked'
+      ? 'Booked'
+      : isUsedByPatient
+      ? 'This slot was already used by one of your previous appointments.'
+      : '';
 
     slotCard.innerHTML = `
       <section class="grid gap-5 lg:grid-cols-[1.45fr_1fr_1fr_1.45fr_auto] lg:items-center">
@@ -349,6 +379,7 @@ function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
             data-slot-start="${slot.start_time}"
             data-slot-end="${slot.end_time}"
             data-default-label="${buttonLabel}"
+            ${slotStatusTitle ? `title="${slotStatusTitle}"` : ''}
             ${canBook ? '' : 'disabled'}
           >
             ${buttonLabel}
@@ -363,10 +394,10 @@ function renderSlots(slots, clinic, bookedSlotIds = new Set()) {
   attachBookHandlers();
 }
 
-// Pull the patient's existing bookings so already-booked slots can be disabled in the UI.
-async function fetchBookedSlotIds(session, clinicId) {
+// Pull all patient appointments so slots rejected by the backend duplicate guard are disabled.
+async function fetchPatientSlotStatuses(session, clinicId) {
   if (!session?.access_token) {
-    return new Set();
+    return new Map();
   }
 
   const response = await fetch('/api/appointments', {
@@ -381,24 +412,46 @@ async function fetchBookedSlotIds(session, clinicId) {
     throw new Error(payload.message || 'Failed to load your appointments.');
   }
 
-  const bookedSlotIds = (payload.data || [])
+  const patientSlotStatuses = new Map();
+
+  (payload.data || [])
     .filter((appointment) => (
       String(appointment.clinic_id) === String(clinicId)
-      && appointment.status === 'booked'
       && appointment.slot_id
     ))
-    .map((appointment) => String(appointment.slot_id));
+    .forEach((appointment) => {
+      const slotId = String(appointment.slot_id);
+      const status = String(appointment.status || '').toLowerCase();
 
-  return new Set(bookedSlotIds);
+      if (!patientSlotStatuses.has(slotId)) {
+        patientSlotStatuses.set(slotId, new Set());
+      }
+
+      if (status) {
+        patientSlotStatuses.get(slotId).add(status);
+      }
+
+      if (appointment.rescheduled_from_slot_id) {
+        const previousSlotId = String(appointment.rescheduled_from_slot_id);
+
+        if (!patientSlotStatuses.has(previousSlotId)) {
+          patientSlotStatuses.set(previousSlotId, new Set());
+        }
+
+        patientSlotStatuses.get(previousSlotId).add('rescheduled');
+      }
+    });
+
+  return patientSlotStatuses;
 }
 
 // Viewing open slots should still work even if the patient's appointment lookup fails.
-async function fetchBookedSlotIdsSafely(session, clinicId) {
+async function fetchPatientSlotStatusesSafely(session, clinicId) {
   try {
-    return await fetchBookedSlotIds(session, clinicId);
+    return await fetchPatientSlotStatuses(session, clinicId);
   } catch (error) {
-    console.warn('Booked slot lookup failed; continuing without booked-slot highlighting.', error);
-    return new Set();
+    console.warn('Patient slot lookup failed; continuing without slot-use highlighting.', error);
+    return new Map();
   }
 }
 
@@ -499,12 +552,12 @@ async function loadClinicPage() {
       return;
     }
 
-    const bookedSlotIdsPromise = fetchBookedSlotIdsSafely(session, clinicId);
+    const patientSlotStatusesPromise = fetchPatientSlotStatusesSafely(session, clinicId);
 
-    const [clinicResponse, slotsResponse, bookedSlotIds] = await Promise.all([
+    const [clinicResponse, slotsResponse, patientSlotStatuses] = await Promise.all([
       fetch(`/api/clinics/${clinicId}`),
       fetch(`/api/clinics/${clinicId}/slots`),
-      bookedSlotIdsPromise
+      patientSlotStatusesPromise
     ]);
 
     if (!clinicResponse.ok) {
@@ -524,7 +577,7 @@ async function loadClinicPage() {
     const slots = slotsPayload.data || [];
 
     renderClinic(clinic);
-    renderSlots(slots, clinic, bookedSlotIds);
+    renderSlots(slots, clinic, patientSlotStatuses);
 
     loadingState.classList.add('hidden');
     clinicContent.classList.remove('hidden');

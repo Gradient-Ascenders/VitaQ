@@ -165,6 +165,7 @@ describe('notifications.service', () => {
         notification_type: 'appointment_reminder_30m',
         user_id: 'patient-1',
         appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
         staff_request_id: null,
         recipient_email: 'patient@example.com',
         subject: 'VitaQ appointment reminder',
@@ -183,6 +184,7 @@ describe('notifications.service', () => {
         notificationType: 'appointment_reminder_30m',
         userId: 'patient-1',
         appointmentId: 'appointment-1',
+        slotOccurrenceKey: 'appointment-1:2026-05-10:10:20:00',
         recipientEmail: 'PATIENT@example.com',
         subject: 'VitaQ appointment reminder',
         scheduledFor: '2026-05-10T08:20:00.000Z',
@@ -203,6 +205,7 @@ describe('notifications.service', () => {
           notification_type: 'appointment_reminder_30m',
           user_id: 'patient-1',
           appointment_id: 'appointment-1',
+          slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
           recipient_email: 'patient@example.com',
           subject: 'VitaQ appointment reminder',
           status: 'pending',
@@ -252,6 +255,7 @@ describe('notifications.service', () => {
         id: 'notification-existing',
         notification_type: 'appointment_reminder_30m',
         appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
         status: 'sent'
       };
 
@@ -276,6 +280,7 @@ describe('notifications.service', () => {
         notificationType: 'appointment_reminder_30m',
         userId: 'patient-1',
         appointmentId: 'appointment-1',
+        slotOccurrenceKey: 'appointment-1:2026-05-10:10:20:00',
         recipientEmail: 'patient@example.com',
         subject: 'VitaQ appointment reminder'
       });
@@ -289,6 +294,10 @@ describe('notifications.service', () => {
       expect(existingLookupQuery.eq).toHaveBeenCalledWith(
         'notification_type',
         'appointment_reminder_30m'
+      );
+      expect(existingLookupQuery.eq).toHaveBeenCalledWith(
+        'slot_occurrence_key',
+        'appointment-1:2026-05-10:10:20:00'
       );
       expect(existingLookupQuery.eq).toHaveBeenCalledWith(
         'appointment_id',
@@ -336,6 +345,7 @@ describe('notifications.service', () => {
         notification_type: 'appointment_reminder_30m',
         user_id: 'patient-1',
         appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
         recipient_email: 'patient@example.com',
         subject: 'VitaQ appointment reminder',
         status: 'pending',
@@ -383,6 +393,13 @@ describe('notifications.service', () => {
         })
       );
 
+      expect(insertQuery.insert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          appointment_id: 'appointment-1',
+          slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00'
+        })
+      ]);
+
       expect(updateQuery.update).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'sent',
@@ -410,6 +427,7 @@ describe('notifications.service', () => {
         id: 'notification-existing',
         notification_type: 'appointment_reminder_30m',
         appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
         status: 'sent'
       };
 
@@ -458,6 +476,7 @@ describe('notifications.service', () => {
         notification_type: 'appointment_reminder_30m',
         user_id: 'patient-1',
         appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
         recipient_email: 'patient@example.com',
         subject: 'VitaQ appointment reminder',
         status: 'pending',

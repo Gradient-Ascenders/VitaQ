@@ -1,5 +1,4 @@
 const supabase = require('../../lib/supabaseClient');
-const { joinQueueFromAppointment } = require('../queue/queue.service');
 
 /**
  * Creates a standard error object with an attached HTTP status code.
@@ -8,22 +7,6 @@ function createServiceError(message, statusCode = 400) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
-}
-
-/**
- * Logs enough booking context to debug queue failures without exposing it to patients.
- */
-function logBookingQueueFailure({ queueError, patientId, clinicId, slotId, appointmentId }) {
-  console.error('Queue creation after booking failed:', {
-    message: queueError?.message,
-    statusCode: queueError?.statusCode,
-    stage: queueError?.stage,
-    supabaseError: queueError?.supabaseError,
-    patientId,
-    clinicId,
-    slotId,
-    appointmentId
-  });
 }
 
 /**
@@ -37,7 +20,8 @@ function isSlotExpired(slot) {
 
 /**
  * Creates an appointment booking for a patient.
- * It also updates the slot's booked_count and automatically creates a queue entry.
+ * It updates the slot's booked_count, while queue joining remains a separate
+ * patient check-in action handled through the queue module.
  */
 async function createAppointmentBooking({ patientId, clinicId, slotId }) {
   if (!patientId || !clinicId || !slotId) {
@@ -138,53 +122,14 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
     throw createServiceError('Failed to create appointment booking.', 500);
   }
 
-  let queueResult;
-
-  try {
-    // Automatically create the queue entry after the appointment is booked.
-    // Team decision: booking an appointment also joins the patient queue.
-    queueResult = await joinQueueFromAppointment({
-      patientId,
-      appointmentId: appointment.id
-    });
-  } catch (queueError) {
-    logBookingQueueFailure({
-      queueError,
-      patientId,
-      clinicId: slot.clinic_id,
-      slotId,
-      appointmentId: appointment.id
-    });
-
-    // Remove the appointment if the queue entry could not be created.
-    await supabase
-      .from('appointments')
-      .delete()
-      .eq('id', appointment.id);
-
-    // Roll back the slot count so availability stays correct.
-    await supabase
-      .from('appointment_slots')
-      .update({
-        booked_count: bookedCount
-      })
-      .eq('id', slotId)
-      .eq('booked_count', bookedCount + 1);
-
-    throw createServiceError(
-      'Appointment could not be completed because the queue entry failed.',
-      500
-    );
-  }
-
   return {
     appointment,
     slot: {
       ...updatedSlot,
       availability: updatedSlot.capacity - updatedSlot.booked_count
     },
-    queue: queueResult.queue_entry,
-    position: queueResult.position
+    queue: null,
+    position: null
   };
 }
 
@@ -636,6 +581,5 @@ module.exports = {
   createAppointmentBooking,
   fetchAppointmentsByPatientId,
   cancelAppointment,
-  rescheduleAppointment,
-  logBookingQueueFailure
+  rescheduleAppointment
 };

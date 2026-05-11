@@ -1595,7 +1595,7 @@ describe('createWalkInQueueEntry', () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: null,
-        error: { message: 'No approved staff request found' }
+        error: { message: 'No approved staff profile found' }
       })
     );
 
@@ -1614,10 +1614,9 @@ describe('createWalkInQueueEntry', () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: {
-          id: 'staff-request-1',
           user_id: 'staff-1',
+          role: 'staff',
           clinic_id: 'clinic-1',
-          status: 'approved'
         },
         error: null
       })
@@ -1659,10 +1658,9 @@ describe('createWalkInQueueEntry', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: {
-            id: 'staff-request-1',
             user_id: 'staff-1',
+            role: 'staff',
             clinic_id: 'clinic-1',
-            status: 'approved'
           },
           error: null
         })
@@ -1745,10 +1743,9 @@ describe('createWalkInQueueEntry', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: {
-            id: 'staff-request-1',
             user_id: 'staff-1',
+            role: 'staff',
             clinic_id: 'clinic-1',
-            status: 'approved'
           },
           error: null
         })
@@ -1841,10 +1838,9 @@ describe('createWalkInQueueEntry', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: {
-            id: 'staff-request-1',
             user_id: 'staff-1',
+            role: 'staff',
             clinic_id: 'clinic-1',
-            status: 'approved'
           },
           error: null
         })
@@ -1909,11 +1905,10 @@ describe('fetchStaffQueue', () => {
   });
 
   test('returns staff queue entries filtered by the staff clinic and date', async () => {
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     const clinic = {
@@ -1923,7 +1918,7 @@ describe('fetchStaffQueue', () => {
 
     supabase.from.mockReturnValueOnce(
       createMockQuery({
-        data: approvedStaffRequest,
+        data: approvedStaffProfile,
         error: null
       })
     );
@@ -2020,10 +2015,9 @@ describe('fetchStaffQueue', () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: {
-          id: 'staff-request-1',
           user_id: 'staff-1',
+          role: 'staff',
           clinic_id: 'clinic-1',
-          status: 'approved'
         },
         error: null
       })
@@ -2089,10 +2083,9 @@ describe('fetchStaffQueue', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: {
-            id: 'staff-request-1',
             user_id: 'staff-1',
+            role: 'staff',
             clinic_id: 'clinic-1',
-            status: 'approved'
           },
           error: null
         })
@@ -2128,7 +2121,7 @@ describe('fetchStaffQueue', () => {
     supabase.from.mockReturnValueOnce(
       createMockQuery({
         data: null,
-        error: { message: 'No approved staff request found' }
+        error: { message: 'No approved staff profile found' }
       })
     );
 
@@ -2148,10 +2141,9 @@ describe('fetchStaffQueue', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: {
-            id: 'staff-request-1',
             user_id: 'staff-1',
+            role: 'staff',
             clinic_id: 'clinic-1',
-            status: 'approved'
           },
           error: null
         })
@@ -2224,11 +2216,10 @@ describe('updateQueueEntryStatus', () => {
       updated_at: '2026-04-16T08:00:00Z'
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     const updatedEntry = {
@@ -2241,8 +2232,8 @@ describe('updateQueueEntryStatus', () => {
       // First query: fetch the existing queue entry.
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
 
-      // Second query: fetch the approved staff request.
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      // Second query: fetch the approved staff assignment profile.
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
 
       // Third query: update and return the queue entry.
       .mockReturnValueOnce(createMockQuery({ data: updatedEntry, error: null }));
@@ -2256,7 +2247,7 @@ describe('updateQueueEntryStatus', () => {
     expect(result).toEqual(updatedEntry);
     expect(result.status).toBe('in_consultation');
     expect(supabase.from).toHaveBeenCalledWith('queue_entries');
-    expect(supabase.from).toHaveBeenCalledWith('staff_requests');
+    expect(supabase.from).toHaveBeenCalledWith('profiles');
   });
 
   test('sets consultation_started_at when moving a patient into consultation', async () => {
@@ -2276,11 +2267,10 @@ describe('updateQueueEntryStatus', () => {
       updated_at: '2026-04-16T08:00:00Z'
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     const updatedEntry = {
@@ -2297,7 +2287,7 @@ describe('updateQueueEntryStatus', () => {
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
       .mockReturnValueOnce(updateQuery);
 
     const result = await updateQueueEntryStatus({
@@ -2334,11 +2324,10 @@ describe('updateQueueEntryStatus', () => {
       updated_at: '2026-04-16T08:15:00Z'
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     const updatedEntry = {
@@ -2355,7 +2344,7 @@ describe('updateQueueEntryStatus', () => {
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
       .mockReturnValueOnce(updateQuery);
 
     const result = await updateQueueEntryStatus({
@@ -2387,16 +2376,15 @@ describe('updateQueueEntryStatus', () => {
       estimated_wait_minutes: 0
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-2',
-      status: 'approved'
     };
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }));
 
     await expect(
       updateQueueEntryStatus({
@@ -2423,16 +2411,15 @@ describe('updateQueueEntryStatus', () => {
       estimated_wait_minutes: 0
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }));
 
     await expect(
       updateQueueEntryStatus({
@@ -2459,16 +2446,15 @@ describe('updateQueueEntryStatus', () => {
       estimated_wait_minutes: 0
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }));
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }));
 
     const result = await updateQueueEntryStatus({
       entryId: 'queue-1',
@@ -2517,7 +2503,7 @@ describe('updateQueueEntryStatus', () => {
       .mockReturnValueOnce(
         createMockQuery({
           data: null,
-          error: { message: 'No approved staff request found' }
+          error: { message: 'No approved staff profile found' }
         })
       );
 
@@ -2546,16 +2532,15 @@ describe('updateQueueEntryStatus', () => {
       estimated_wait_minutes: 0
     };
 
-    const approvedStaffRequest = {
-      id: 'staff-request-1',
+    const approvedStaffProfile = {
       user_id: 'staff-1',
+      role: 'staff',
       clinic_id: 'clinic-1',
-      status: 'approved'
     };
 
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
-      .mockReturnValueOnce(createMockQuery({ data: approvedStaffRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
       .mockReturnValueOnce(
         createMockQuery({
           data: null,

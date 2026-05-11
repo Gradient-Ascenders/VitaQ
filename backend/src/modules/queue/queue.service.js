@@ -382,22 +382,21 @@ function buildQueueEntryResponse(entry, estimatedWaitMinutes) {
 }
 
 /**
- * Fetches the approved staff request for a user.
- * We use this to find which clinic the staff member belongs to.
+ * Fetches the approved staff profile for a user.
+ * The live profiles table is the source of truth for staff role and clinic assignment.
  */
-async function fetchApprovedStaffRequest(staffUserId) {
-  const { data: staffRequest, error } = await supabase
-    .from('staff_requests')
-    .select('id, user_id, clinic_id, status')
+async function fetchApprovedStaffAssignment(staffUserId) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('user_id, role, clinic_id')
     .eq('user_id', staffUserId)
-    .eq('status', 'approved')
     .single();
 
-  if (error || !staffRequest) {
+  if (error || !profile || profile.role !== 'staff' || !profile.clinic_id) {
     throw createServiceError('Approved staff access is required.', 403);
   }
 
-  return staffRequest;
+  return profile;
 }
 
 /**
@@ -463,8 +462,8 @@ async function createWalkInQueueEntry({
     throw createServiceError('patient_name and staff user id are required.', 400);
   }
 
-  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
-  const assignedClinicId = staffRequest.clinic_id;
+  const staffAssignment = await fetchApprovedStaffAssignment(staffUserId);
+  const assignedClinicId = staffAssignment.clinic_id;
   const resolvedQueueDate = queueDate || getTodayDateString();
 
   // Allow the frontend to send clinic_id if it already has it,
@@ -924,8 +923,8 @@ async function fetchStaffQueue({ staffUserId, queueDate }) {
     throw createServiceError('staff user id and date are required.', 400);
   }
 
-  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
-  const clinicId = staffRequest.clinic_id;
+  const staffAssignment = await fetchApprovedStaffAssignment(staffUserId);
+  const clinicId = staffAssignment.clinic_id;
 
   const { data: clinic, error: clinicError } = await supabase
     .from('clinics')
@@ -1067,11 +1066,11 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
   // Fetch the queue entry first so we can check its clinic and current status.
   const existingEntry = await fetchQueueEntryById(entryId);
 
-  // Fetch the approved staff request so we know which clinic this staff member belongs to.
-  const staffRequest = await fetchApprovedStaffRequest(staffUserId);
+  // Fetch the approved staff assignment so we know which clinic this staff member belongs to.
+  const staffAssignment = await fetchApprovedStaffAssignment(staffUserId);
 
   // Staff should only update queue entries for their own clinic.
-  if (String(staffRequest.clinic_id) !== String(existingEntry.clinic_id)) {
+  if (String(staffAssignment.clinic_id) !== String(existingEntry.clinic_id)) {
     throw createServiceError('You can only update queue entries for your assigned clinic.', 403);
   }
 

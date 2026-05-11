@@ -35,6 +35,14 @@ const QUEUE_EMPTY_STATES = {
   QUEUE_UNAVAILABLE: 'queue_unavailable'
 };
 
+const queuePageContext = {
+  clinicId: '',
+  appointmentId: '',
+  date: '',
+  session: null,
+  joinQueueLoading: false
+};
+
 function getQueueBadgeClasses(state) {
   switch (state) {
     case QUEUE_STATES.WAITING:
@@ -195,7 +203,7 @@ function getQueueEmptyStateConfig(emptyState) {
       return {
         eyebrow: 'Not in queue',
         title: 'No active queue entry for this visit',
-        message: 'This visit does not currently have an active queue entry. Return to your appointments if you need to confirm the visit details.'
+        message: 'This visit does not currently have an active queue entry. Join the queue when you arrive at the clinic so your live position and wait estimate can start updating.'
       };
     case QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE:
     default:
@@ -238,6 +246,86 @@ function renderQueueEmptyState(emptyState) {
   title.textContent = config.title;
   message.textContent = config.message;
   emptyContainer.classList.remove('hidden');
+}
+
+function renderJoinQueueAction({ visible, loading = false, message = '', isError = false } = {}) {
+  const container = document.getElementById('queueJoinAction');
+  const button = document.getElementById('joinQueueButton');
+  const messageElement = document.getElementById('joinQueueMessage');
+
+  if (!container || !button || !messageElement) {
+    return;
+  }
+
+  if (!visible) {
+    container.classList.add('hidden');
+    button.disabled = false;
+    button.textContent = 'Join Queue Now';
+    messageElement.textContent = '';
+    messageElement.className = 'mt-3 text-sm leading-7 text-[#8b93b8]';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  button.disabled = loading;
+  button.textContent = loading ? 'Joining queue...' : 'Join Queue Now';
+  messageElement.textContent = message;
+  messageElement.className = `mt-3 text-sm leading-7 ${
+    isError ? 'text-[#f4b5c0]' : 'text-[#8b93b8]'
+  }`;
+}
+
+async function joinQueueForCurrentVisit() {
+  if (
+    queuePageContext.joinQueueLoading
+    || !queuePageContext.session?.access_token
+    || !queuePageContext.appointmentId
+  ) {
+    return;
+  }
+
+  queuePageContext.joinQueueLoading = true;
+  renderJoinQueueAction({
+    visible: true,
+    loading: true,
+    message: 'Creating your queue entry for this visit.'
+  });
+
+  try {
+    const response = await fetch('/api/queue/join', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${queuePageContext.session.access_token}`
+      },
+      body: JSON.stringify({
+        appointment_id: queuePageContext.appointmentId
+      })
+    });
+
+    const payload = await response.json();
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to join queue.');
+    }
+
+    await loadQueueStatus();
+  } catch (error) {
+    console.error(error);
+    renderJoinQueueAction({
+      visible: true,
+      loading: false,
+      message: error.message || 'Failed to join queue.',
+      isError: true
+    });
+  } finally {
+    queuePageContext.joinQueueLoading = false;
+  }
 }
 
 function formatWaitTime(minutes, queueState) {
@@ -498,20 +586,8 @@ function applyVisitDetails(params) {
     : 'Visit date unavailable';
 }
 
-async function loadQueuePage() {
-  const params = new URLSearchParams(window.location.search);
-  const clinicId = params.get('clinicId') || '';
-  const appointmentId = params.get('appointmentId') || '';
-  const date = params.get('date') || '';
-  initialiseLogoutButton('logoutButton');
-  applyVisitDetails(params);
-
-  const session = await requireAuthenticatedUser();
-  if (!session) {
-    return;
-  }
-
-  if (!clinicId || !date) {
+async function loadQueueStatus() {
+  if (!queuePageContext.clinicId || !queuePageContext.date) {
     renderQueueState(QUEUE_STATES.UNAVAILABLE);
     renderQueueMetrics(null, null, QUEUE_STATES.UNAVAILABLE);
     renderQueueEstimate(QUEUE_STATES.UNAVAILABLE, null);
@@ -522,22 +598,23 @@ async function loadQueuePage() {
       nearTurnMessage: null
     });
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
+    renderJoinQueueAction({ visible: false });
     return;
   }
 
   try {
     const queryParams = new URLSearchParams({
-      clinic_id: clinicId,
-      date
+      clinic_id: queuePageContext.clinicId,
+      date: queuePageContext.date
     });
 
-    if (appointmentId) {
-      queryParams.set('appointment_id', appointmentId);
+    if (queuePageContext.appointmentId) {
+      queryParams.set('appointment_id', queuePageContext.appointmentId);
     }
 
     const response = await fetch(`/api/queue/my-status?${queryParams.toString()}`, {
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${queuePageContext.session.access_token}`
       }
     });
 
@@ -570,9 +647,16 @@ async function loadQueuePage() {
 
     if (!queueData.is_in_queue) {
       renderQueueEmptyState(QUEUE_EMPTY_STATES.NOT_IN_QUEUE);
+      renderJoinQueueAction({
+        visible: Boolean(queuePageContext.appointmentId),
+        message: queuePageContext.appointmentId
+          ? 'Use this when you are ready to check in for the visit.'
+          : ''
+      });
       return;
     }
 
+    renderJoinQueueAction({ visible: false });
     renderQueueList(queueData.queue_entries || [], queueData.queue_summary || {});
   } catch (error) {
     console.error(error);
@@ -586,7 +670,31 @@ async function loadQueuePage() {
       nearTurnMessage: null
     });
     renderQueueEmptyState(QUEUE_EMPTY_STATES.QUEUE_UNAVAILABLE);
+    renderJoinQueueAction({ visible: false });
   }
+}
+
+async function loadQueuePage() {
+  const params = new URLSearchParams(window.location.search);
+  queuePageContext.clinicId = params.get('clinicId') || '';
+  queuePageContext.appointmentId = params.get('appointmentId') || '';
+  queuePageContext.date = params.get('date') || '';
+
+  initialiseLogoutButton('logoutButton');
+  applyVisitDetails(params);
+
+  const joinQueueButton = document.getElementById('joinQueueButton');
+  if (joinQueueButton) {
+    joinQueueButton.addEventListener('click', joinQueueForCurrentVisit);
+  }
+
+  const session = await requireAuthenticatedUser();
+  if (!session) {
+    return;
+  }
+
+  queuePageContext.session = session;
+  await loadQueueStatus();
 }
 
 document.addEventListener('DOMContentLoaded', loadQueuePage);

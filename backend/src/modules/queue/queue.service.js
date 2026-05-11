@@ -1001,9 +1001,7 @@ function isAllowedStatusTransition(currentStatus, nextStatus) {
  * Adds timestamp fields when staff move a patient through the queue.
  * These timestamps are used later for historical wait-time prediction.
  */
-function buildQueueStatusTimestampPatch(nextStatus) {
-  const now = new Date().toISOString();
-
+function buildQueueStatusTimestampPatch(nextStatus, now = new Date().toISOString()) {
   if (nextStatus === 'in_consultation') {
     return {
       consultation_started_at: now
@@ -1017,6 +1015,88 @@ function buildQueueStatusTimestampPatch(nextStatus) {
   }
 
   return {};
+}
+
+/**
+ * Keeps appointment state aligned when staff cancel an appointment-backed queue entry.
+ */
+async function cancelLinkedAppointmentForQueueEntry(queueEntry, cancelledAt) {
+  if (queueEntry.source !== 'appointment' || !queueEntry.appointment_id) {
+    return null;
+  }
+
+  const { data: appointment, error: appointmentError } = await supabase
+    .from('appointments')
+    .select(`
+      id,
+      status,
+      slot_id,
+      slot:appointment_slots!appointments_slot_id_fkey (
+        id,
+        booked_count
+      )
+    `)
+    .eq('id', queueEntry.appointment_id)
+    .single();
+
+  if (appointmentError || !appointment) {
+    throw createServiceError('Linked appointment not found.', 404);
+  }
+
+  if (appointment.status !== 'booked') {
+    return appointment;
+  }
+
+  const currentBookedCount = Number(appointment.slot?.booked_count || 0);
+  const nextBookedCount = Math.max(currentBookedCount - 1, 0);
+  let slotWasReleased = false;
+
+  if (appointment.slot_id) {
+    const { data: updatedSlots, error: slotError } = await supabase
+      .from('appointment_slots')
+      .update({
+        booked_count: nextBookedCount,
+        updated_at: cancelledAt
+      })
+      .eq('id', appointment.slot_id)
+      .eq('booked_count', currentBookedCount)
+      .select('id');
+
+    if (slotError || !updatedSlots || updatedSlots.length === 0) {
+      throw createServiceError('Failed to release appointment slot.', 500);
+    }
+
+    slotWasReleased = true;
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({
+      status: 'cancelled',
+      cancelled_at: cancelledAt,
+      cancellation_reason: 'Cancelled by clinic staff',
+      updated_at: cancelledAt
+    })
+    .eq('id', queueEntry.appointment_id)
+    .select('id, status, cancelled_at, cancellation_reason, updated_at')
+    .single();
+
+  if (error || !data) {
+    if (slotWasReleased) {
+      await supabase
+        .from('appointment_slots')
+        .update({
+          booked_count: currentBookedCount,
+          updated_at: cancelledAt
+        })
+        .eq('id', appointment.slot_id)
+        .eq('booked_count', nextBookedCount);
+    }
+
+    throw createServiceError('Failed to cancel linked appointment.', 500);
+  }
+
+  return data;
 }
 
 /**
@@ -1076,6 +1156,10 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
 
   // No need to update if the status is already the same.
   if (existingEntry.status === status) {
+    if (status === 'cancelled') {
+      await cancelLinkedAppointmentForQueueEntry(existingEntry, new Date().toISOString());
+    }
+
     return existingEntry;
   }
 
@@ -1087,14 +1171,15 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
     );
   }
 
-  const timestampPatch = buildQueueStatusTimestampPatch(status);
+  const statusUpdatedAt = new Date().toISOString();
+  const timestampPatch = buildQueueStatusTimestampPatch(status, statusUpdatedAt);
 
   const { data, error } = await supabase
     .from('queue_entries')
     .update({
       status,
       ...timestampPatch,
-      updated_at: new Date().toISOString()
+      updated_at: statusUpdatedAt
     })
     .eq('id', entryId)
     .select(`
@@ -1117,6 +1202,10 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
 
   if (error || !data) {
     throw createServiceError('Failed to update queue status.', 500);
+  }
+
+  if (status === 'cancelled') {
+    await cancelLinkedAppointmentForQueueEntry(existingEntry, statusUpdatedAt);
   }
 
   return data;

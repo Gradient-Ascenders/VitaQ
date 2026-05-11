@@ -1,4 +1,5 @@
 const supabase = require('../../lib/supabaseClient');
+const { joinQueueFromAppointment } = require('../queue/queue.service');
 
 /**
  * Creates a standard error object with an attached HTTP status code.
@@ -7,6 +8,19 @@ function createServiceError(message, statusCode = 400) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+function logBookingQueueFailure({ queueError, patientId, clinicId, slotId, appointmentId }) {
+  console.error('Queue creation after booking failed:', {
+    message: queueError?.message,
+    statusCode: queueError?.statusCode,
+    stage: queueError?.stage,
+    supabaseError: queueError?.supabaseError,
+    patientId,
+    clinicId,
+    slotId,
+    appointmentId
+  });
 }
 
 /**
@@ -20,8 +34,7 @@ function isSlotExpired(slot) {
 
 /**
  * Creates an appointment booking for a patient.
- * It updates the slot's booked_count, while queue joining remains a separate
- * patient check-in action handled through the queue module.
+ * Booking also creates the queue entry so patients do not need a second join action.
  */
 async function createAppointmentBooking({ patientId, clinicId, slotId }) {
   if (!patientId || !clinicId || !slotId) {
@@ -122,14 +135,49 @@ async function createAppointmentBooking({ patientId, clinicId, slotId }) {
     throw createServiceError('Failed to create appointment booking.', 500);
   }
 
+  let queueResult;
+
+  try {
+    queueResult = await joinQueueFromAppointment({
+      patientId,
+      appointmentId: appointment.id
+    });
+  } catch (queueError) {
+    logBookingQueueFailure({
+      queueError,
+      patientId,
+      clinicId,
+      slotId,
+      appointmentId: appointment.id
+    });
+
+    await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appointment.id);
+
+    await supabase
+      .from('appointment_slots')
+      .update({
+        booked_count: bookedCount
+      })
+      .eq('id', slotId)
+      .eq('booked_count', bookedCount + 1);
+
+    throw createServiceError(
+      'Appointment could not be completed because the queue entry failed.',
+      500
+    );
+  }
+
   return {
     appointment,
     slot: {
       ...updatedSlot,
       availability: updatedSlot.capacity - updatedSlot.booked_count
     },
-    queue: null,
-    position: null
+    queue: queueResult.queue_entry,
+    position: queueResult.position
   };
 }
 
@@ -581,5 +629,6 @@ module.exports = {
   createAppointmentBooking,
   fetchAppointmentsByPatientId,
   cancelAppointment,
-  rescheduleAppointment
+  rescheduleAppointment,
+  logBookingQueueFailure
 };

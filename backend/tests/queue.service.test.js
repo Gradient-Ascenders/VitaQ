@@ -2363,6 +2363,149 @@ describe('updateQueueEntryStatus', () => {
     jest.useRealTimers();
   });
 
+  test('cancels the linked appointment when staff cancels an appointment queue entry', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-16T08:30:00.000Z').getTime());
+
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: 'patient-1',
+      appointment_id: 'appointment-1',
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:00:00Z'
+    };
+
+    const approvedStaffProfile = {
+      user_id: 'staff-1',
+      role: 'staff',
+      clinic_id: 'clinic-1',
+    };
+
+    const updatedEntry = {
+      ...existingEntry,
+      status: 'cancelled',
+      updated_at: '2026-04-16T08:30:00.000Z'
+    };
+
+    const queueUpdateQuery = createMockQuery({
+      data: updatedEntry,
+      error: null
+    });
+
+    const appointmentFetchQuery = createMockQuery({
+      data: {
+        id: 'appointment-1',
+        status: 'booked',
+        slot_id: 'slot-1',
+        slot: {
+          id: 'slot-1',
+          booked_count: 2
+        }
+      },
+      error: null
+    });
+
+    const slotUpdateQuery = createMockQuery({
+      data: [{ id: 'slot-1' }],
+      error: null
+    });
+
+    const appointmentUpdateQuery = createMockQuery({
+      data: {
+        id: 'appointment-1',
+        status: 'cancelled',
+        cancelled_at: '2026-04-16T08:30:00.000Z',
+        cancellation_reason: 'Cancelled by clinic staff',
+        updated_at: '2026-04-16T08:30:00.000Z'
+      },
+      error: null
+    });
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
+      .mockReturnValueOnce(queueUpdateQuery)
+      .mockReturnValueOnce(appointmentFetchQuery)
+      .mockReturnValueOnce(slotUpdateQuery)
+      .mockReturnValueOnce(appointmentUpdateQuery);
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'cancelled',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(queueUpdateQuery.update).toHaveBeenCalledWith({
+      status: 'cancelled',
+      updated_at: '2026-04-16T08:30:00.000Z'
+    });
+    expect(appointmentFetchQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('appointment_slots!appointments_slot_id_fkey')
+    );
+    expect(slotUpdateQuery.update).toHaveBeenCalledWith({
+      booked_count: 1,
+      updated_at: '2026-04-16T08:30:00.000Z'
+    });
+    expect(slotUpdateQuery.eq).toHaveBeenCalledWith('id', 'slot-1');
+    expect(slotUpdateQuery.eq).toHaveBeenCalledWith('booked_count', 2);
+    expect(appointmentUpdateQuery.update).toHaveBeenCalledWith({
+      status: 'cancelled',
+      cancelled_at: '2026-04-16T08:30:00.000Z',
+      cancellation_reason: 'Cancelled by clinic staff',
+      updated_at: '2026-04-16T08:30:00.000Z'
+    });
+    expect(appointmentUpdateQuery.eq).toHaveBeenCalledWith('id', 'appointment-1');
+
+    jest.useRealTimers();
+  });
+
+  test('does not update appointments when staff cancels a walk-in queue entry', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: null,
+      appointment_id: null,
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'walk_in',
+      status: 'waiting',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:00:00Z'
+    };
+
+    const approvedStaffProfile = {
+      user_id: 'staff-1',
+      role: 'staff',
+      clinic_id: 'clinic-1',
+    };
+
+    const updatedEntry = {
+      ...existingEntry,
+      status: 'cancelled'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: updatedEntry, error: null }));
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'cancelled',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(supabase.from).not.toHaveBeenCalledWith('appointments');
+  });
+
   test('blocks staff from updating a queue entry for another clinic', async () => {
     const existingEntry = {
       id: 'queue-1',

@@ -518,6 +518,14 @@
               <div class="flex flex-col gap-3 lg:items-end">
                 <p id="analyticsSummaryText" class="text-sm text-[#8b93b8]">Analytics will load after admin access is confirmed.</p>
                 <p id="analyticsLastUpdated" class="text-sm text-[#8b93b8]">No refresh yet.</p>
+                <button
+                  id="reportExportOpenButton"
+                  type="button"
+                  class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-[#7dcfff]/30 bg-[#7dcfff]/10 px-5 py-2.5 text-sm font-semibold text-[#b8ecff] transition hover:border-[#7dcfff]/60 hover:bg-[#7dcfff]/16 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled
+                >
+                  Export report
+                </button>
               </div>
             </div>
 
@@ -682,6 +690,108 @@
             </section>
           </div>
         </section>
+      </section>
+
+      <section
+        id="reportExportModal"
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-[#16161e]/80 px-4 py-6 backdrop-blur-sm"
+        aria-labelledby="reportExportModalTitle"
+        aria-modal="true"
+        role="dialog"
+      >
+        <div class="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[1.75rem] border border-[#414868] bg-[#1f2335] shadow-2xl shadow-black/40">
+          <div class="flex items-start justify-between gap-4 border-b border-[#414868] px-6 py-5">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#7dcfff]">Report export</p>
+              <h2 id="reportExportModalTitle" class="mt-2 text-2xl font-bold text-[#e0e5ff]">
+                Download analytics report
+              </h2>
+              <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                Export the same clinic and date filters used by the analytics dashboard.
+              </p>
+            </div>
+
+            <button
+              id="reportExportCloseButton"
+              type="button"
+              class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b] text-xl leading-none text-[#c0caf5] transition hover:border-[#f7768e]/50 hover:text-[#f4b5c0]"
+              aria-label="Close export report dialog"
+            >
+              &times;
+            </button>
+          </div>
+
+          <form id="reportExportForm" class="space-y-5 px-6 py-6">
+            <div id="reportExportFeedback" class="hidden" aria-live="polite"></div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="space-y-2">
+                <label for="reportExportTypeSelect" class="text-sm font-semibold text-[#e0e5ff]">Report type</label>
+                <select
+                  id="reportExportTypeSelect"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="summary">Summary report</option>
+                  <option value="wait-times">Wait-time report</option>
+                  <option value="no-shows">No-show report</option>
+                </select>
+              </div>
+
+              <div class="space-y-2">
+                <label for="reportExportClinicSelect" class="text-sm font-semibold text-[#e0e5ff]">Clinic</label>
+                <select
+                  id="reportExportClinicSelect"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled
+                >
+                  <option value="">Loading clinics...</option>
+                </select>
+              </div>
+
+              <div class="space-y-2">
+                <label for="reportExportStartDateInput" class="text-sm font-semibold text-[#e0e5ff]">Start date</label>
+                <input
+                  id="reportExportStartDateInput"
+                  type="date"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label for="reportExportEndDateInput" class="text-sm font-semibold text-[#e0e5ff]">End date</label>
+                <input
+                  id="reportExportEndDateInput"
+                  type="date"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3 border-t border-[#414868] pt-5 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                id="reportExportCancelButton"
+                type="button"
+                class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b] px-5 py-2.5 text-sm font-semibold text-[#c0caf5] transition hover:border-[#7aa2f7]/40 hover:bg-[#2a2f45]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                data-report-export-format="csv"
+                class="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-[#7dcfff]/40 bg-[#7dcfff]/10 px-5 py-2.5 text-sm font-semibold text-[#b8ecff] transition hover:border-[#7dcfff]/70 hover:bg-[#7dcfff]/16 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Download CSV
+              </button>
+              <button
+                type="submit"
+                data-report-export-format="pdf"
+                class="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gradient-to-r from-[#bb9af7] to-[#7aa2f7] px-5 py-2.5 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Download PDF
+              </button>
+            </div>
+          </form>
+        </div>
       </section>
     </main>
 

@@ -10,6 +10,12 @@ const ADMIN_PENDING_REQUESTS_ENDPOINT = '/api/admin/staff-requests/pending';
 const ADMIN_CLINICS_ENDPOINT = '/api/admin/clinics';
 const ADMIN_WAIT_TIME_ANALYTICS_ENDPOINT = '/api/admin/analytics/wait-times';
 const ADMIN_NO_SHOW_ANALYTICS_ENDPOINT = '/api/admin/analytics/no-shows';
+const ADMIN_REPORT_EXPORT_ENDPOINTS = {
+  csv: '/api/admin/reports/export/csv',
+  pdf: '/api/admin/reports/export/pdf'
+};
+const REPORT_EXPORT_TYPES = ['summary', 'wait-times', 'no-shows'];
+const REPORT_EXPORT_FORMATS = ['csv', 'pdf'];
 const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
   CLINIC_MANAGEMENT: 'clinic-management',
@@ -68,7 +74,16 @@ const adminState = {
   isAnalyticsLoading: false,
   analyticsError: null,
   analyticsLoadedAt: null,
-  analyticsRequestToken: 0
+  analyticsRequestToken: 0,
+  isReportExportModalOpen: false,
+  isReportExportLoading: false,
+  reportExportFeedback: null,
+  reportExportFilters: {
+    reportType: 'summary',
+    clinicId: '',
+    startDate: '',
+    endDate: ''
+  }
 };
 const ADMIN_TAB_ACTIVE_CLASSES = [
   'border-[#7aa2f7]/30',
@@ -385,6 +400,62 @@ function buildAnalyticsEndpoint(baseEndpoint, filters = {}, options = {}) {
   const queryString = params.toString();
 
   return queryString ? `${baseEndpoint}?${queryString}` : baseEndpoint;
+}
+
+function buildReportExportEndpoint(format, filters = {}) {
+  const endpoint = ADMIN_REPORT_EXPORT_ENDPOINTS[format];
+  const params = new URLSearchParams();
+
+  params.set('reportType', filters.reportType || 'summary');
+
+  if (filters.clinicId) {
+    params.set('clinicId', filters.clinicId);
+  }
+
+  if (filters.startDate) {
+    params.set('startDate', filters.startDate);
+  }
+
+  if (filters.endDate) {
+    params.set('endDate', filters.endDate);
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `${endpoint}?${queryString}` : endpoint;
+}
+
+function parseDownloadFilename(response, fallbackFilename) {
+  const contentDisposition = response.headers.get('Content-Disposition') || '';
+  const utfFilenameMatch = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition);
+  const quotedFilenameMatch = /filename="([^"]+)"/i.exec(contentDisposition);
+  const plainFilenameMatch = /filename=([^;]+)/i.exec(contentDisposition);
+
+  if (utfFilenameMatch?.[1]) {
+    return decodeURIComponent(utfFilenameMatch[1]);
+  }
+
+  if (quotedFilenameMatch?.[1]) {
+    return quotedFilenameMatch[1];
+  }
+
+  if (plainFilenameMatch?.[1]) {
+    return plainFilenameMatch[1].trim();
+  }
+
+  return fallbackFilename;
+}
+
+function triggerReportDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
 }
 
 function getAnalyticsCardQueueCount(waitTimeAnalytics = {}) {
@@ -1401,6 +1472,271 @@ function refreshAnalyticsDashboard() {
   renderNoShowClinicRows();
   renderNoShowTrendBars();
   renderAnalyticsEmptyState();
+  refreshReportExport();
+}
+
+function getReportExportElements() {
+  return {
+    modal: document.getElementById('reportExportModal'),
+    form: document.getElementById('reportExportForm'),
+    openButton: document.getElementById('reportExportOpenButton'),
+    closeButton: document.getElementById('reportExportCloseButton'),
+    cancelButton: document.getElementById('reportExportCancelButton'),
+    feedback: document.getElementById('reportExportFeedback'),
+    typeSelect: document.getElementById('reportExportTypeSelect'),
+    clinicSelect: document.getElementById('reportExportClinicSelect'),
+    startDateInput: document.getElementById('reportExportStartDateInput'),
+    endDateInput: document.getElementById('reportExportEndDateInput'),
+    submitButtons: Array.from(document.querySelectorAll('[data-report-export-format]'))
+  };
+}
+
+function renderReportExportFeedback() {
+  const { feedback } = getReportExportElements();
+
+  if (!feedback) {
+    return;
+  }
+
+  if (!adminState.reportExportFeedback) {
+    feedback.className = 'hidden';
+    feedback.textContent = '';
+    return;
+  }
+
+  const feedbackClasses = {
+    loading: 'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]',
+    success: 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]',
+    error: 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
+  };
+
+  feedback.className = `rounded-2xl border px-4 py-3 text-sm font-medium ${
+    feedbackClasses[adminState.reportExportFeedback.type] || feedbackClasses.error
+  }`;
+  feedback.textContent = adminState.reportExportFeedback.message;
+}
+
+function renderReportExportControls() {
+  const {
+    modal,
+    openButton,
+    closeButton,
+    cancelButton,
+    typeSelect,
+    clinicSelect,
+    startDateInput,
+    endDateInput,
+    submitButtons
+  } = getReportExportElements();
+  const filters = adminState.reportExportFilters;
+  const isBusy = adminState.isReportExportLoading;
+
+  if (openButton) {
+    openButton.disabled = !adminState.accessToken || isBusy;
+  }
+
+  if (modal) {
+    modal.classList.toggle('hidden', !adminState.isReportExportModalOpen);
+    modal.classList.toggle('flex', adminState.isReportExportModalOpen);
+  }
+
+  if (closeButton) {
+    closeButton.disabled = isBusy;
+    closeButton.classList.toggle('opacity-60', isBusy);
+    closeButton.classList.toggle('cursor-not-allowed', isBusy);
+  }
+
+  if (cancelButton) {
+    cancelButton.disabled = isBusy;
+    cancelButton.classList.toggle('opacity-60', isBusy);
+    cancelButton.classList.toggle('cursor-not-allowed', isBusy);
+  }
+
+  if (typeSelect) {
+    typeSelect.disabled = isBusy;
+    typeSelect.value = REPORT_EXPORT_TYPES.includes(filters.reportType)
+      ? filters.reportType
+      : 'summary';
+  }
+
+  if (clinicSelect) {
+    const selectedClinicId = filters.clinicId;
+
+    clinicSelect.disabled = isBusy || adminState.isClinicListLoading;
+    clinicSelect.innerHTML = '';
+
+    const allClinicsOption = document.createElement('option');
+    allClinicsOption.value = '';
+    allClinicsOption.textContent = adminState.isClinicListLoading ? 'Loading clinics...' : 'All clinics';
+    clinicSelect.appendChild(allClinicsOption);
+
+    adminState.clinics.forEach((clinic) => {
+      const option = document.createElement('option');
+      option.value = clinic.id;
+      option.textContent = buildClinicOptionLabel(clinic);
+      clinicSelect.appendChild(option);
+    });
+
+    clinicSelect.value = adminState.clinics.some((clinic) => clinic.id === selectedClinicId)
+      ? selectedClinicId
+      : '';
+  }
+
+  if (startDateInput) {
+    startDateInput.disabled = isBusy;
+    startDateInput.value = filters.startDate;
+  }
+
+  if (endDateInput) {
+    endDateInput.disabled = isBusy;
+    endDateInput.value = filters.endDate;
+  }
+
+  submitButtons.forEach((button) => {
+    const format = button.dataset.reportExportFormat;
+    const formatLabel = format === 'pdf' ? 'PDF' : 'CSV';
+    const isActiveFormat = isBusy && filters.format === format;
+
+    button.disabled = isBusy;
+    button.textContent = isActiveFormat ? `Preparing ${formatLabel}...` : `Download ${formatLabel}`;
+  });
+
+  renderReportExportFeedback();
+}
+
+function refreshReportExport() {
+  renderReportExportControls();
+}
+
+function syncReportExportFiltersFromAnalytics() {
+  adminState.reportExportFilters = {
+    ...adminState.reportExportFilters,
+    clinicId: adminState.analyticsFilters.clinicId,
+    startDate: adminState.analyticsFilters.startDate,
+    endDate: adminState.analyticsFilters.endDate
+  };
+}
+
+function openReportExportModal() {
+  syncReportExportFiltersFromAnalytics();
+  adminState.reportExportFeedback = null;
+  adminState.isReportExportModalOpen = true;
+  refreshReportExport();
+
+  const { typeSelect } = getReportExportElements();
+
+  if (typeSelect) {
+    typeSelect.focus();
+  }
+}
+
+function closeReportExportModal() {
+  if (adminState.isReportExportLoading) {
+    return;
+  }
+
+  adminState.isReportExportModalOpen = false;
+  adminState.reportExportFeedback = null;
+  refreshReportExport();
+}
+
+function getReportExportFiltersFromForm(formatOverride = '') {
+  const {
+    typeSelect,
+    clinicSelect,
+    startDateInput,
+    endDateInput
+  } = getReportExportElements();
+  const selectedFormat = formatOverride || 'csv';
+
+  return {
+    reportType: typeSelect?.value || 'summary',
+    format: selectedFormat,
+    clinicId: clinicSelect?.value || '',
+    startDate: startDateInput?.value || '',
+    endDate: endDateInput?.value || ''
+  };
+}
+
+function validateReportExportFilters(filters) {
+  validateAnalyticsFilters(filters);
+
+  if (!REPORT_EXPORT_TYPES.includes(filters.reportType)) {
+    throw new Error('Choose a valid report type.');
+  }
+
+  if (!REPORT_EXPORT_FORMATS.includes(filters.format)) {
+    throw new Error('Choose CSV or PDF export format.');
+  }
+}
+
+async function handleReportExportSubmit(event) {
+  event.preventDefault();
+
+  if (!adminState.accessToken || adminState.isReportExportLoading) {
+    return;
+  }
+
+  const selectedButtonFormat = event.submitter?.dataset?.reportExportFormat || '';
+  const filters = getReportExportFiltersFromForm(selectedButtonFormat);
+
+  try {
+    validateReportExportFilters(filters);
+  } catch (error) {
+    adminState.reportExportFilters = { ...filters };
+    adminState.reportExportFeedback = {
+      type: 'error',
+      message: error.message || 'Check the selected report filters.'
+    };
+    refreshReportExport();
+    return;
+  }
+
+  adminState.reportExportFilters = { ...filters };
+  adminState.isReportExportLoading = true;
+  adminState.reportExportFeedback = {
+    type: 'loading',
+    message: `Preparing ${filters.format.toUpperCase()} report...`
+  };
+  refreshReportExport();
+
+  try {
+    const response = await fetch(buildReportExportEndpoint(filters.format, filters), {
+      headers: createAuthHeaders(),
+      cache: 'no-store'
+    });
+
+    if (redirectForAdminApiResponseStatus(response.status)) {
+      return;
+    }
+
+    if (!response.ok) {
+      const payload = await readJsonSafely(response);
+      throw new Error(payload.message || 'Failed to export report.');
+    }
+
+    const blob = await response.blob();
+    const filename = parseDownloadFilename(
+      response,
+      `vitaq-${filters.reportType}-report.${filters.format}`
+    );
+
+    triggerReportDownload(blob, filename);
+
+    adminState.reportExportFeedback = {
+      type: 'success',
+      message: `${filters.format.toUpperCase()} report downloaded.`
+    };
+  } catch (error) {
+    console.error('Failed to export admin report:', error);
+    adminState.reportExportFeedback = {
+      type: 'error',
+      message: error.message || 'We could not export this report right now.'
+    };
+  } finally {
+    adminState.isReportExportLoading = false;
+    refreshReportExport();
+  }
 }
 
 async function loadPendingStaffRequests() {
@@ -1854,10 +2190,47 @@ function initialiseClinicManagementActions() {
 
 function initialiseAnalyticsActions() {
   const { form } = getAnalyticsElements();
+  const {
+    modal,
+    form: reportExportForm,
+    openButton,
+    closeButton,
+    cancelButton
+  } = getReportExportElements();
 
   if (form) {
     form.addEventListener('submit', handleAnalyticsFilterSubmit);
   }
+
+  if (openButton) {
+    openButton.addEventListener('click', openReportExportModal);
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener('click', closeReportExportModal);
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener('click', closeReportExportModal);
+  }
+
+  if (modal) {
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) {
+        closeReportExportModal();
+      }
+    });
+  }
+
+  if (reportExportForm) {
+    reportExportForm.addEventListener('submit', handleReportExportSubmit);
+  }
+
+  window.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && adminState.isReportExportModalOpen) {
+      closeReportExportModal();
+    }
+  });
 }
 
 function initialiseAdminTabNavigation() {

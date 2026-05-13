@@ -1,4 +1,7 @@
-const { createStaffRequest } = require('./staff.service');
+const {
+  createStaffRequest,
+  getLatestStaffRequestForUser
+} = require('./staff.service');
 
 /**
  * Handles POST /api/staff/requests.
@@ -39,6 +42,45 @@ async function submitStaffRequest(req, res) {
   }
 }
 
+/**
+ * Handles GET /api/staff/request-status.
+ *
+ * A logged-in user can use this to check whether they have a pending,
+ * approved, rejected, or missing staff registration request.
+ */
+async function getStaffRequestStatus(req, res) {
+  try {
+    const userId = req.user.id;
+    const staffRequest = await getLatestStaffRequestForUser(userId);
+
+    if (!staffRequest) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          hasStaffRequest: false,
+          status: 'none',
+          request: null
+        }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        hasStaffRequest: true,
+        status: staffRequest.status,
+        request: staffRequest
+      }
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Failed to load staff request status.'
+    });
+  }
+}
+
 module.exports = {
-  submitStaffRequest
+  submitStaffRequest,
+  getStaffRequestStatus
 };

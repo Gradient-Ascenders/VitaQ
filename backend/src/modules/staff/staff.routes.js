@@ -1,5 +1,8 @@
 const express = require('express');
-const { submitStaffRequest } = require('./staff.controller');
+const {
+  submitStaffRequest,
+  getStaffRequestStatus
+} = require('./staff.controller');
 const {
   createSlotTemplate,
   deleteSlotTemplate,
@@ -14,6 +17,10 @@ const router = express.Router();
 // POST /api/staff/requests
 // Creates a pending staff registration request for the logged-in user.
 router.post('/requests', authMiddleware, submitStaffRequest);
+
+// GET /api/staff/request-status
+// Returns the logged-in user's latest staff registration request status.
+router.get('/request-status', authMiddleware, getStaffRequestStatus);
 
 // GET /api/staff/slot-templates
 // Returns recurring slot templates for the logged-in staff member's clinic.

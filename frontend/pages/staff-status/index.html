@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Status | VitaQ</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+  <link rel="stylesheet" href="/assets/css/output.css" />
+</head>
+<body class="min-h-screen bg-[#1a1b26] text-[#c0caf5]">
+  <main class="relative flex min-h-screen items-center justify-center px-6 py-12">
+    <section
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(122,162,247,0.12),transparent_32%),radial-gradient(circle_at_bottom,rgba(187,154,247,0.14),transparent_30%)]"
+    ></section>
+
+    <section class="relative z-10 w-full max-w-xl rounded-[2rem] border border-[#414868] bg-[#1f2335]/90 p-8 text-center shadow-2xl shadow-black/20 backdrop-blur-xl">
+      <header>
+        <a
+          href="/"
+          aria-label="Go to home page"
+          title="Go to home page"
+          class="mx-auto mb-6 block w-fit"
+        >
+          <img
+            src="/assets/images/vitaq-logo.png"
+            alt="VitaQ logo"
+            class="h-16 w-auto"
+          />
+        </a>
+
+        <p
+          id="statusBadge"
+          class="mx-auto mb-5 inline-flex rounded-full border border-[#7aa2f7]/30 bg-[#7aa2f7]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#7dcfff]"
+        >
+          Checking status
+        </p>
+
+        <h1 id="statusHeading" class="text-4xl font-bold tracking-tight text-[#e0e5ff]">
+          Checking your staff request...
+        </h1>
+
+        <p id="statusDescription" class="mt-4 text-base leading-7 text-[#a9b1d6]">
+          Please wait while VitaQ checks your staff registration status.
+        </p>
+      </header>
+
+      <section
+        id="requestDetails"
+        class="mt-8 hidden rounded-3xl border border-[#414868] bg-[#24283b]/80 p-5 text-left"
+      >
+        <h2 class="text-base font-semibold text-[#e0e5ff]">
+          Request details
+        </h2>
+
+        <dl class="mt-4 grid gap-3 text-sm">
+          <section class="flex justify-between gap-4">
+            <dt class="text-[#8b93b8]">Full name</dt>
+            <dd id="requestFullName" class="text-right font-medium text-[#c0caf5]">-</dd>
+          </section>
+
+          <section class="flex justify-between gap-4">
+            <dt class="text-[#8b93b8]">Staff ID</dt>
+            <dd id="requestStaffId" class="text-right font-medium text-[#c0caf5]">-</dd>
+          </section>
+
+          <section class="flex justify-between gap-4">
+            <dt class="text-[#8b93b8]">Submitted</dt>
+            <dd id="requestCreatedAt" class="text-right font-medium text-[#c0caf5]">-</dd>
+          </section>
+        </dl>
+      </section>
+
+      <section class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <a
+          id="staffPageButton"
+          href="/staff"
+          class="hidden rounded-2xl bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] px-5 py-3 text-sm font-semibold text-[#1a1b26] transition hover:brightness-110"
+        >
+          Go to staff page
+        </a>
+
+        <a
+          id="patientRegisterButton"
+          href="/register"
+          class="hidden rounded-2xl border border-[#414868] bg-[#24283b]/90 px-5 py-3 text-sm font-semibold text-[#c0caf5] transition hover:border-[#7aa2f7] hover:bg-[#2a2f45]"
+        >
+          Go to dashboard
+        </a>
+
+        <button
+          id="logoutButton"
+          type="button"
+          class="rounded-2xl border border-[#f7768e]/30 bg-[#f7768e]/10 px-5 py-3 text-sm font-semibold text-[#f2a7b7] transition hover:bg-[#f7768e]/16"
+        >
+          Logout
+        </button>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/lib/supabaseClient.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/features/staff-status.js"></script>
+</body>
+</html>

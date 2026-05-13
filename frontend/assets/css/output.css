@@ -470,6 +470,9 @@
   .table {
     display: table;
   }
+  .h-3 {
+    height: calc(var(--spacing) * 3);
+  }
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
@@ -550,6 +553,9 @@
   }
   .min-h-\[6\.75rem\] {
     min-height: 6.75rem;
+  }
+  .min-h-\[46px\] {
+    min-height: 46px;
   }
   .min-h-\[560px\] {
     min-height: 560px;
@@ -962,6 +968,9 @@
   .bg-\[\#1f2335\]\/55 {
     background-color: color-mix(in oklab, #1f2335 55%, transparent);
   }
+  .bg-\[\#1f2335\]\/76 {
+    background-color: color-mix(in oklab, #1f2335 76%, transparent);
+  }
   .bg-\[\#1f2335\]\/80 {
     background-color: color-mix(in oklab, #1f2335 80%, transparent);
   }
@@ -1016,6 +1025,9 @@
   .bg-\[\#241c2d\] {
     background-color: #241c2d;
   }
+  .bg-\[\#16161e\] {
+    background-color: #16161e;
+  }
   .bg-\[\#24283b\] {
     background-color: #24283b;
   }
@@ -1027,6 +1039,9 @@
   }
   .bg-\[\#24283b\]\/75 {
     background-color: color-mix(in oklab, #24283b 75%, transparent);
+  }
+  .bg-\[\#24283b\]\/78 {
+    background-color: color-mix(in oklab, #24283b 78%, transparent);
   }
   .bg-\[\#24283b\]\/80 {
     background-color: color-mix(in oklab, #24283b 80%, transparent);
@@ -1113,6 +1128,9 @@
   }
   .bg-\[linear-gradient\(180deg\,rgba\(36\,40\,59\,0\.85\)\,rgba\(31\,35\,53\,0\.9\)\)\] {
     background-image: linear-gradient(180deg,rgba(36,40,59,0.85),rgba(31,35,53,0.9));
+  }
+  .bg-\[linear-gradient\(180deg\,rgba\(36\,40\,59\,0\.86\)\,rgba\(31\,35\,53\,0\.92\)\)\] {
+    background-image: linear-gradient(180deg,rgba(36,40,59,0.86),rgba(31,35,53,0.92));
   }
   .bg-\[radial-gradient\(circle_at_top\,rgba\(122\,162\,247\,0\.10\)\,transparent_32\%\)\,radial-gradient\(circle_at_bottom\,rgba\(187\,154\,247\,0\.12\)\,transparent_30\%\)\] {
     background-image: radial-gradient(circle at top,rgba(122,162,247,0.10),transparent 32%),radial-gradient(circle at bottom,rgba(187,154,247,0.12),transparent 30%);
@@ -1966,6 +1984,11 @@
       grid-template-columns: 0.7fr 1.2fr 1fr 1.1fr;
     }
   }
+  .md\:grid-cols-\[1\.4fr_0\.8fr_0\.8fr_0\.8fr\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
+    }
+  }
   .md\:grid-cols-\[1\.25fr_1\.2fr_0\.9fr_0\.9fr_0\.9fr_1\.15fr\] {
     @media (width >= 48rem) {
       grid-template-columns: 1.25fr 1.2fr 0.9fr 0.9fr 0.9fr 1.15fr;
@@ -1989,6 +2012,11 @@
   .md\:justify-between {
     @media (width >= 48rem) {
       justify-content: space-between;
+    }
+  }
+  .md\:gap-4 {
+    @media (width >= 48rem) {
+      gap: calc(var(--spacing) * 4);
     }
   }
   .md\:gap-5 {
@@ -2254,6 +2282,16 @@
       grid-template-columns: 0.92fr 1.08fr;
     }
   }
+  .xl\:grid-cols-\[1\.4fr_1fr_1fr_1fr_auto\] {
+    @media (width >= 80rem) {
+      grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+    }
+  }
+  .xl\:grid-cols-\[1\.15fr_0\.85fr\] {
+    @media (width >= 80rem) {
+      grid-template-columns: 1.15fr 0.85fr;
+    }
+  }
   .xl\:flex-row {
     @media (width >= 80rem) {
       flex-direction: row;
@@ -2262,6 +2300,11 @@
   .xl\:items-center {
     @media (width >= 80rem) {
       align-items: center;
+    }
+  }
+  .xl\:items-end {
+    @media (width >= 80rem) {
+      align-items: flex-end;
     }
   }
   .xl\:items-start {

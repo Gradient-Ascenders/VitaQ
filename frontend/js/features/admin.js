@@ -8,9 +8,12 @@ const STAFF_REQUEST_STATUSES = {
 
 const ADMIN_PENDING_REQUESTS_ENDPOINT = '/api/admin/staff-requests/pending';
 const ADMIN_CLINICS_ENDPOINT = '/api/admin/clinics';
+const ADMIN_WAIT_TIME_ANALYTICS_ENDPOINT = '/api/admin/analytics/wait-times';
+const ADMIN_NO_SHOW_ANALYTICS_ENDPOINT = '/api/admin/analytics/no-shows';
 const ADMIN_TABS = {
   DASHBOARD: 'dashboard',
-  CLINIC_MANAGEMENT: 'clinic-management'
+  CLINIC_MANAGEMENT: 'clinic-management',
+  ANALYTICS_REPORTS: 'analytics-reports'
 };
 const DEFAULT_ADMIN_TAB = ADMIN_TABS.DASHBOARD;
 const CLINIC_FORM_FIELD_IDS = {
@@ -53,7 +56,19 @@ const adminState = {
   clinicDetailError: null,
   isClinicSaveLoading: false,
   clinicDetailRequestToken: 0,
-  activeAdminTab: DEFAULT_ADMIN_TAB
+  activeAdminTab: DEFAULT_ADMIN_TAB,
+  analyticsFilters: {
+    clinicId: '',
+    startDate: '',
+    endDate: '',
+    hour: ''
+  },
+  waitTimeAnalytics: null,
+  noShowAnalytics: null,
+  isAnalyticsLoading: false,
+  analyticsError: null,
+  analyticsLoadedAt: null,
+  analyticsRequestToken: 0
 };
 const ADMIN_TAB_ACTIVE_CLASSES = [
   'border-[#7aa2f7]/30',
@@ -155,6 +170,52 @@ function formatDateTime(dateString) {
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+function formatAnalyticsRefreshTime(date) {
+  if (!date) {
+    return 'No refresh yet.';
+  }
+
+  return `Last refreshed ${date.toLocaleString('en-ZA', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}`;
+}
+
+function formatAnalyticsMinutes(value) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return '0 min';
+  }
+
+  return `${Math.round(numberValue)} min`;
+}
+
+function formatAnalyticsNumber(value) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return '0';
+  }
+
+  return new Intl.NumberFormat('en-ZA', {
+    maximumFractionDigits: 0
+  }).format(numberValue);
+}
+
+function formatAnalyticsHour(hour) {
+  const numberValue = Number(hour);
+
+  if (!Number.isInteger(numberValue) || numberValue < 0 || numberValue > 23) {
+    return 'Unknown hour';
+  }
+
+  return `${String(numberValue).padStart(2, '0')}:00`;
 }
 
 function formatStatusLabel(status) {
@@ -289,6 +350,41 @@ function buildAdminClinicEndpoint(clinicId = '') {
   }
 
   return `${ADMIN_CLINICS_ENDPOINT}/${encodeURIComponent(clinicId)}`;
+}
+
+function buildAnalyticsEndpoint(baseEndpoint, filters = {}, options = {}) {
+  const params = new URLSearchParams();
+  const includeHour = options.includeHour === true;
+
+  if (filters.clinicId) {
+    params.set('clinicId', filters.clinicId);
+  }
+
+  if (filters.startDate) {
+    params.set('startDate', filters.startDate);
+  }
+
+  if (filters.endDate) {
+    params.set('endDate', filters.endDate);
+  }
+
+  if (includeHour && filters.hour !== '') {
+    params.set('hour', filters.hour);
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `${baseEndpoint}?${queryString}` : baseEndpoint;
+}
+
+function getAnalyticsCardQueueCount(waitTimeAnalytics = {}) {
+  return (
+    waitTimeAnalytics.activeQueueCount ??
+    waitTimeAnalytics.totalActiveQueues ??
+    waitTimeAnalytics.activeQueues ??
+    waitTimeAnalytics.completedQueueCount ??
+    0
+  );
 }
 
 function cleanClinicFieldValue(value) {
@@ -895,6 +991,276 @@ function refreshClinicManagement() {
   renderClinicFormState();
 }
 
+function getAnalyticsElements() {
+  return {
+    form: document.getElementById('analyticsFilterForm'),
+    clinicSelect: document.getElementById('analyticsClinicSelect'),
+    startDateInput: document.getElementById('analyticsStartDateInput'),
+    endDateInput: document.getElementById('analyticsEndDateInput'),
+    hourSelect: document.getElementById('analyticsHourSelect'),
+    refreshButton: document.getElementById('analyticsRefreshButton'),
+    feedback: document.getElementById('analyticsFeedback'),
+    summaryText: document.getElementById('analyticsSummaryText'),
+    lastUpdated: document.getElementById('analyticsLastUpdated'),
+    averageWait: document.getElementById('analyticsAverageWait'),
+    activeQueues: document.getElementById('analyticsActiveQueues'),
+    activeQueuesMeta: document.getElementById('analyticsActiveQueuesMeta'),
+    averageConsultation: document.getElementById('analyticsAverageConsultation'),
+    clinicTableBody: document.getElementById('analyticsClinicTableBody'),
+    hourBars: document.getElementById('analyticsHourBars'),
+    emptyState: document.getElementById('analyticsEmptyState')
+  };
+}
+
+function renderAnalyticsFeedback() {
+  const { feedback } = getAnalyticsElements();
+
+  if (!feedback) {
+    return;
+  }
+
+  if (!adminState.analyticsError && !adminState.isAnalyticsLoading) {
+    feedback.className = 'mt-8 hidden';
+    feedback.textContent = '';
+    return;
+  }
+
+  const isError = Boolean(adminState.analyticsError);
+  feedback.className = `mt-8 rounded-2xl border px-4 py-3 text-sm font-medium ${
+    isError
+      ? 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
+      : 'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]'
+  }`;
+  feedback.textContent = isError ? adminState.analyticsError : 'Loading analytics...';
+}
+
+function renderAnalyticsFilters() {
+  const {
+    clinicSelect,
+    startDateInput,
+    endDateInput,
+    hourSelect,
+    refreshButton
+  } = getAnalyticsElements();
+
+  if (clinicSelect) {
+    const selectedClinicId = adminState.analyticsFilters.clinicId;
+    const isDisabled = adminState.isClinicListLoading || adminState.isAnalyticsLoading;
+
+    clinicSelect.disabled = isDisabled;
+    clinicSelect.innerHTML = '';
+
+    const allClinicsOption = document.createElement('option');
+    allClinicsOption.value = '';
+    allClinicsOption.textContent = adminState.isClinicListLoading ? 'Loading clinics...' : 'All clinics';
+    clinicSelect.appendChild(allClinicsOption);
+
+    adminState.clinics.forEach((clinic) => {
+      const option = document.createElement('option');
+      option.value = clinic.id;
+      option.textContent = buildClinicOptionLabel(clinic);
+      clinicSelect.appendChild(option);
+    });
+
+    clinicSelect.value = adminState.clinics.some((clinic) => clinic.id === selectedClinicId)
+      ? selectedClinicId
+      : '';
+  }
+
+  if (startDateInput) {
+    startDateInput.disabled = adminState.isAnalyticsLoading;
+    startDateInput.value = adminState.analyticsFilters.startDate;
+  }
+
+  if (endDateInput) {
+    endDateInput.disabled = adminState.isAnalyticsLoading;
+    endDateInput.value = adminState.analyticsFilters.endDate;
+  }
+
+  if (hourSelect) {
+    const selectedHour = adminState.analyticsFilters.hour;
+
+    hourSelect.disabled = adminState.isAnalyticsLoading;
+    hourSelect.innerHTML = '<option value="">All hours</option>';
+
+    for (let hour = 0; hour < 24; hour += 1) {
+      const option = document.createElement('option');
+      option.value = String(hour);
+      option.textContent = formatAnalyticsHour(hour);
+      hourSelect.appendChild(option);
+    }
+
+    hourSelect.value = selectedHour;
+  }
+
+  if (refreshButton) {
+    refreshButton.disabled = adminState.isAnalyticsLoading;
+    refreshButton.textContent = adminState.isAnalyticsLoading ? 'Loading...' : 'Apply filters';
+  }
+}
+
+function renderAnalyticsSummary() {
+  const {
+    summaryText,
+    lastUpdated,
+    averageWait,
+    activeQueues,
+    activeQueuesMeta,
+    averageConsultation
+  } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const noShowAnalytics = adminState.noShowAnalytics || {};
+  const completedQueueCount = Number(waitTimeAnalytics.completedQueueCount || 0);
+  const activeQueueCount = getAnalyticsCardQueueCount(waitTimeAnalytics);
+
+  if (summaryText) {
+    if (adminState.isAnalyticsLoading) {
+      summaryText.textContent = 'Loading analytics...';
+    } else if (adminState.analyticsError) {
+      summaryText.textContent = 'Unable to load analytics';
+    } else {
+      const noShowRate = Number(noShowAnalytics.noShowRate || 0);
+      summaryText.textContent = `${formatAnalyticsNumber(completedQueueCount)} completed queue record${completedQueueCount === 1 ? '' : 's'} · ${noShowRate.toFixed(1)}% no-show rate`;
+    }
+  }
+
+  if (lastUpdated) {
+    lastUpdated.textContent = formatAnalyticsRefreshTime(adminState.analyticsLoadedAt);
+  }
+
+  if (averageWait) {
+    averageWait.textContent = formatAnalyticsMinutes(waitTimeAnalytics.averageWaitMinutes);
+  }
+
+  if (activeQueues) {
+    activeQueues.textContent = formatAnalyticsNumber(activeQueueCount);
+  }
+
+  if (activeQueuesMeta) {
+    activeQueuesMeta.textContent =
+      waitTimeAnalytics.activeQueueCount === undefined &&
+      waitTimeAnalytics.totalActiveQueues === undefined &&
+      waitTimeAnalytics.activeQueues === undefined
+        ? 'Filtered queue total from current analytics data.'
+        : 'Active queue entries matching the selected filters.';
+  }
+
+  if (averageConsultation) {
+    averageConsultation.textContent = formatAnalyticsMinutes(
+      waitTimeAnalytics.averageConsultationMinutes
+    );
+  }
+}
+
+function renderAnalyticsClinicRows() {
+  const { clinicTableBody } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const rows = Array.isArray(waitTimeAnalytics.byClinic) ? waitTimeAnalytics.byClinic : [];
+
+  if (!clinicTableBody) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    clinicTableBody.innerHTML = `
+      <article class="px-5 py-6 text-sm text-[#a9b1d6]">Loading clinic analytics...</article>
+    `;
+    return;
+  }
+
+  if (rows.length === 0) {
+    clinicTableBody.innerHTML = `
+      <article class="px-5 py-6 text-sm text-[#a9b1d6]">No clinic rows match the selected filters.</article>
+    `;
+    return;
+  }
+
+  clinicTableBody.innerHTML = rows.map((row) => `
+    <article class="grid gap-4 px-5 py-5 md:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] md:items-center">
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Clinic</p>
+        <p class="text-sm font-semibold text-[#e0e5ff]">${escapeHtml(row.clinicName || 'Unknown clinic')}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Wait</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsMinutes(row.averageWaitMinutes)}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Consultation</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsMinutes(row.averageConsultationMinutes)}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Queues</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsNumber(row.completedQueueCount)}</p>
+      </section>
+    </article>
+  `).join('');
+}
+
+function renderAnalyticsHourBars() {
+  const { hourBars } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const rows = Array.isArray(waitTimeAnalytics.byHour) ? waitTimeAnalytics.byHour : [];
+  const maxWaitMinutes = rows.reduce((maxValue, row) => {
+    const waitMinutes = Number(row.averageWaitMinutes || 0);
+    return waitMinutes > maxValue ? waitMinutes : maxValue;
+  }, 0);
+
+  if (!hourBars) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    hourBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">Loading hourly analytics...</p>';
+    return;
+  }
+
+  if (rows.length === 0) {
+    hourBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">No hourly rows match the selected filters.</p>';
+    return;
+  }
+
+  hourBars.innerHTML = rows.map((row) => {
+    const waitMinutes = Number(row.averageWaitMinutes || 0);
+    const barWidth = maxWaitMinutes > 0 ? Math.max((waitMinutes / maxWaitMinutes) * 100, 8) : 8;
+
+    return `
+      <div class="space-y-2">
+        <div class="flex items-center justify-between gap-4 text-sm">
+          <span class="font-semibold text-[#e0e5ff]">${formatAnalyticsHour(row.hour)}</span>
+          <span class="text-[#a9b1d6]">${formatAnalyticsMinutes(waitMinutes)}</span>
+        </div>
+        <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7]" style="width: ${barWidth}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAnalyticsEmptyState() {
+  const { emptyState } = getAnalyticsElements();
+  const completedQueueCount = Number(adminState.waitTimeAnalytics?.completedQueueCount || 0);
+  const shouldShowEmpty =
+    !adminState.isAnalyticsLoading &&
+    !adminState.analyticsError &&
+    adminState.waitTimeAnalytics &&
+    completedQueueCount === 0;
+
+  if (emptyState) {
+    emptyState.classList.toggle('hidden', !shouldShowEmpty);
+  }
+}
+
+function refreshAnalyticsDashboard() {
+  renderAnalyticsFeedback();
+  renderAnalyticsFilters();
+  renderAnalyticsSummary();
+  renderAnalyticsClinicRows();
+  renderAnalyticsHourBars();
+  renderAnalyticsEmptyState();
+}
+
 async function loadPendingStaffRequests() {
   adminState.isLoading = true;
   adminState.loadError = null;
@@ -1059,6 +1425,7 @@ async function loadAdminClinics() {
   adminState.clinicListError = null;
   adminState.clinicFeedback = null;
   refreshClinicManagement();
+  refreshAnalyticsDashboard();
 
   try {
     const response = await fetch(ADMIN_CLINICS_ENDPOINT, {
@@ -1109,6 +1476,111 @@ async function loadAdminClinics() {
   } finally {
     adminState.isClinicListLoading = false;
     refreshClinicManagement();
+    refreshAnalyticsDashboard();
+  }
+}
+
+function getAnalyticsFiltersFromForm() {
+  const {
+    clinicSelect,
+    startDateInput,
+    endDateInput,
+    hourSelect
+  } = getAnalyticsElements();
+
+  return {
+    clinicId: clinicSelect?.value || '',
+    startDate: startDateInput?.value || '',
+    endDate: endDateInput?.value || '',
+    hour: hourSelect?.value || ''
+  };
+}
+
+function validateAnalyticsFilters(filters) {
+  if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+    throw new Error('Start date cannot be after end date.');
+  }
+}
+
+async function loadAdminAnalytics(filters = adminState.analyticsFilters) {
+  if (!adminState.accessToken) {
+    return;
+  }
+
+  const requestToken = adminState.analyticsRequestToken + 1;
+
+  adminState.analyticsRequestToken = requestToken;
+  adminState.analyticsFilters = { ...filters };
+  adminState.isAnalyticsLoading = true;
+  adminState.analyticsError = null;
+  refreshAnalyticsDashboard();
+
+  try {
+    const [waitTimeResponse, noShowResponse] = await Promise.all([
+      fetch(buildAnalyticsEndpoint(ADMIN_WAIT_TIME_ANALYTICS_ENDPOINT, filters, { includeHour: true }), {
+        headers: createAuthHeaders(),
+        cache: 'no-store'
+      }),
+      fetch(buildAnalyticsEndpoint(ADMIN_NO_SHOW_ANALYTICS_ENDPOINT, filters), {
+        headers: createAuthHeaders(),
+        cache: 'no-store'
+      })
+    ]);
+    const [waitTimePayload, noShowPayload] = await Promise.all([
+      readJsonSafely(waitTimeResponse),
+      readJsonSafely(noShowResponse)
+    ]);
+
+    if (
+      redirectForAdminApiResponseStatus(waitTimeResponse.status) ||
+      redirectForAdminApiResponseStatus(noShowResponse.status)
+    ) {
+      return;
+    }
+
+    if (!waitTimeResponse.ok) {
+      throw new Error(waitTimePayload.message || 'Failed to load wait-time analytics.');
+    }
+
+    if (!noShowResponse.ok) {
+      throw new Error(noShowPayload.message || 'Failed to load no-show analytics.');
+    }
+
+    if (adminState.analyticsRequestToken !== requestToken) {
+      return;
+    }
+
+    adminState.waitTimeAnalytics = waitTimePayload.data || {};
+    adminState.noShowAnalytics = noShowPayload.data || {};
+    adminState.analyticsLoadedAt = new Date();
+    adminState.analyticsError = null;
+  } catch (error) {
+    console.error('Failed to load admin analytics:', error);
+
+    if (adminState.analyticsRequestToken !== requestToken) {
+      return;
+    }
+
+    adminState.analyticsError =
+      error.message || 'We could not load analytics right now.';
+  } finally {
+    if (adminState.analyticsRequestToken === requestToken) {
+      adminState.isAnalyticsLoading = false;
+      refreshAnalyticsDashboard();
+    }
+  }
+}
+
+async function handleAnalyticsFilterSubmit(event) {
+  event.preventDefault();
+
+  try {
+    const filters = getAnalyticsFiltersFromForm();
+    validateAnalyticsFilters(filters);
+    await loadAdminAnalytics(filters);
+  } catch (error) {
+    adminState.analyticsError = error.message || 'Check the selected analytics filters.';
+    refreshAnalyticsDashboard();
   }
 }
 
@@ -1180,6 +1652,7 @@ async function handleClinicSave(event) {
   } finally {
     adminState.isClinicSaveLoading = false;
     refreshClinicManagement();
+    refreshAnalyticsDashboard();
   }
 }
 
@@ -1234,6 +1707,14 @@ function initialiseClinicManagementActions() {
 
   if (form) {
     form.addEventListener('submit', handleClinicSave);
+  }
+}
+
+function initialiseAnalyticsActions() {
+  const { form } = getAnalyticsElements();
+
+  if (form) {
+    form.addEventListener('submit', handleAnalyticsFilterSubmit);
   }
 }
 
@@ -1300,12 +1781,15 @@ async function initialiseAdminPage() {
   setTextContent('adminName', userName);
   initialiseAdminActions();
   initialiseClinicManagementActions();
+  initialiseAnalyticsActions();
   refreshAdminDashboard();
   refreshClinicManagement();
+  refreshAnalyticsDashboard();
 
   await Promise.all([
     loadPendingStaffRequests(),
-    loadAdminClinics()
+    loadAdminClinics(),
+    loadAdminAnalytics()
   ]);
 }
 

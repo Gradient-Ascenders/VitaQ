@@ -80,7 +80,6 @@ const adminState = {
   reportExportFeedback: null,
   reportExportFilters: {
     reportType: 'summary',
-    format: 'csv',
     clinicId: '',
     startDate: '',
     endDate: ''
@@ -1488,7 +1487,6 @@ function getReportExportElements() {
     clinicSelect: document.getElementById('reportExportClinicSelect'),
     startDateInput: document.getElementById('reportExportStartDateInput'),
     endDateInput: document.getElementById('reportExportEndDateInput'),
-    formatRadios: Array.from(document.querySelectorAll('input[name="reportExportFormat"]')),
     submitButtons: Array.from(document.querySelectorAll('[data-report-export-format]'))
   };
 }
@@ -1528,7 +1526,6 @@ function renderReportExportControls() {
     clinicSelect,
     startDateInput,
     endDateInput,
-    formatRadios,
     submitButtons
   } = getReportExportElements();
   const filters = adminState.reportExportFilters;
@@ -1595,11 +1592,6 @@ function renderReportExportControls() {
     endDateInput.value = filters.endDate;
   }
 
-  formatRadios.forEach((radio) => {
-    radio.disabled = isBusy;
-    radio.checked = radio.value === filters.format;
-  });
-
   submitButtons.forEach((button) => {
     const format = button.dataset.reportExportFormat;
     const formatLabel = format === 'pdf' ? 'PDF' : 'CSV';
@@ -1653,12 +1645,9 @@ function getReportExportFiltersFromForm(formatOverride = '') {
     typeSelect,
     clinicSelect,
     startDateInput,
-    endDateInput,
-    formatRadios
+    endDateInput
   } = getReportExportElements();
-  const selectedFormat = formatOverride ||
-    formatRadios.find((radio) => radio.checked)?.value ||
-    adminState.reportExportFilters.format;
+  const selectedFormat = formatOverride || 'csv';
 
   return {
     reportType: typeSelect?.value || 'summary',
@@ -2206,8 +2195,7 @@ function initialiseAnalyticsActions() {
     form: reportExportForm,
     openButton,
     closeButton,
-    cancelButton,
-    formatRadios
+    cancelButton
   } = getReportExportElements();
 
   if (form) {
@@ -2237,16 +2225,6 @@ function initialiseAnalyticsActions() {
   if (reportExportForm) {
     reportExportForm.addEventListener('submit', handleReportExportSubmit);
   }
-
-  formatRadios.forEach((radio) => {
-    radio.addEventListener('change', function () {
-      adminState.reportExportFilters = {
-        ...adminState.reportExportFilters,
-        format: radio.value
-      };
-      refreshReportExport();
-    });
-  });
 
   window.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && adminState.isReportExportModalOpen) {

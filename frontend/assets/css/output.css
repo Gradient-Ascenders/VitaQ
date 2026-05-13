@@ -1540,12 +1540,6 @@
   .accent-\[\#7aa2f7\] {
     accent-color: #7aa2f7;
   }
-  .accent-\[\#7dcfff\] {
-    accent-color: #7dcfff;
-  }
-  .accent-\[\#bb9af7\] {
-    accent-color: #bb9af7;
-  }
   .opacity-60 {
     opacity: 60%;
   }
@@ -1937,26 +1931,6 @@
   .disabled\:opacity-70 {
     &:disabled {
       opacity: 70%;
-    }
-  }
-  .has-\[\:checked\]\:border-\[\#7dcfff\]\/60 {
-    &:has(*:is(:checked)) {
-      border-color: color-mix(in oklab, #7dcfff 60%, transparent);
-    }
-  }
-  .has-\[\:checked\]\:border-\[\#bb9af7\]\/60 {
-    &:has(*:is(:checked)) {
-      border-color: color-mix(in oklab, #bb9af7 60%, transparent);
-    }
-  }
-  .has-\[\:checked\]\:bg-\[\#7dcfff\]\/10 {
-    &:has(*:is(:checked)) {
-      background-color: color-mix(in oklab, #7dcfff 10%, transparent);
-    }
-  }
-  .has-\[\:checked\]\:bg-\[\#bb9af7\]\/10 {
-    &:has(*:is(:checked)) {
-      background-color: color-mix(in oklab, #bb9af7 10%, transparent);
     }
   }
   .sm\:grid-cols-2 {

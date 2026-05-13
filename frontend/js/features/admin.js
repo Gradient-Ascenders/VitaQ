@@ -1360,7 +1360,10 @@ function renderNoShowTrendBars() {
 
   noShowTrendBars.innerHTML = rows.map((row) => {
     const noShowCount = Number(row.noShowCount || 0);
-    const barWidth = maxNoShowCount > 0 ? Math.max((noShowCount / maxNoShowCount) * 100, 8) : 8;
+    const barWidth =
+      noShowCount > 0 && maxNoShowCount > 0
+        ? Math.max((noShowCount / maxNoShowCount) * 100, 8)
+        : 0;
 
     return `
       <div class="space-y-2">

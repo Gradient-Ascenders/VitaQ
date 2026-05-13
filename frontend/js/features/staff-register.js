@@ -14,6 +14,7 @@ const lastNameInput = document.getElementById("lastName");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
+const clinicSearchInput = document.getElementById("clinicSearchInput");
 const clinicSelectionInput = document.getElementById("clinicSelection");
 const staffIdInput = document.getElementById("staffId");
 const passwordToggleButtons = Array.from(document.querySelectorAll("[data-password-toggle]"));
@@ -32,6 +33,7 @@ const STAFF_REGISTER_ENDPOINT = "/api/staff/requests";
 const CLINICS_ENDPOINT = "/api/clinics";
 
 let clinicsLoaded = false;
+let allClinics = [];
 
 // Show a top-level message
 function showMessage(message, type = "error") {
@@ -199,11 +201,82 @@ function extractClinics(payload) {
   return [];
 }
 
+// Normalises text so clinic searching is case-insensitive and safe for empty values.
+function normaliseText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 // Builds the visible clinic label shown in the dropdown.
 function buildClinicLabel(clinic) {
   const name = clinic?.name || "Unnamed clinic";
-  const district = clinic?.district ? ` - ${clinic.district}` : "";
-  return `${name}${district}`;
+  const area = clinic?.area ? ` - ${clinic.area}` : "";
+  const district = clinic?.district ? `, ${clinic.district}` : "";
+  const province = clinic?.province ? `, ${clinic.province}` : "";
+
+  return `${name}${area}${district}${province}`;
+}
+
+// Combines the searchable clinic fields into one text string.
+// This lets staff search by more than just the first letter of the clinic name.
+function buildClinicSearchText(clinic) {
+  return [
+    clinic?.name,
+    clinic?.area,
+    clinic?.district,
+    clinic?.province,
+    clinic?.municipality,
+    clinic?.region,
+    clinic?.facility_type,
+    clinic?.services_offered
+  ]
+    .map(normaliseText)
+    .join(" ");
+}
+
+// Returns clinics matching the staff member's search text.
+function getFilteredClinics(searchTerm) {
+  const normalisedSearchTerm = normaliseText(searchTerm);
+
+  if (!normalisedSearchTerm) {
+    return allClinics;
+  }
+
+  return allClinics.filter(function (clinic) {
+    return buildClinicSearchText(clinic).includes(normalisedSearchTerm);
+  });
+}
+
+// Rebuilds the clinic dropdown while keeping the real clinic UUID as the option value.
+function renderClinicOptions(clinics, selectedClinicId = clinicSelectionInput.value) {
+  clinicSelectionInput.innerHTML = "";
+
+  const placeholderOption = document.createElement("option");
+  placeholderOption.value = "";
+  placeholderOption.textContent = clinics.length
+    ? "Select a clinic"
+    : "No matching clinics found";
+  clinicSelectionInput.appendChild(placeholderOption);
+
+  clinics.forEach(function (clinic) {
+    // The option value is the real clinic UUID used by the backend.
+    const option = document.createElement("option");
+    option.value = clinic.id;
+    option.textContent = buildClinicLabel(clinic);
+
+    if (selectedClinicId && selectedClinicId === clinic.id) {
+      option.selected = true;
+    }
+
+    clinicSelectionInput.appendChild(option);
+  });
+}
+
+// Filters the dropdown whenever the staff member types in the clinic search box.
+function filterClinicOptions() {
+  const searchTerm = clinicSearchInput?.value || "";
+  const filteredClinics = getFilteredClinics(searchTerm);
+
+  renderClinicOptions(filteredClinics);
 }
 
 // Loads all clinics from the backend and fills the dropdown with real UUID values.
@@ -219,24 +292,15 @@ async function loadClinicOptions() {
       throw new Error(result.message || "Failed to load clinics.");
     }
 
-    const clinics = extractClinics(result);
+    allClinics = extractClinics(result);
 
-    if (!clinics.length) {
+    if (!allClinics.length) {
       clinicSelectionInput.innerHTML =
         '<option value="">No clinics available</option>';
       return;
     }
 
-    clinicSelectionInput.innerHTML = '<option value="">Select a clinic</option>';
-
-    clinics.forEach((clinic) => {
-      // The option value is the real clinic UUID.
-      const option = document.createElement("option");
-      option.value = clinic.id;
-      option.textContent = buildClinicLabel(clinic);
-      clinicSelectionInput.appendChild(option);
-    });
-
+    renderClinicOptions(allClinics);
     clinicsLoaded = true;
   } catch (error) {
     console.error("Failed to load clinic options:", error);
@@ -250,6 +314,10 @@ async function loadClinicOptions() {
 
 // Load clinics as soon as the page is ready.
 document.addEventListener("DOMContentLoaded", async function () {
+  if (clinicSearchInput) {
+    clinicSearchInput.addEventListener("input", filterClinicOptions);
+  }
+
   await loadClinicOptions();
 });
 
@@ -360,6 +428,13 @@ staffRegisterForm.addEventListener("submit", async function (event) {
     }
 
     staffRegisterForm.reset();
+
+    // After resetting the form, restore the full clinic dropdown list.
+    if (clinicSearchInput) {
+    clinicSearchInput.value = "";
+    }
+
+    renderClinicOptions(allClinics);
     showStatus(result.data?.status || "pending");
     showMessage(
       result.message ||

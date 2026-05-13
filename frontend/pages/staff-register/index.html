@@ -165,7 +165,23 @@
           </section>
 
           <section>
-            <label for="clinicSelection" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+            <label for="clinicSearchInput" class="mb-2 block text-sm font-medium text-[#c0caf5]">
+              Search clinic
+            </label>
+            <input
+              type="search"
+              id="clinicSearchInput"
+              name="clinicSearchInput"
+              autocomplete="off"
+              placeholder="Search by clinic name, area, district, province, or type"
+              class="w-full rounded-2xl border border-[#414868] bg-[#24283b] px-4 py-3 text-[#e0e5ff] placeholder-[#7f85a3] shadow-sm outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/30"
+              aria-describedby="clinicSearchHelp"
+            />
+            <p id="clinicSearchHelp" class="mt-2 text-xs leading-5 text-[#8b93b8]">
+              Type a few letters to narrow down the clinic list before selecting one.
+            </p>
+
+            <label for="clinicSelection" class="mb-2 mt-4 block text-sm font-medium text-[#c0caf5]">
               Clinic selection
             </label>
             <select

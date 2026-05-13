@@ -953,6 +953,9 @@
   .bg-\[\#1a1b26\] {
     background-color: #1a1b26;
   }
+  .bg-\[\#1a1b26\]\/70 {
+    background-color: color-mix(in oklab, #1a1b26 70%, transparent);
+  }
   .bg-\[\#1d2337\] {
     background-color: #1d2337;
   }
@@ -1151,6 +1154,10 @@
   }
   .from-\[\#16161e\] {
     --tw-gradient-from: #16161e;
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .from-\[\#f7768e\] {
+    --tw-gradient-from: #f7768e;
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .via-\[\#1f2335\] {
@@ -1984,6 +1991,11 @@
       grid-template-columns: 0.7fr 1.2fr 1fr 1.1fr;
     }
   }
+  .md\:grid-cols-\[1\.3fr_0\.75fr_0\.75fr_0\.75fr\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 1.3fr 0.75fr 0.75fr 0.75fr;
+    }
+  }
   .md\:grid-cols-\[1\.4fr_0\.8fr_0\.8fr_0\.8fr\] {
     @media (width >= 48rem) {
       grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
@@ -2022,6 +2034,11 @@
   .md\:gap-5 {
     @media (width >= 48rem) {
       gap: calc(var(--spacing) * 5);
+    }
+  }
+  .md\:p-6 {
+    @media (width >= 48rem) {
+      padding: calc(var(--spacing) * 6);
     }
   }
   .md\:p-8 {
@@ -2280,6 +2297,11 @@
   .xl\:grid-cols-\[0\.92fr_1\.08fr\] {
     @media (width >= 80rem) {
       grid-template-columns: 0.92fr 1.08fr;
+    }
+  }
+  .xl\:grid-cols-\[1\.1fr_0\.9fr\] {
+    @media (width >= 80rem) {
+      grid-template-columns: 1.1fr 0.9fr;
     }
   }
   .xl\:grid-cols-\[1\.4fr_1fr_1fr_1fr_auto\] {

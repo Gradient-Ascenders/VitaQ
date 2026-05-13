@@ -614,6 +614,58 @@
               </article>
             </section>
 
+            <section class="mt-8 rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10 md:p-6">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show analytics</p>
+                  <h3 class="mt-2 text-2xl font-semibold text-[#e0e5ff]">Appointment attendance tracking</h3>
+                </div>
+                <p id="analyticsNoShowSummary" class="text-sm text-[#a9b1d6]">No-show analytics will load with the selected filters.</p>
+              </div>
+
+              <section class="mt-6 grid gap-4 md:grid-cols-3">
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show percentage</p>
+                  <p id="analyticsNoShowRate" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0%</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Past booked appointments without a queue entry.</p>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show count</p>
+                  <p id="analyticsNoShowCount" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Appointments counted as missed in the selected range.</p>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Tracked appointments</p>
+                  <p id="analyticsTotalAppointments" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Past non-cancelled appointments used for comparison.</p>
+                </article>
+              </section>
+
+              <section class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <article class="overflow-hidden rounded-[1.5rem] border border-[#414868] bg-[#1a1b26]/70">
+                  <div class="border-b border-[#414868] px-5 py-4">
+                    <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Clinic comparisons</p>
+                    <h4 class="mt-2 text-xl font-semibold text-[#e0e5ff]">No-shows by clinic</h4>
+                  </div>
+                  <div class="hidden border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b93b8] md:grid md:grid-cols-[1.3fr_0.75fr_0.75fr_0.75fr] md:gap-4">
+                    <p>Clinic</p>
+                    <p>Rate</p>
+                    <p>No-shows</p>
+                    <p>Total</p>
+                  </div>
+                  <div id="analyticsNoShowClinicTableBody" class="divide-y divide-[#414868]"></div>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1a1b26]/70 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Trends over time</p>
+                  <h4 class="mt-2 text-xl font-semibold text-[#e0e5ff]">No-show trend by date</h4>
+                  <div id="analyticsNoShowTrendBars" class="mt-6 space-y-4"></div>
+                </article>
+              </section>
+            </section>
+
             <section
               id="analyticsEmptyState"
               class="hidden mt-8 rounded-[1.75rem] border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-12 text-center shadow-lg shadow-black/10"

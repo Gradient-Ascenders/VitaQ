@@ -208,6 +208,16 @@ function formatAnalyticsNumber(value) {
   }).format(numberValue);
 }
 
+function formatAnalyticsPercent(value) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return '0%';
+  }
+
+  return `${numberValue.toFixed(1)}%`;
+}
+
 function formatAnalyticsHour(hour) {
   const numberValue = Number(hour);
 
@@ -1008,6 +1018,12 @@ function getAnalyticsElements() {
     averageConsultation: document.getElementById('analyticsAverageConsultation'),
     clinicTableBody: document.getElementById('analyticsClinicTableBody'),
     hourBars: document.getElementById('analyticsHourBars'),
+    noShowSummary: document.getElementById('analyticsNoShowSummary'),
+    noShowRate: document.getElementById('analyticsNoShowRate'),
+    noShowCount: document.getElementById('analyticsNoShowCount'),
+    totalAppointments: document.getElementById('analyticsTotalAppointments'),
+    noShowClinicTableBody: document.getElementById('analyticsNoShowClinicTableBody'),
+    noShowTrendBars: document.getElementById('analyticsNoShowTrendBars'),
     emptyState: document.getElementById('analyticsEmptyState')
   };
 }
@@ -1120,7 +1136,7 @@ function renderAnalyticsSummary() {
       summaryText.textContent = 'Unable to load analytics';
     } else {
       const noShowRate = Number(noShowAnalytics.noShowRate || 0);
-      summaryText.textContent = `${formatAnalyticsNumber(completedQueueCount)} completed queue record${completedQueueCount === 1 ? '' : 's'} · ${noShowRate.toFixed(1)}% no-show rate`;
+      summaryText.textContent = `${formatAnalyticsNumber(completedQueueCount)} completed queue record${completedQueueCount === 1 ? '' : 's'} · ${formatAnalyticsPercent(noShowRate)} no-show rate`;
     }
   }
 
@@ -1149,6 +1165,42 @@ function renderAnalyticsSummary() {
     averageConsultation.textContent = formatAnalyticsMinutes(
       waitTimeAnalytics.averageConsultationMinutes
     );
+  }
+}
+
+function renderNoShowSummaryCards() {
+  const {
+    noShowSummary,
+    noShowRate,
+    noShowCount,
+    totalAppointments
+  } = getAnalyticsElements();
+  const noShowAnalytics = adminState.noShowAnalytics || {};
+  const noShowRateValue = Number(noShowAnalytics.noShowRate || 0);
+  const noShowCountValue = Number(noShowAnalytics.noShowCount || 0);
+  const totalAppointmentsValue = Number(noShowAnalytics.totalAppointments || 0);
+  const attendedQueueCount = Number(noShowAnalytics.attendedQueueCount || 0);
+
+  if (noShowSummary) {
+    if (adminState.isAnalyticsLoading) {
+      noShowSummary.textContent = 'Loading no-show analytics...';
+    } else if (adminState.analyticsError) {
+      noShowSummary.textContent = 'Unable to load no-show analytics.';
+    } else {
+      noShowSummary.textContent = `${formatAnalyticsNumber(attendedQueueCount)} attended · ${formatAnalyticsNumber(noShowCountValue)} no-show${noShowCountValue === 1 ? '' : 's'}`;
+    }
+  }
+
+  if (noShowRate) {
+    noShowRate.textContent = formatAnalyticsPercent(noShowRateValue);
+  }
+
+  if (noShowCount) {
+    noShowCount.textContent = formatAnalyticsNumber(noShowCountValue);
+  }
+
+  if (totalAppointments) {
+    totalAppointments.textContent = formatAnalyticsNumber(totalAppointmentsValue);
   }
 }
 
@@ -1238,6 +1290,93 @@ function renderAnalyticsHourBars() {
   }).join('');
 }
 
+function renderNoShowClinicRows() {
+  const { noShowClinicTableBody } = getAnalyticsElements();
+  const noShowAnalytics = adminState.noShowAnalytics || {};
+  const rows = Array.isArray(noShowAnalytics.byClinic) ? noShowAnalytics.byClinic : [];
+
+  if (!noShowClinicTableBody) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    noShowClinicTableBody.innerHTML = `
+      <article class="px-5 py-6 text-sm text-[#a9b1d6]">Loading no-show clinic comparisons...</article>
+    `;
+    return;
+  }
+
+  if (rows.length === 0) {
+    noShowClinicTableBody.innerHTML = `
+      <article class="px-5 py-6 text-sm text-[#a9b1d6]">No no-show rows match the selected filters.</article>
+    `;
+    return;
+  }
+
+  noShowClinicTableBody.innerHTML = rows.map((row) => `
+    <article class="grid gap-4 px-5 py-5 md:grid-cols-[1.3fr_0.75fr_0.75fr_0.75fr] md:items-center">
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Clinic</p>
+        <p class="text-sm font-semibold text-[#e0e5ff]">${escapeHtml(row.clinicName || 'Unknown clinic')}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Rate</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsPercent(row.noShowRate)}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">No-shows</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsNumber(row.noShowCount)}</p>
+      </section>
+      <section class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b93b8] md:hidden">Total</p>
+        <p class="text-sm text-[#c0caf5]">${formatAnalyticsNumber(row.totalAppointments)}</p>
+      </section>
+    </article>
+  `).join('');
+}
+
+function renderNoShowTrendBars() {
+  const { noShowTrendBars } = getAnalyticsElements();
+  const noShowAnalytics = adminState.noShowAnalytics || {};
+  const rows = Array.isArray(noShowAnalytics.byDate) ? noShowAnalytics.byDate : [];
+  const maxNoShowCount = rows.reduce((maxValue, row) => {
+    const noShowCount = Number(row.noShowCount || 0);
+    return noShowCount > maxValue ? noShowCount : maxValue;
+  }, 0);
+
+  if (!noShowTrendBars) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    noShowTrendBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">Loading no-show trends...</p>';
+    return;
+  }
+
+  if (rows.length === 0) {
+    noShowTrendBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">No trend rows match the selected filters.</p>';
+    return;
+  }
+
+  noShowTrendBars.innerHTML = rows.map((row) => {
+    const noShowCount = Number(row.noShowCount || 0);
+    const barWidth = maxNoShowCount > 0 ? Math.max((noShowCount / maxNoShowCount) * 100, 8) : 8;
+
+    return `
+      <div class="space-y-2">
+        <div class="flex items-center justify-between gap-4 text-sm">
+          <span class="font-semibold text-[#e0e5ff]">${escapeHtml(row.date || 'Unknown date')}</span>
+          <span class="text-[#a9b1d6]">${formatAnalyticsPercent(row.noShowRate)} · ${formatAnalyticsNumber(noShowCount)} missed</span>
+        </div>
+        <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#f7768e] to-[#bb9af7]" style="width: ${barWidth}%"></div>
+        </div>
+        <p class="text-xs text-[#8b93b8]">${formatAnalyticsNumber(row.totalAppointments)} tracked appointment${Number(row.totalAppointments || 0) === 1 ? '' : 's'}</p>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderAnalyticsEmptyState() {
   const { emptyState } = getAnalyticsElements();
   const completedQueueCount = Number(adminState.waitTimeAnalytics?.completedQueueCount || 0);
@@ -1256,8 +1395,11 @@ function refreshAnalyticsDashboard() {
   renderAnalyticsFeedback();
   renderAnalyticsFilters();
   renderAnalyticsSummary();
+  renderNoShowSummaryCards();
   renderAnalyticsClinicRows();
   renderAnalyticsHourBars();
+  renderNoShowClinicRows();
+  renderNoShowTrendBars();
   renderAnalyticsEmptyState();
 }
 

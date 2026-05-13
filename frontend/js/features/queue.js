@@ -21,6 +21,20 @@ function formatTimeRange(start, end) {
   return `${cleanStart} - ${cleanEnd}`;
 }
 
+function formatReminderDateTime(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'appointment time';
+  }
+
+  return date.toLocaleString('en-ZA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 const QUEUE_STATES = {
   UNAVAILABLE: 'unavailable',
   NOT_IN_QUEUE: 'not_in_queue',
@@ -39,6 +53,8 @@ const queuePageContext = {
   clinicId: '',
   appointmentId: '',
   date: '',
+  start: '',
+  end: '',
   session: null,
   joinQueueLoading: false
 };
@@ -457,6 +473,82 @@ function renderQueueEstimate(queueState, waitEstimateMinutes) {
   footnote.textContent = config.footnote;
 }
 
+function getQueueReminderStatusConfig() {
+  if (!queuePageContext.appointmentId) {
+    return {
+      title: 'Appointment reminder unavailable',
+      badge: 'No appointment',
+      badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+      message: 'This queue page is not linked to a booked appointment, so appointment reminder status cannot be shown.'
+    };
+  }
+
+  if (!queuePageContext.date || !queuePageContext.start) {
+    return {
+      title: 'Email reminder enabled',
+      badge: 'Time unavailable',
+      badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
+      message: 'Your reminder is enabled, but the appointment start time is not available on this queue page.'
+    };
+  }
+
+  const appointmentStart = new Date(`${queuePageContext.date}T${queuePageContext.start}`);
+
+  if (Number.isNaN(appointmentStart.getTime())) {
+    return {
+      title: 'Email reminder enabled',
+      badge: 'Time unavailable',
+      badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
+      message: 'Your reminder is enabled, but the appointment start time could not be read from this queue page.'
+    };
+  }
+
+  const minutesUntilStart = Math.round((appointmentStart.getTime() - Date.now()) / 60000);
+  const reminderTime = new Date(appointmentStart.getTime() - 30 * 60000);
+
+  if (minutesUntilStart > 30) {
+    return {
+      title: 'Email reminder enabled',
+      badge: 'Enabled',
+      badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      message: `A reminder is scheduled for ${formatReminderDateTime(reminderTime)}, 30 minutes before your appointment.`
+    };
+  }
+
+  if (minutesUntilStart >= 0) {
+    return {
+      title: 'Reminder window active',
+      badge: 'Due soon',
+      badgeClass: 'border-[#bb9af7]/25 bg-[#bb9af7]/10 text-[#dfcbff]',
+      message: 'Your appointment starts in less than 30 minutes. Check your email and keep following this queue page.'
+    };
+  }
+
+  return {
+    title: 'Reminder window passed',
+    badge: 'Processed',
+    badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+    message: 'If email reminders are enabled for your account, the 30-minute reminder window for this appointment has already passed.'
+  };
+}
+
+function renderQueueReminderStatus() {
+  const title = document.getElementById('queueReminderTitle');
+  const message = document.getElementById('queueReminderMessage');
+  const badge = document.getElementById('queueReminderBadge');
+
+  if (!title || !message || !badge) {
+    return;
+  }
+
+  const config = getQueueReminderStatusConfig();
+
+  title.textContent = config.title;
+  message.textContent = config.message;
+  badge.textContent = config.badge;
+  badge.className = `inline-flex w-fit rounded-full border px-3 py-1.5 text-sm font-semibold ${config.badgeClass}`;
+}
+
 function renderQueueMetrics(queueEntry, position, queueState) {
   const positionValue = document.getElementById('queuePositionValue');
   const queueNumberValue = document.getElementById('queueNumberValue');
@@ -584,6 +676,7 @@ function applyVisitDetails(params) {
   document.getElementById('queueDayCaption').textContent = date
     ? `Queue details for ${formatDate(date)}`
     : 'Visit date unavailable';
+  renderQueueReminderStatus();
 }
 
 async function loadQueueStatus() {
@@ -679,6 +772,8 @@ async function loadQueuePage() {
   queuePageContext.clinicId = params.get('clinicId') || '';
   queuePageContext.appointmentId = params.get('appointmentId') || '';
   queuePageContext.date = params.get('date') || '';
+  queuePageContext.start = params.get('start') || '';
+  queuePageContext.end = params.get('end') || '';
 
   initialiseLogoutButton('logoutButton');
   applyVisitDetails(params);

@@ -190,6 +190,34 @@
             </article>
           </section>
 
+          <section
+            id="queueReminderPanel"
+            class="mt-6 rounded-[1.5rem] border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-5 py-5 shadow-lg shadow-black/10"
+            aria-label="Appointment email reminder status"
+            aria-live="polite"
+          >
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div class="max-w-3xl">
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#7dcfff]">
+                  Email reminder
+                </p>
+                <h3 id="queueReminderTitle" class="mt-2 text-lg font-semibold text-[#e0e5ff]">
+                  Email reminder enabled
+                </h3>
+                <p id="queueReminderMessage" class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  A reminder will be sent 30 minutes before your appointment.
+                </p>
+              </div>
+
+              <p
+                id="queueReminderBadge"
+                class="inline-flex w-fit rounded-full border border-[#7dcfff]/25 bg-[#7dcfff]/10 px-3 py-1.5 text-sm font-semibold text-[#b8ecff]"
+              >
+                Enabled
+              </p>
+            </div>
+          </section>
+
           <section class="mt-8 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/72 p-6 shadow-lg shadow-black/10 backdrop-blur-sm">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

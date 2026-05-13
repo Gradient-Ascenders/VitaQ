@@ -101,6 +101,44 @@ async function createStaffRequest({ userId, fullName, clinicId, staffId }) {
   return staffRequest;
 }
 
+/**
+ * Gets the latest staff registration request for a logged-in user.
+ *
+ * This is used by the frontend auth flow to decide whether a user should
+ * be treated as a normal patient or sent to the staff status page.
+ */
+async function getLatestStaffRequestForUser(userId) {
+  if (!userId) {
+    throw createServiceError('user_id is required.', 400);
+  }
+
+  const { data: staffRequest, error } = await supabase
+    .from('staff_requests')
+    .select(`
+      id,
+      user_id,
+      full_name,
+      clinic_id,
+      staff_id,
+      status,
+      reviewed_by,
+      reviewed_at,
+      created_at,
+      updated_at
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw createServiceError('Failed to load staff request status.', 500);
+  }
+
+  return staffRequest || null;
+}
+
 module.exports = {
-  createStaffRequest
+  createStaffRequest,
+  getLatestStaffRequestForUser
 };

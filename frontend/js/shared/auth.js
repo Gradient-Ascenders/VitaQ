@@ -1,6 +1,8 @@
 // Shared authentication helpers for VitaQ protected and public pages.
 let authCallbackPromise = null;
 
+const STAFF_REQUEST_STATUS_ENDPOINT = "/api/staff/request-status";
+
 // Finalise an OAuth callback if Supabase redirected back with an auth code.
 async function completeAuthCallbackIfPresent() {
   if (authCallbackPromise) {
@@ -68,6 +70,23 @@ async function waitForSessionRecovery(timeoutMs = 2000) {
       }
     });
   });
+}
+
+// Safely reads JSON from a backend response.
+// This is used by shared auth helpers when checking staff request status.
+async function readAuthJsonSafely(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Failed to parse auth response JSON:", error);
+    return {};
+  }
 }
 
 // Signs the user out and sends them back to the login page.
@@ -179,7 +198,7 @@ async function getCurrentUserProfile(session = null) {
     .from("profiles")
     .select("role")
     .eq("user_id", activeSession.user.id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw error;
@@ -188,12 +207,69 @@ async function getCurrentUserProfile(session = null) {
   return data || null;
 }
 
+// Loads the current user's latest staff request status from the backend.
+// This lets the frontend block pending/rejected staff applicants from being treated as patients.
+async function getCurrentUserStaffRequestStatus(session = null) {
+  const activeSession = session || await getCurrentSession(true);
+
+  if (!activeSession?.access_token) {
+    return {
+      hasStaffRequest: false,
+      status: "none",
+      request: null
+    };
+  }
+
+  const response = await fetch(STAFF_REQUEST_STATUS_ENDPOINT, {
+    headers: {
+      Authorization: `Bearer ${activeSession.access_token}`
+    }
+  });
+
+  const result = await readAuthJsonSafely(response);
+
+  if (!response.ok) {
+    throw new Error(result.message || "Failed to load staff request status.");
+  }
+
+  return result.data || {
+    hasStaffRequest: false,
+    status: "none",
+    request: null
+  };
+}
+
+// Returns true when an account has gone through the staff registration flow
+// and should not be treated as a normal patient dashboard account.
+function shouldRouteToStaffStatus(staffRequestStatus) {
+  const status = String(staffRequestStatus?.status || "none").toLowerCase();
+
+  return status === "pending" || status === "rejected" || status === "approved";
+}
+
 async function redirectToRoleHome(session = null) {
   try {
-    const profile = await getCurrentUserProfile(session);
-    const destination = getHomeRouteForRole(profile?.role);
-    window.location.href = destination;
-    return destination;
+    const activeSession = session || await getCurrentSession(true);
+    const profile = await getCurrentUserProfile(activeSession);
+
+    // Admin and approved staff profiles still take priority.
+    if (profile?.role === "admin" || profile?.role === "staff") {
+      const destination = getHomeRouteForRole(profile.role);
+      window.location.href = destination;
+      return destination;
+    }
+
+    // If the user registered through the staff flow but has not become staff/admin,
+    // keep them out of the patient dashboard and show the staff status page instead.
+    const staffRequestStatus = await getCurrentUserStaffRequestStatus(activeSession);
+
+    if (shouldRouteToStaffStatus(staffRequestStatus)) {
+      window.location.href = "/staff-status";
+      return "/staff-status";
+    }
+
+    window.location.href = "/dashboard";
+    return "/dashboard";
   } catch (error) {
     console.error("Role-based redirect failed:", error);
     window.location.href = "/dashboard";
@@ -202,7 +278,7 @@ async function redirectToRoleHome(session = null) {
 }
 
 // Use this on public auth pages like /login and /register.
-// If a session already exists, redirect to /dashboard.
+// If a session already exists, redirect to the correct role/status page.
 async function redirectIfAuthenticated() {
   try {
     const session = await getCurrentSession(false);

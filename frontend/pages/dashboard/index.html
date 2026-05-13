@@ -243,6 +243,17 @@
         console.error('Dashboard role check failed:', error);
       }
 
+      try {
+        const staffRequestStatus = await getCurrentUserStaffRequestStatus(session);
+
+        if (shouldRouteToStaffStatus(staffRequestStatus)) {
+          window.location.href = '/staff-status';
+          return;
+        }
+      } catch (error) {
+        console.error('Dashboard staff request check failed:', error);
+      }
+
       const patientName = document.getElementById('patientName');
 
       if (patientName) {

@@ -70,6 +70,7 @@ app.get('/clinic/:id', sendPage('clinic'));
 app.get('/booking-confirmation', sendPage('booking-confirmation'));
 app.get('/appointments', sendPage('appointments'));
 app.get('/queue', sendPage('queue'));
+app.get('/staff-status', sendPage('staff-status'));
 
 // Final 404 fallback
 app.use((req, res) => {

@@ -58,6 +58,20 @@ function formatTimeRange(startTime, endTime) {
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }
 
+function formatReminderDateTime(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'appointment time';
+  }
+
+  return date.toLocaleString('en-ZA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -249,6 +263,149 @@ function isValidRescheduleSlot(slot, appointment) {
   }
 
   return Boolean(slot.date && slot.start_time && slot.end_time);
+}
+
+function getAppointmentStartDate(appointment) {
+  const slot = appointment?.slot || {};
+
+  if (!slot.date || !slot.start_time) {
+    return null;
+  }
+
+  const appointmentStart = new Date(`${slot.date}T${slot.start_time}`);
+  return Number.isNaN(appointmentStart.getTime()) ? null : appointmentStart;
+}
+
+function getExplicitReminderStatus(appointment) {
+  const candidates = [
+    appointment?.reminder_status,
+    appointment?.email_reminder_status,
+    appointment?.notification_status,
+    appointment?.reminder?.status
+  ];
+
+  return candidates.find((status) => typeof status === 'string' && status.trim()) || '';
+}
+
+function getReminderStatusConfig(appointment) {
+  const explicitStatus = getExplicitReminderStatus(appointment);
+
+  if (explicitStatus === 'sent') {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder sent',
+      badge: 'Sent',
+      badgeClass: 'border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]',
+      panelClass: 'border-[#9ece6a]/20 bg-[#9ece6a]/10',
+      message: 'Your 30-minute appointment reminder has been sent to your account email address.'
+    };
+  }
+
+  if (explicitStatus === 'failed') {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder failed',
+      badge: 'Failed',
+      badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
+      panelClass: 'border-[#f7768e]/20 bg-[#f7768e]/10',
+      message: 'The reminder could not be sent. Please still use the appointment time shown on this page.'
+    };
+  }
+
+  if (appointment?.status === 'cancelled') {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder not active',
+      badge: 'Cancelled',
+      badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
+      panelClass: 'border-[#414868] bg-[#1f2335]/85',
+      message: 'Cancelled appointments do not receive appointment reminder emails.'
+    };
+  }
+
+  if (appointment?.status === 'completed') {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Visit completed',
+      badge: 'Complete',
+      badgeClass: 'border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]',
+      panelClass: 'border-[#414868] bg-[#1f2335]/85',
+      message: 'This visit is complete, so no further reminder is needed for this appointment.'
+    };
+  }
+
+  const appointmentStart = getAppointmentStartDate(appointment);
+
+  if (!appointmentStart) {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder enabled',
+      badge: 'Time unavailable',
+      badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
+      panelClass: 'border-[#e0af68]/20 bg-[#e0af68]/10',
+      message: 'Your reminder is enabled, but the appointment start time is not available on this page.'
+    };
+  }
+
+  const minutesUntilStart = Math.round((appointmentStart.getTime() - Date.now()) / 60000);
+  const reminderTime = new Date(appointmentStart.getTime() - 30 * 60000);
+
+  if (minutesUntilStart > 30) {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Email reminder enabled',
+      badge: 'Enabled',
+      badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
+      message: `A reminder is scheduled for ${formatReminderDateTime(reminderTime)}, 30 minutes before your appointment.`
+    };
+  }
+
+  if (minutesUntilStart >= 0) {
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder window active',
+      badge: 'Due soon',
+      badgeClass: 'border-[#bb9af7]/25 bg-[#bb9af7]/10 text-[#dfcbff]',
+      panelClass: 'border-[#bb9af7]/20 bg-[#bb9af7]/10',
+      message: 'Your appointment starts in less than 30 minutes. Check your email and keep this appointment time ready.'
+    };
+  }
+
+  return {
+    eyebrow: 'Email reminder',
+    title: 'Reminder window passed',
+    badge: 'Processed',
+    badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+    panelClass: 'border-[#414868] bg-[#1f2335]/85',
+    message: 'If email reminders are enabled for your account, the 30-minute reminder window for this appointment has already passed.'
+  };
+}
+
+function buildReminderStatusMarkup(appointment) {
+  const reminder = getReminderStatusConfig(appointment);
+
+  return `
+    <section class="mt-4 rounded-[1.5rem] border px-5 py-5 ${reminder.panelClass}" aria-label="Appointment email reminder status">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="max-w-3xl">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#7dcfff]">
+            ${escapeHtml(reminder.eyebrow)}
+          </p>
+          <h4 class="mt-2 text-lg font-semibold text-[#e0e5ff]">
+            ${escapeHtml(reminder.title)}
+          </h4>
+          <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+            ${escapeHtml(reminder.message)}
+          </p>
+        </div>
+
+        <p class="inline-flex w-fit rounded-full border px-3 py-1.5 text-sm font-semibold ${reminder.badgeClass}">
+          ${escapeHtml(reminder.badge)}
+        </p>
+      </div>
+    </section>
+  `;
 }
 
 function buildAppointmentDetailsMarkup(appointment) {
@@ -653,6 +810,7 @@ function renderAppointments() {
       </section>
 
       ${appointmentDetailsMarkup}
+      ${buildReminderStatusMarkup(appointment)}
       ${actionMarkup}
     `;
 

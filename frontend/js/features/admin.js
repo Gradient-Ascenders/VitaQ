@@ -1339,10 +1339,6 @@ function renderNoShowTrendBars() {
   const { noShowTrendBars } = getAnalyticsElements();
   const noShowAnalytics = adminState.noShowAnalytics || {};
   const rows = Array.isArray(noShowAnalytics.byDate) ? noShowAnalytics.byDate : [];
-  const maxNoShowCount = rows.reduce((maxValue, row) => {
-    const noShowCount = Number(row.noShowCount || 0);
-    return noShowCount > maxValue ? noShowCount : maxValue;
-  }, 0);
 
   if (!noShowTrendBars) {
     return;
@@ -1360,9 +1356,10 @@ function renderNoShowTrendBars() {
 
   noShowTrendBars.innerHTML = rows.map((row) => {
     const noShowCount = Number(row.noShowCount || 0);
+    const noShowRate = Number(row.noShowRate || 0);
     const barWidth =
-      noShowCount > 0 && maxNoShowCount > 0
-        ? Math.max((noShowCount / maxNoShowCount) * 100, 8)
+      noShowCount > 0 && Number.isFinite(noShowRate)
+        ? Math.min(Math.max(noShowRate, 0), 100)
         : 0;
 
     return `

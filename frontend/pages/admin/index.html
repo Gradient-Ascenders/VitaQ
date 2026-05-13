@@ -82,6 +82,17 @@
             >
               Clinic Management
             </button>
+            <button
+              id="adminAnalyticsTabDesktop"
+              type="button"
+              role="tab"
+              aria-controls="adminAnalyticsPanel"
+              aria-selected="false"
+              data-admin-tab-trigger="analytics-reports"
+              class="inline-flex items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#a9b1d6] transition hover:border-[#7aa2f7]/40 hover:bg-[#2a2f45] hover:text-[#c0caf5]"
+            >
+              Analytics &amp; Reports
+            </button>
           </div>
         </nav>
 
@@ -120,6 +131,17 @@
               class="inline-flex flex-1 items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/80 px-4 py-2.5 text-sm font-medium text-[#a9b1d6] transition hover:border-[#7aa2f7]/40 hover:bg-[#2a2f45] hover:text-[#c0caf5]"
             >
               Clinics
+            </button>
+            <button
+              id="adminAnalyticsTabMobile"
+              type="button"
+              role="tab"
+              aria-controls="adminAnalyticsPanel"
+              aria-selected="false"
+              data-admin-tab-trigger="analytics-reports"
+              class="inline-flex flex-1 items-center justify-center rounded-2xl border border-[#414868] bg-[#24283b]/80 px-3 py-2.5 text-sm font-medium text-[#a9b1d6] transition hover:border-[#7aa2f7]/40 hover:bg-[#2a2f45] hover:text-[#c0caf5]"
+            >
+              Analytics
             </button>
           </div>
         </div>
@@ -462,6 +484,200 @@
               </h3>
               <p id="adminClinicEmptyStateMessage" class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
                 Clinic records will appear here once the admin clinic directory has loaded.
+              </p>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section
+        id="adminAnalyticsPanel"
+        data-admin-tab-panel="analytics-reports"
+        role="tabpanel"
+        aria-labelledby="adminAnalyticsTabDesktop"
+        class="hidden"
+      >
+        <section
+          class="mx-auto max-w-7xl px-6 py-8 md:px-8 lg:px-10"
+          aria-labelledby="admin-analytics-heading"
+        >
+          <div class="rounded-[2rem] border border-[#414868] bg-[linear-gradient(180deg,rgba(36,40,59,0.86),rgba(31,35,53,0.92))] p-7 shadow-xl shadow-black/10 backdrop-blur-sm md:p-8">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div class="max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                  Analytics &amp; reports
+                </p>
+                <h2 id="admin-analytics-heading" class="mt-3 text-3xl font-bold text-[#e0e5ff]">
+                  Clinic operations overview
+                </h2>
+                <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+                  Review filtered queue performance and appointment attendance signals from the Sprint 4 analytics endpoints.
+                </p>
+              </div>
+
+              <div class="flex flex-col gap-3 lg:items-end">
+                <p id="analyticsSummaryText" class="text-sm text-[#8b93b8]">Analytics will load after admin access is confirmed.</p>
+                <p id="analyticsLastUpdated" class="text-sm text-[#8b93b8]">No refresh yet.</p>
+              </div>
+            </div>
+
+            <div id="analyticsFeedback" class="mt-8 hidden" aria-live="polite"></div>
+
+            <form id="analyticsFilterForm" class="mt-8 grid gap-4 rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/76 p-5 shadow-lg shadow-black/10 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_auto] xl:items-end">
+              <div class="space-y-2">
+                <label for="analyticsClinicSelect" class="text-sm font-semibold text-[#e0e5ff]">Clinic</label>
+                <select
+                  id="analyticsClinicSelect"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled
+                >
+                  <option value="">Loading clinics...</option>
+                </select>
+              </div>
+
+              <div class="space-y-2">
+                <label for="analyticsStartDateInput" class="text-sm font-semibold text-[#e0e5ff]">Start date</label>
+                <input
+                  id="analyticsStartDateInput"
+                  type="date"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label for="analyticsEndDateInput" class="text-sm font-semibold text-[#e0e5ff]">End date</label>
+                <input
+                  id="analyticsEndDateInput"
+                  type="date"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label for="analyticsHourSelect" class="text-sm font-semibold text-[#e0e5ff]">Time of day</label>
+                <select
+                  id="analyticsHourSelect"
+                  class="w-full rounded-2xl border border-[#414868] bg-[#1a1b26] px-4 py-3 text-sm text-[#e0e5ff] outline-none transition focus:border-[#7aa2f7] focus:ring-2 focus:ring-[#7aa2f7]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">All hours</option>
+                </select>
+              </div>
+
+              <button
+                id="analyticsRefreshButton"
+                type="submit"
+                class="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7] px-6 py-3 text-sm font-semibold text-[#1a1b26] transition hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Apply filters
+              </button>
+            </form>
+
+            <section class="mt-8 grid gap-4 md:grid-cols-3">
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/78 p-6 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Average wait time</p>
+                <p id="analyticsAverageWait" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0 min</p>
+                <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">From completed queue entries in the selected range.</p>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/78 p-6 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Total active queues</p>
+                <p id="analyticsActiveQueues" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0</p>
+                <p id="analyticsActiveQueuesMeta" class="mt-3 text-sm leading-7 text-[#a9b1d6]">Filtered queue total.</p>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#24283b]/78 p-6 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Average consultation duration</p>
+                <p id="analyticsAverageConsultation" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0 min</p>
+                <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Based on consultation start and completion timestamps.</p>
+              </article>
+            </section>
+
+            <section class="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+              <article class="overflow-hidden rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 shadow-lg shadow-black/10">
+                <div class="border-b border-[#414868] px-5 py-4">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Clinic comparison</p>
+                  <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Wait-time analytics by clinic</h3>
+                </div>
+                <div class="hidden border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b93b8] md:grid md:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] md:gap-4">
+                  <p>Clinic</p>
+                  <p>Wait</p>
+                  <p>Consultation</p>
+                  <p>Queues</p>
+                </div>
+                <div id="analyticsClinicTableBody" class="divide-y divide-[#414868]"></div>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Time of day</p>
+                <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Hourly wait-time pattern</h3>
+                <div id="analyticsHourBars" class="mt-6 space-y-4"></div>
+              </article>
+            </section>
+
+            <section class="mt-8 rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10 md:p-6">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show analytics</p>
+                  <h3 class="mt-2 text-2xl font-semibold text-[#e0e5ff]">Appointment attendance tracking</h3>
+                </div>
+                <p id="analyticsNoShowSummary" class="text-sm text-[#a9b1d6]">No-show analytics will load with the selected filters.</p>
+              </div>
+
+              <section class="mt-6 grid gap-4 md:grid-cols-3">
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show percentage</p>
+                  <p id="analyticsNoShowRate" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0%</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Past booked appointments without a queue entry.</p>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">No-show count</p>
+                  <p id="analyticsNoShowCount" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Appointments counted as missed in the selected range.</p>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#24283b]/78 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Tracked appointments</p>
+                  <p id="analyticsTotalAppointments" class="mt-4 text-4xl font-bold text-[#e0e5ff]">0</p>
+                  <p class="mt-3 text-sm leading-7 text-[#a9b1d6]">Past non-cancelled appointments used for comparison.</p>
+                </article>
+              </section>
+
+              <section class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <article class="overflow-hidden rounded-[1.5rem] border border-[#414868] bg-[#1a1b26]/70">
+                  <div class="border-b border-[#414868] px-5 py-4">
+                    <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Clinic comparisons</p>
+                    <h4 class="mt-2 text-xl font-semibold text-[#e0e5ff]">No-shows by clinic</h4>
+                  </div>
+                  <div class="hidden border-b border-[#414868] px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#8b93b8] md:grid md:grid-cols-[1.3fr_0.75fr_0.75fr_0.75fr] md:gap-4">
+                    <p>Clinic</p>
+                    <p>Rate</p>
+                    <p>No-shows</p>
+                    <p>Total</p>
+                  </div>
+                  <div id="analyticsNoShowClinicTableBody" class="divide-y divide-[#414868]"></div>
+                </article>
+
+                <article class="rounded-[1.5rem] border border-[#414868] bg-[#1a1b26]/70 p-5">
+                  <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Trends over time</p>
+                  <h4 class="mt-2 text-xl font-semibold text-[#e0e5ff]">No-show trend by date</h4>
+                  <div id="analyticsNoShowTrendBars" class="mt-6 space-y-4"></div>
+                </article>
+              </section>
+            </section>
+
+            <section
+              id="analyticsEmptyState"
+              class="hidden mt-8 rounded-[1.75rem] border border-dashed border-[#414868] bg-[#1f2335]/55 px-6 py-12 text-center shadow-lg shadow-black/10"
+            >
+              <p class="text-sm font-semibold uppercase tracking-[0.24em] text-[#7dcfff]">
+                No analytics rows
+              </p>
+              <h3 class="mt-4 text-3xl font-bold text-[#e0e5ff]">
+                No queue analytics match these filters
+              </h3>
+              <p class="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#a9b1d6]">
+                Try another clinic, date range, or time-of-day filter once completed queue records are available.
               </p>
             </section>
           </div>

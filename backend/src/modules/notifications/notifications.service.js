@@ -65,6 +65,10 @@ function buildSlotOccurrenceKey(appointment) {
   return `${appointmentId}:${slotDate}:${slotStartTime}`;
 }
 
+function canRetryNotification(notification) {
+  return notification?.status === 'failed';
+}
+
 /**
  * Fetches the recipient email from Supabase Auth.
  * We use Auth admin lookup instead of redesigning profiles just to store emails.
@@ -303,53 +307,75 @@ function buildAppointmentReminderEmail(appointment) {
   };
 }
 
-/**
- * Creates, sends, and updates one appointment reminder notification.
- * Duplicate reminders are skipped safely.
- */
-async function sendAppointmentReminder(appointment) {
-  if (!appointment?.id || !appointment?.patient_id) {
-    throw createServiceError('appointment id and patient_id are required.', 400);
+function buildStaffDecisionEmail(staffRequest) {
+  const status = staffRequest?.status;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    throw createServiceError('Staff request status must be approved or rejected.', 400);
   }
 
-  const recipientEmail = await fetchUserEmail(appointment.patient_id);
-  const emailContent = buildAppointmentReminderEmail(appointment);
-  const slotOccurrenceKey = buildSlotOccurrenceKey(appointment);
+  const isApproved = status === 'approved';
+  const clinicName = staffRequest.clinic?.name || 'your clinic';
+  const requesterName = staffRequest.full_name || 'there';
+  const host = process.env.APP_BASE_URL || process.env.HOST || '';
+  const subject = isApproved
+    ? 'VitaQ staff application approved'
+    : 'VitaQ staff application rejected';
 
-  const notificationResult = await createNotification({
-    notificationType: NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M,
-    userId: appointment.patient_id,
-    appointmentId: appointment.id,
-    slotOccurrenceKey,
-    recipientEmail,
-    subject: emailContent.subject,
-    scheduledFor: appointment.appointment_start_at || null,
-    metadata: {
-      clinic_id: appointment.clinic_id,
-      slot_id: appointment.slot_id,
-      slot_date: appointment.slot?.date || null,
-      slot_start_time: appointment.slot?.start_time || null
-    }
-  });
+  const decisionLine = isApproved
+    ? `Your staff application for ${clinicName} has been approved.`
+    : `Your staff application for ${clinicName} has been rejected.`;
 
-  if (notificationResult.duplicate) {
-    return {
-      sent: false,
-      skipped: true,
-      reason: 'duplicate',
-      notification: notificationResult.notification
-    };
-  }
+  const nextStep = isApproved
+    ? 'You can now sign in to VitaQ and access the staff dashboard for your clinic.'
+    : 'If you believe this decision is incorrect, please contact the clinic administrator.';
 
-  const notification = notificationResult.notification;
+  const text = [
+    `Hi ${requesterName},`,
+    '',
+    decisionLine,
+    nextStep,
+    host && isApproved ? `Open VitaQ: ${host}` : null,
+    '',
+    'VitaQ'
+  ]
+    .filter(Boolean)
+    .join('\n');
 
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+      <h2>${subject}</h2>
+      <p>Hi ${requesterName},</p>
+      <p>${decisionLine}</p>
+      <p>${nextStep}</p>
+      ${
+        host && isApproved
+          ? `<p><a href="${host}">Open VitaQ</a></p>`
+          : ''
+      }
+    </div>
+  `;
+
+  return {
+    subject,
+    text,
+    html
+  };
+}
+
+async function deliverNotificationEmail({
+  notification,
+  recipientEmail,
+  emailContent,
+  idempotencyKey
+}) {
   try {
     const providerResult = await sendEmail({
       to: recipientEmail,
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text,
-      idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${appointment.id}`
+      idempotencyKey
     });
 
     const sentNotification = await markNotificationSent({
@@ -381,6 +407,122 @@ async function sendAppointmentReminder(appointment) {
   }
 }
 
+/**
+ * Creates, sends, and updates one appointment reminder notification.
+ * Duplicate reminders are skipped safely.
+ */
+async function sendAppointmentReminder(appointment) {
+  if (!appointment?.id || !appointment?.patient_id) {
+    throw createServiceError('appointment id and patient_id are required.', 400);
+  }
+
+  const recipientEmail = await fetchUserEmail(appointment.patient_id);
+  const emailContent = buildAppointmentReminderEmail(appointment);
+  const slotOccurrenceKey = buildSlotOccurrenceKey(appointment);
+
+  const notificationResult = await createNotification({
+    notificationType: NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M,
+    userId: appointment.patient_id,
+    appointmentId: appointment.id,
+    slotOccurrenceKey,
+    recipientEmail,
+    subject: emailContent.subject,
+    scheduledFor: appointment.appointment_start_at || null,
+    metadata: {
+      clinic_id: appointment.clinic_id,
+      slot_id: appointment.slot_id,
+      slot_date: appointment.slot?.date || null,
+      slot_start_time: appointment.slot?.start_time || null
+    }
+  });
+
+  if (notificationResult.duplicate) {
+    if (canRetryNotification(notificationResult.notification)) {
+      return deliverNotificationEmail({
+        notification: notificationResult.notification,
+        recipientEmail,
+        emailContent,
+        idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`
+      });
+    }
+
+    return {
+      sent: false,
+      skipped: true,
+      reason: 'duplicate',
+      notification: notificationResult.notification
+    };
+  }
+
+  const notification = notificationResult.notification;
+
+  return deliverNotificationEmail({
+    notification,
+    recipientEmail,
+    emailContent,
+    idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`
+  });
+}
+
+async function sendStaffDecisionNotification(staffRequest) {
+  if (!staffRequest?.id || !staffRequest?.user_id || !staffRequest?.status) {
+    throw createServiceError('staff request id, user_id, and status are required.', 400);
+  }
+
+  const notificationType =
+    staffRequest.status === 'approved'
+      ? NOTIFICATION_TYPES.STAFF_REQUEST_APPROVED
+      : staffRequest.status === 'rejected'
+        ? NOTIFICATION_TYPES.STAFF_REQUEST_REJECTED
+        : null;
+
+  if (!notificationType) {
+    throw createServiceError('Staff request status must be approved or rejected.', 400);
+  }
+
+  const recipientEmail = await fetchUserEmail(staffRequest.user_id);
+  const emailContent = buildStaffDecisionEmail(staffRequest);
+
+  const notificationResult = await createNotification({
+    notificationType,
+    userId: staffRequest.user_id,
+    staffRequestId: staffRequest.id,
+    recipientEmail,
+    subject: emailContent.subject,
+    metadata: {
+      clinic_id: staffRequest.clinic_id || null,
+      staff_id: staffRequest.staff_id || null,
+      reviewed_at: staffRequest.reviewed_at || null,
+      status: staffRequest.status
+    }
+  });
+
+  if (notificationResult.duplicate) {
+    if (canRetryNotification(notificationResult.notification)) {
+      return deliverNotificationEmail({
+        notification: notificationResult.notification,
+        recipientEmail,
+        emailContent,
+        idempotencyKey: `${notificationType}:${staffRequest.id}`
+      });
+    }
+
+    return {
+      sent: false,
+      skipped: true,
+      reason: 'duplicate',
+      notification: notificationResult.notification
+    };
+  }
+
+  return deliverNotificationEmail({
+    notification: notificationResult.notification,
+    recipientEmail,
+    emailContent,
+    idempotencyKey: `${notificationType}:${staffRequest.id}`
+  });
+}
+
 module.exports = {
   NOTIFICATION_TYPES,
   createServiceError,
@@ -390,5 +532,7 @@ module.exports = {
   markNotificationSent,
   markNotificationFailed,
   buildAppointmentReminderEmail,
-  sendAppointmentReminder
+  buildStaffDecisionEmail,
+  sendAppointmentReminder,
+  sendStaffDecisionNotification
 };

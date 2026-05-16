@@ -19,7 +19,9 @@ const { sendEmail } = require('../src/lib/emailClient');
 const {
   fetchUserEmail,
   createNotification,
-  sendAppointmentReminder
+  buildStaffDecisionEmail,
+  sendAppointmentReminder,
+  sendStaffDecisionNotification
 } = require('../src/modules/notifications/notifications.service');
 
 /**
@@ -91,6 +93,23 @@ function reminderAppointment(overrides = {}) {
       date: '2026-05-10',
       start_time: '10:20:00',
       end_time: '10:50:00'
+    },
+    ...overrides
+  };
+}
+
+function staffRequest(overrides = {}) {
+  return {
+    id: 'staff-request-1',
+    user_id: 'staff-user-1',
+    full_name: 'Staff Member',
+    clinic_id: 'clinic-1',
+    staff_id: 'STAFF-001',
+    status: 'approved',
+    reviewed_at: '2026-05-10T08:00:00.000Z',
+    clinic: {
+      id: 'clinic-1',
+      name: 'Rosebank Med Dental Centre'
     },
     ...overrides
   };
@@ -389,7 +408,8 @@ describe('notifications.service', () => {
         expect.objectContaining({
           to: 'patient@example.com',
           subject: 'VitaQ appointment reminder',
-          idempotencyKey: 'appointment_reminder_30m:appointment-1'
+          idempotencyKey:
+            'appointment_reminder_30m:appointment-1:2026-05-10:10:20:00'
         })
       );
 
@@ -458,6 +478,82 @@ describe('notifications.service', () => {
       });
 
       expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    test('retries a duplicate appointment reminder when the previous notification failed', async () => {
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: {
+          user: {
+            id: 'patient-1',
+            email: 'patient@example.com'
+          }
+        },
+        error: null
+      });
+
+      const failedExistingNotification = {
+        id: 'notification-existing',
+        notification_type: 'appointment_reminder_30m',
+        appointment_id: 'appointment-1',
+        slot_occurrence_key: 'appointment-1:2026-05-10:10:20:00',
+        recipient_email: 'patient@example.com',
+        subject: 'VitaQ appointment reminder',
+        status: 'failed',
+        attempt_count: 1
+      };
+
+      const sentNotification = {
+        ...failedExistingNotification,
+        status: 'sent',
+        provider_message_id: 'resend-message-retry',
+        attempt_count: 2
+      };
+
+      const duplicateInsertQuery = createInsertQuery({
+        data: null,
+        error: {
+          code: '23505',
+          message: 'duplicate key value violates unique constraint'
+        }
+      });
+
+      const existingLookupQuery = createLookupQuery({
+        data: [failedExistingNotification],
+        error: null
+      });
+
+      const updateQuery = createUpdateQuery({
+        data: sentNotification,
+        error: null
+      });
+
+      supabase.from
+        .mockReturnValueOnce(duplicateInsertQuery)
+        .mockReturnValueOnce(existingLookupQuery)
+        .mockReturnValueOnce(updateQuery);
+
+      sendEmail.mockResolvedValue({
+        provider: 'resend',
+        messageId: 'resend-message-retry'
+      });
+
+      const result = await sendAppointmentReminder(reminderAppointment());
+
+      expect(result.sent).toBe(true);
+      expect(result.skipped).toBe(false);
+      expect(result.notification.status).toBe('sent');
+      expect(sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idempotencyKey:
+            'appointment_reminder_30m:appointment-1:2026-05-10:10:20:00'
+        })
+      );
+      expect(updateQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'sent',
+          attempt_count: 2
+        })
+      );
     });
 
     test('marks the notification as failed when the provider send fails', async () => {
@@ -542,6 +638,275 @@ describe('notifications.service', () => {
 
       expect(supabase.from).not.toHaveBeenCalled();
       expect(sendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('buildStaffDecisionEmail', () => {
+    test('builds an approved staff request email', () => {
+      const result = buildStaffDecisionEmail(staffRequest());
+
+      expect(result.subject).toBe('VitaQ staff application approved');
+      expect(result.text).toContain(
+        'Your staff application for Rosebank Med Dental Centre has been approved.'
+      );
+    });
+
+    test('builds a rejected staff request email', () => {
+      const result = buildStaffDecisionEmail(
+        staffRequest({
+          status: 'rejected'
+        })
+      );
+
+      expect(result.subject).toBe('VitaQ staff application rejected');
+      expect(result.text).toContain(
+        'Your staff application for Rosebank Med Dental Centre has been rejected.'
+      );
+    });
+  });
+
+  describe('sendStaffDecisionNotification', () => {
+    test('creates, sends, and marks an approval notification as sent', async () => {
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: {
+          user: {
+            id: 'staff-user-1',
+            email: 'staff@example.com'
+          }
+        },
+        error: null
+      });
+
+      const pendingNotification = {
+        id: 'notification-staff-1',
+        notification_type: 'staff_request_approved',
+        user_id: 'staff-user-1',
+        staff_request_id: 'staff-request-1',
+        recipient_email: 'staff@example.com',
+        subject: 'VitaQ staff application approved',
+        status: 'pending',
+        attempt_count: 0
+      };
+
+      const sentNotification = {
+        ...pendingNotification,
+        status: 'sent',
+        provider_message_id: 'resend-message-staff',
+        attempt_count: 1
+      };
+
+      const insertQuery = createInsertQuery({
+        data: pendingNotification,
+        error: null
+      });
+
+      const updateQuery = createUpdateQuery({
+        data: sentNotification,
+        error: null
+      });
+
+      supabase.from
+        .mockReturnValueOnce(insertQuery)
+        .mockReturnValueOnce(updateQuery);
+
+      sendEmail.mockResolvedValue({
+        provider: 'resend',
+        messageId: 'resend-message-staff'
+      });
+
+      const result = await sendStaffDecisionNotification(staffRequest());
+
+      expect(result.sent).toBe(true);
+      expect(insertQuery.insert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          notification_type: 'staff_request_approved',
+          user_id: 'staff-user-1',
+          staff_request_id: 'staff-request-1',
+          recipient_email: 'staff@example.com',
+          subject: 'VitaQ staff application approved',
+          status: 'pending',
+          metadata: expect.objectContaining({
+            clinic_id: 'clinic-1',
+            staff_id: 'STAFF-001',
+            status: 'approved'
+          })
+        })
+      ]);
+      expect(sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'staff@example.com',
+          subject: 'VitaQ staff application approved',
+          idempotencyKey: 'staff_request_approved:staff-request-1'
+        })
+      );
+    });
+
+    test('creates a rejected staff request notification type', async () => {
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: {
+          user: {
+            id: 'staff-user-1',
+            email: 'staff@example.com'
+          }
+        },
+        error: null
+      });
+
+      const pendingNotification = {
+        id: 'notification-staff-2',
+        notification_type: 'staff_request_rejected',
+        user_id: 'staff-user-1',
+        staff_request_id: 'staff-request-1',
+        recipient_email: 'staff@example.com',
+        subject: 'VitaQ staff application rejected',
+        status: 'pending',
+        attempt_count: 0
+      };
+
+      const sentNotification = {
+        ...pendingNotification,
+        status: 'sent',
+        provider_message_id: 'resend-message-staff',
+        attempt_count: 1
+      };
+
+      const insertQuery = createInsertQuery({
+        data: pendingNotification,
+        error: null
+      });
+      const updateQuery = createUpdateQuery({
+        data: sentNotification,
+        error: null
+      });
+
+      supabase.from
+        .mockReturnValueOnce(insertQuery)
+        .mockReturnValueOnce(updateQuery);
+
+      sendEmail.mockResolvedValue({
+        provider: 'resend',
+        messageId: 'resend-message-staff'
+      });
+
+      const result = await sendStaffDecisionNotification(
+        staffRequest({
+          status: 'rejected'
+        })
+      );
+
+      expect(result.sent).toBe(true);
+      expect(insertQuery.insert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          notification_type: 'staff_request_rejected',
+          subject: 'VitaQ staff application rejected',
+          metadata: expect.objectContaining({
+            status: 'rejected'
+          })
+        })
+      ]);
+    });
+
+    test('skips a duplicate staff decision notification that is already sent', async () => {
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: {
+          user: {
+            id: 'staff-user-1',
+            email: 'staff@example.com'
+          }
+        },
+        error: null
+      });
+
+      const existingNotification = {
+        id: 'notification-existing-staff',
+        notification_type: 'staff_request_approved',
+        staff_request_id: 'staff-request-1',
+        status: 'sent'
+      };
+
+      const duplicateInsertQuery = createInsertQuery({
+        data: null,
+        error: {
+          code: '23505',
+          message: 'duplicate key value violates unique constraint'
+        }
+      });
+
+      const existingLookupQuery = createLookupQuery({
+        data: [existingNotification],
+        error: null
+      });
+
+      supabase.from
+        .mockReturnValueOnce(duplicateInsertQuery)
+        .mockReturnValueOnce(existingLookupQuery);
+
+      const result = await sendStaffDecisionNotification(staffRequest());
+
+      expect(result).toEqual({
+        sent: false,
+        skipped: true,
+        reason: 'duplicate',
+        notification: existingNotification
+      });
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    test('marks a staff decision notification as failed when the provider fails', async () => {
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: {
+          user: {
+            id: 'staff-user-1',
+            email: 'staff@example.com'
+          }
+        },
+        error: null
+      });
+
+      const pendingNotification = {
+        id: 'notification-staff-failed',
+        notification_type: 'staff_request_approved',
+        user_id: 'staff-user-1',
+        staff_request_id: 'staff-request-1',
+        recipient_email: 'staff@example.com',
+        subject: 'VitaQ staff application approved',
+        status: 'pending',
+        attempt_count: 0
+      };
+
+      const failedNotification = {
+        ...pendingNotification,
+        status: 'failed',
+        error_message: 'Provider unavailable',
+        attempt_count: 1
+      };
+
+      const insertQuery = createInsertQuery({
+        data: pendingNotification,
+        error: null
+      });
+      const updateQuery = createUpdateQuery({
+        data: failedNotification,
+        error: null
+      });
+
+      supabase.from
+        .mockReturnValueOnce(insertQuery)
+        .mockReturnValueOnce(updateQuery);
+
+      sendEmail.mockRejectedValue(new Error('Provider unavailable'));
+
+      const result = await sendStaffDecisionNotification(staffRequest());
+
+      expect(result.sent).toBe(false);
+      expect(result.failed).toBe(true);
+      expect(updateQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'failed',
+          error_message: 'Provider unavailable',
+          attempt_count: 1
+        })
+      );
     });
   });
 });

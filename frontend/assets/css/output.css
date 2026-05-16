@@ -47,6 +47,7 @@
     --radius-3xl: 1.5rem;
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --animate-spin: spin 1s linear infinite;
     --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     --blur-sm: 8px;
     --blur-md: 12px;
@@ -572,6 +573,9 @@
   .min-h-\[6\.75rem\] {
     min-height: 6.75rem;
   }
+  .min-h-\[42px\] {
+    min-height: 42px;
+  }
   .min-h-\[44px\] {
     min-height: 44px;
   }
@@ -587,8 +591,17 @@
   .min-h-screen {
     min-height: 100vh;
   }
+  .w-2\/3 {
+    width: calc(2 / 3 * 100%);
+  }
+  .w-3\/4 {
+    width: calc(3 / 4 * 100%);
+  }
   .w-4 {
     width: calc(var(--spacing) * 4);
+  }
+  .w-5\/6 {
+    width: calc(5 / 6 * 100%);
   }
   .w-6 {
     width: calc(var(--spacing) * 6);
@@ -671,6 +684,9 @@
   .max-w-7xl {
     max-width: var(--container-7xl);
   }
+  .max-w-\[12rem\] {
+    max-width: 12rem;
+  }
   .max-w-\[30rem\] {
     max-width: 30rem;
   }
@@ -706,6 +722,9 @@
   }
   .animate-pulse {
     animation: var(--animate-pulse);
+  }
+  .animate-spin {
+    animation: var(--animate-spin);
   }
   .cursor-default {
     cursor: default;
@@ -887,6 +906,10 @@
     border-style: var(--tw-border-style);
     border-width: 1px;
   }
+  .border-2 {
+    border-style: var(--tw-border-style);
+    border-width: 2px;
+  }
   .border-t {
     border-top-style: var(--tw-border-style);
     border-top-width: 1px;
@@ -986,11 +1009,17 @@
       border-color: color-mix(in oklab, var(--color-white) 10%, transparent);
     }
   }
+  .border-t-\[\#7dcfff\] {
+    border-top-color: #7dcfff;
+  }
   .bg-\[\#0a2540\] {
     background-color: #0a2540;
   }
   .bg-\[\#1a1b26\] {
     background-color: #1a1b26;
+  }
+  .bg-\[\#1a1b26\]\/60 {
+    background-color: color-mix(in oklab, #1a1b26 60%, transparent);
   }
   .bg-\[\#1a1b26\]\/70 {
     background-color: color-mix(in oklab, #1a1b26 70%, transparent);
@@ -1099,6 +1128,15 @@
   }
   .bg-\[\#414868\] {
     background-color: #414868;
+  }
+  .bg-\[\#414868\]\/50 {
+    background-color: color-mix(in oklab, #414868 50%, transparent);
+  }
+  .bg-\[\#414868\]\/60 {
+    background-color: color-mix(in oklab, #414868 60%, transparent);
+  }
+  .bg-\[\#414868\]\/70 {
+    background-color: color-mix(in oklab, #414868 70%, transparent);
   }
   .bg-\[\#bb9af7\]\/10 {
     background-color: color-mix(in oklab, #bb9af7 10%, transparent);
@@ -1518,6 +1556,9 @@
   }
   .text-\[\#f4b5c0\] {
     color: #f4b5c0;
+  }
+  .text-\[\#f4b5c0\]\/90 {
+    color: color-mix(in oklab, #f4b5c0 90%, transparent);
   }
   .text-\[\#f6d8a8\] {
     color: #f6d8a8;
@@ -2375,6 +2416,11 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+  .xl\:grid-cols-3 {
+    @media (width >= 80rem) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
   .xl\:grid-cols-4 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2813,6 +2859,11 @@
   syntax: "*";
   inherits: false;
   initial-value: 0;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes pulse {
   50% {

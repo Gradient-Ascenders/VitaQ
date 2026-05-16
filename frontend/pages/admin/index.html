@@ -600,6 +600,38 @@
               </article>
             </section>
 
+            <!-- Sprint 4 analytics charts.
+            These charts reuse the wait-time analytics endpoint data that is already loaded by admin.js.
+            They cover busiest clinic hours, queue trends, and wait-time comparisons. -->
+            <section class="mt-8 grid gap-6 xl:grid-cols-3">
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Busiest clinic hours</p>
+                <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Queue volume by hour</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Shows which clinic hours have the most completed queue records.
+                </p>
+                <div id="analyticsBusiestHoursChart" class="mt-6"></div>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Queue trends</p>
+                <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Completed queues by date</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Tracks queue activity over time using the selected filters.
+                </p>
+                <div id="analyticsQueueTrendChart" class="mt-6"></div>
+              </article>
+
+              <article class="rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 p-5 shadow-lg shadow-black/10">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#8b93b8]">Wait-time comparison</p>
+                <h3 class="mt-2 text-xl font-semibold text-[#e0e5ff]">Average wait by clinic</h3>
+                <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
+                  Compares clinics by average patient wait time.
+                </p>
+                <div id="analyticsWaitComparisonChart" class="mt-6"></div>
+              </article>
+            </section>
+
             <section class="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
               <article class="overflow-hidden rounded-[1.75rem] border border-[#414868] bg-[#1f2335]/82 shadow-lg shadow-black/10">
                 <div class="border-b border-[#414868] px-5 py-4">

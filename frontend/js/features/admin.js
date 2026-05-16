@@ -243,6 +243,66 @@ function formatAnalyticsHour(hour) {
   return `${String(numberValue).padStart(2, '0')}:00`;
 }
 
+// Converts a chart value into a safe percentage for inline bar heights/widths.
+// A small minimum percentage keeps non-zero values visible on the dashboard.
+function getChartPercentage(value, maxValue, minimumPercentage = 6) {
+  const numberValue = Number(value || 0);
+  const numberMax = Number(maxValue || 0);
+
+  if (
+    !Number.isFinite(numberValue) ||
+    !Number.isFinite(numberMax) ||
+    numberValue <= 0 ||
+    numberMax <= 0
+  ) {
+    return 0;
+  }
+
+  return Math.min(Math.max((numberValue / numberMax) * 100, minimumPercentage), 100);
+}
+
+// Shared empty/loading message used by the small Sprint 4 chart panels.
+function buildAnalyticsChartMessage(message) {
+  return `<p class="rounded-2xl border border-dashed border-[#414868] bg-[#1a1b26]/60 px-4 py-6 text-center text-sm text-[#a9b1d6]">${escapeHtml(message)}</p>`;
+}
+
+// Skeleton block used while analytics cards, tables, and charts are loading.
+function buildAnalyticsSkeletonBlock(message = 'Loading...') {
+  return `
+    <div class="space-y-4 rounded-2xl border border-[#414868] bg-[#1a1b26]/60 p-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#7aa2f7]/30 border-t-[#7dcfff]"></span>
+        <p class="text-sm font-medium text-[#a9b1d6]">${escapeHtml(message)}</p>
+      </div>
+
+      <div class="space-y-3">
+        <div class="h-3 w-5/6 animate-pulse rounded-full bg-[#414868]/70"></div>
+        <div class="h-3 w-2/3 animate-pulse rounded-full bg-[#414868]/60"></div>
+        <div class="h-3 w-3/4 animate-pulse rounded-full bg-[#414868]/50"></div>
+      </div>
+    </div>
+  `;
+}
+
+// Error block used inside analytics tables/charts when an API request fails.
+function buildAnalyticsErrorBlock(message = 'Unable to load this analytics section.') {
+  return `
+    <div class="rounded-2xl border border-[#f7768e]/20 bg-[#f7768e]/10 px-4 py-6 text-sm leading-7 text-[#f4b5c0]">
+      <p class="font-semibold">Analytics unavailable</p>
+      <p class="mt-1">${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function setMetricLoadingState(element, isLoading) {
+  if (!element) {
+    return;
+  }
+
+  element.classList.toggle('animate-pulse', isLoading);
+  element.classList.toggle('text-[#7dcfff]', isLoading);
+}
+
 function formatStatusLabel(status) {
   switch (status) {
     case STAFF_REQUEST_STATUSES.APPROVED:
@@ -1087,6 +1147,9 @@ function getAnalyticsElements() {
     activeQueues: document.getElementById('analyticsActiveQueues'),
     activeQueuesMeta: document.getElementById('analyticsActiveQueuesMeta'),
     averageConsultation: document.getElementById('analyticsAverageConsultation'),
+    busiestHoursChart: document.getElementById('analyticsBusiestHoursChart'),
+    queueTrendChart: document.getElementById('analyticsQueueTrendChart'),
+    waitComparisonChart: document.getElementById('analyticsWaitComparisonChart'),
     clinicTableBody: document.getElementById('analyticsClinicTableBody'),
     hourBars: document.getElementById('analyticsHourBars'),
     noShowSummary: document.getElementById('analyticsNoShowSummary'),
@@ -1108,17 +1171,46 @@ function renderAnalyticsFeedback() {
 
   if (!adminState.analyticsError && !adminState.isAnalyticsLoading) {
     feedback.className = 'mt-8 hidden';
-    feedback.textContent = '';
+    feedback.innerHTML = '';
     return;
   }
 
   const isError = Boolean(adminState.analyticsError);
-  feedback.className = `mt-8 rounded-2xl border px-4 py-3 text-sm font-medium ${
+
+  feedback.className = `mt-8 rounded-2xl border px-4 py-4 text-sm font-medium ${
     isError
       ? 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
       : 'border-[#7aa2f7]/20 bg-[#7aa2f7]/10 text-[#c7d8ff]'
   }`;
-  feedback.textContent = isError ? adminState.analyticsError : 'Loading analytics...';
+
+  if (isError) {
+    feedback.innerHTML = `
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="font-semibold text-[#f4b5c0]">Unable to load analytics</p>
+          <p class="mt-1 text-sm leading-6 text-[#f4b5c0]/90">
+            ${escapeHtml(adminState.analyticsError || 'The analytics request failed.')}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          data-analytics-retry="true"
+          class="inline-flex min-h-[42px] items-center justify-center rounded-2xl border border-[#f7768e]/30 bg-[#f7768e]/10 px-4 py-2 text-sm font-semibold text-[#f4b5c0] transition hover:bg-[#f7768e]/16"
+        >
+          Retry
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  feedback.innerHTML = `
+    <div class="flex items-center gap-3">
+      <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#7aa2f7]/30 border-t-[#7dcfff]"></span>
+      <span>Loading analytics dashboard data...</span>
+    </div>
+  `;
 }
 
 function renderAnalyticsFilters() {
@@ -1199,6 +1291,8 @@ function renderAnalyticsSummary() {
   const noShowAnalytics = adminState.noShowAnalytics || {};
   const completedQueueCount = Number(waitTimeAnalytics.completedQueueCount || 0);
   const activeQueueCount = getAnalyticsCardQueueCount(waitTimeAnalytics);
+  const isLoading = adminState.isAnalyticsLoading;
+  const hasError = Boolean(adminState.analyticsError);
 
   if (summaryText) {
     if (adminState.isAnalyticsLoading) {
@@ -1216,26 +1310,45 @@ function renderAnalyticsSummary() {
   }
 
   if (averageWait) {
-    averageWait.textContent = formatAnalyticsMinutes(waitTimeAnalytics.averageWaitMinutes);
+    setMetricLoadingState(averageWait, isLoading);
+    averageWait.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsMinutes(waitTimeAnalytics.averageWaitMinutes);
   }
 
   if (activeQueues) {
-    activeQueues.textContent = formatAnalyticsNumber(activeQueueCount);
+    setMetricLoadingState(activeQueues, isLoading);
+    activeQueues.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsNumber(activeQueueCount);
   }
 
   if (activeQueuesMeta) {
-    activeQueuesMeta.textContent =
-      waitTimeAnalytics.activeQueueCount === undefined &&
-      waitTimeAnalytics.totalActiveQueues === undefined &&
-      waitTimeAnalytics.activeQueues === undefined
-        ? 'Filtered queue total from current analytics data.'
-        : 'Active queue entries matching the selected filters.';
+    if (isLoading) {
+      activeQueuesMeta.textContent = 'Fetching filtered queue data from the analytics endpoints.';
+    } else if (hasError) {
+      activeQueuesMeta.textContent = 'Queue total could not be loaded. Use Retry or apply filters again.';
+    } else {
+      activeQueuesMeta.textContent =
+        waitTimeAnalytics.activeQueueCount === undefined &&
+        waitTimeAnalytics.totalActiveQueues === undefined &&
+        waitTimeAnalytics.activeQueues === undefined
+          ? 'Filtered queue total from current analytics data.'
+          : 'Active queue entries matching the selected filters.';
+    }
   }
 
   if (averageConsultation) {
-    averageConsultation.textContent = formatAnalyticsMinutes(
-      waitTimeAnalytics.averageConsultationMinutes
-    );
+    setMetricLoadingState(averageConsultation, isLoading);
+    averageConsultation.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsMinutes(waitTimeAnalytics.averageConsultationMinutes);
   }
 }
 
@@ -1251,6 +1364,8 @@ function renderNoShowSummaryCards() {
   const noShowCountValue = Number(noShowAnalytics.noShowCount || 0);
   const totalAppointmentsValue = Number(noShowAnalytics.totalAppointments || 0);
   const attendedQueueCount = Number(noShowAnalytics.attendedQueueCount || 0);
+  const isLoading = adminState.isAnalyticsLoading;
+  const hasError = Boolean(adminState.analyticsError);
 
   if (noShowSummary) {
     if (adminState.isAnalyticsLoading) {
@@ -1263,16 +1378,241 @@ function renderNoShowSummaryCards() {
   }
 
   if (noShowRate) {
-    noShowRate.textContent = formatAnalyticsPercent(noShowRateValue);
+    setMetricLoadingState(noShowRate, isLoading);
+    noShowRate.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsPercent(noShowRateValue);
   }
 
   if (noShowCount) {
-    noShowCount.textContent = formatAnalyticsNumber(noShowCountValue);
+    setMetricLoadingState(noShowCount, isLoading);
+    noShowCount.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsNumber(noShowCountValue);
   }
 
   if (totalAppointments) {
-    totalAppointments.textContent = formatAnalyticsNumber(totalAppointmentsValue);
+    setMetricLoadingState(totalAppointments, isLoading);
+    totalAppointments.textContent = isLoading
+      ? 'Loading...'
+      : hasError
+        ? 'N/A'
+        : formatAnalyticsNumber(totalAppointmentsValue);
   }
+}
+
+// Renders queue volume by hour as horizontal bars.
+// This avoids wasted vertical space and matches the wait-time comparison style.
+function renderBusiestClinicHoursChart() {
+  const { busiestHoursChart } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const rows = Array.isArray(waitTimeAnalytics.byHour) ? waitTimeAnalytics.byHour : [];
+
+  if (!busiestHoursChart) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    busiestHoursChart.innerHTML = buildAnalyticsChartMessage('Loading busiest hours chart...');
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    busiestHoursChart.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    return;
+  }
+
+  if (rows.length === 0) {
+    busiestHoursChart.innerHTML = buildAnalyticsChartMessage('No hourly queue data matches these filters.');
+    return;
+  }
+
+  const maxQueueCount = rows.reduce((maxValue, row) => {
+    const queueCount = Number(row.completedQueueCount || 0);
+    return queueCount > maxValue ? queueCount : maxValue;
+  }, 0);
+
+  const busiestHourRow = rows.reduce((currentBest, row) => {
+    const queueCount = Number(row.completedQueueCount || 0);
+    const bestCount = Number(currentBest?.completedQueueCount || 0);
+    return queueCount > bestCount ? row : currentBest;
+  }, rows[0]);
+
+  busiestHoursChart.innerHTML = `
+    <div class="space-y-4" aria-label="Busiest clinic hours chart">
+      ${rows.map((row) => {
+        const queueCount = Number(row.completedQueueCount || 0);
+        const barWidth = getChartPercentage(queueCount, maxQueueCount, 8);
+
+        return `
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-4 text-sm">
+              <span class="font-semibold text-[#e0e5ff]">${formatAnalyticsHour(row.hour)}</span>
+              <span class="text-[#a9b1d6]">${formatAnalyticsNumber(queueCount)} queue${queueCount === 1 ? '' : 's'}</span>
+            </div>
+
+            <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7]"
+                style="width: ${barWidth}%;"
+                title="${formatAnalyticsHour(row.hour)}: ${formatAnalyticsNumber(queueCount)} queue records"
+              ></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+      Busiest hour: <span class="font-semibold text-[#e0e5ff]">${formatAnalyticsHour(busiestHourRow.hour)}</span>
+      with <span class="font-semibold text-[#e0e5ff]">${formatAnalyticsNumber(busiestHourRow.completedQueueCount)}</span>
+      completed queue record${Number(busiestHourRow.completedQueueCount || 0) === 1 ? '' : 's'}.
+    </p>
+  `;
+}
+
+// Renders completed queue count by date as horizontal bars.
+// This matches the "trends over time" style and uses card space better.
+function renderQueueTrendChart() {
+  const { queueTrendChart } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const rows = Array.isArray(waitTimeAnalytics.byDate) ? waitTimeAnalytics.byDate : [];
+
+  if (!queueTrendChart) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    queueTrendChart.innerHTML = buildAnalyticsChartMessage('Loading queue trend chart...');
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    queueTrendChart.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    return;
+  }
+
+  if (rows.length === 0) {
+    queueTrendChart.innerHTML = buildAnalyticsChartMessage('No queue trend data matches these filters.');
+    return;
+  }
+
+  // Show the latest 8 date points so the card stays readable.
+  const visibleRows = rows.slice(-8);
+
+  const maxQueueCount = visibleRows.reduce((maxValue, row) => {
+    const queueCount = Number(row.completedQueueCount || 0);
+    return queueCount > maxValue ? queueCount : maxValue;
+  }, 0);
+
+  queueTrendChart.innerHTML = `
+    <div class="space-y-4" aria-label="Queue trend chart">
+      ${visibleRows.map((row) => {
+        const queueCount = Number(row.completedQueueCount || 0);
+        const averageWaitMinutes = Number(row.averageWaitMinutes || 0);
+        const barWidth = getChartPercentage(queueCount, maxQueueCount, 8);
+
+        return `
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-4 text-sm">
+              <span class="font-semibold text-[#e0e5ff]">${escapeHtml(row.date || 'Unknown date')}</span>
+              <span class="text-[#a9b1d6]">${formatAnalyticsNumber(queueCount)} queue${queueCount === 1 ? '' : 's'}</span>
+            </div>
+
+            <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[#bb9af7] to-[#7aa2f7]"
+                style="width: ${barWidth}%;"
+                title="${escapeHtml(row.date || 'Unknown date')}: ${formatAnalyticsNumber(queueCount)} completed queues"
+              ></div>
+            </div>
+
+            <p class="text-xs text-[#8b93b8]">
+              ${formatAnalyticsMinutes(averageWaitMinutes)} average wait time
+            </p>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <p class="mt-4 text-sm leading-7 text-[#a9b1d6]">
+      Showing ${formatAnalyticsNumber(visibleRows.length)} queue trend date point${visibleRows.length === 1 ? '' : 's'} from the selected range.
+    </p>
+  `;
+}
+
+// Renders average wait-time comparisons by clinic.
+// This turns the existing clinic comparison table into a proper visual chart.
+function renderWaitTimeComparisonChart() {
+  const { waitComparisonChart } = getAnalyticsElements();
+  const waitTimeAnalytics = adminState.waitTimeAnalytics || {};
+  const rows = Array.isArray(waitTimeAnalytics.byClinic) ? waitTimeAnalytics.byClinic : [];
+
+  if (!waitComparisonChart) {
+    return;
+  }
+
+  if (adminState.isAnalyticsLoading) {
+    waitComparisonChart.innerHTML = buildAnalyticsChartMessage('Loading wait-time comparison chart...');
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    waitComparisonChart.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    return;
+  }
+
+  if (rows.length === 0) {
+    waitComparisonChart.innerHTML = buildAnalyticsChartMessage('No clinic wait-time data matches these filters.');
+    return;
+  }
+
+  // Show the highest wait-time clinics first so admins can quickly spot problem areas.
+  const visibleRows = [...rows]
+    .sort((left, right) => Number(right.averageWaitMinutes || 0) - Number(left.averageWaitMinutes || 0))
+    .slice(0, 8);
+
+  const maxWaitMinutes = visibleRows.reduce((maxValue, row) => {
+    const waitMinutes = Number(row.averageWaitMinutes || 0);
+    return waitMinutes > maxValue ? waitMinutes : maxValue;
+  }, 0);
+
+  waitComparisonChart.innerHTML = `
+    <div class="space-y-4" aria-label="Wait-time comparison chart">
+      ${visibleRows.map((row) => {
+        const waitMinutes = Number(row.averageWaitMinutes || 0);
+        const consultationMinutes = Number(row.averageConsultationMinutes || 0);
+        const barWidth = getChartPercentage(waitMinutes, maxWaitMinutes, 8);
+
+        return `
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-4 text-sm">
+              <span class="max-w-[12rem] truncate font-semibold text-[#e0e5ff]" title="${escapeHtml(row.clinicName || 'Unknown clinic')}">
+                ${escapeHtml(row.clinicName || 'Unknown clinic')}
+              </span>
+              <span class="shrink-0 text-[#a9b1d6]">${formatAnalyticsMinutes(waitMinutes)}</span>
+            </div>
+
+            <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[#7dcfff] to-[#7aa2f7]"
+                style="width: ${barWidth}%;"
+              ></div>
+            </div>
+
+            <p class="text-xs text-[#8b93b8]">
+              ${formatAnalyticsNumber(row.completedQueueCount)} queue record${Number(row.completedQueueCount || 0) === 1 ? '' : 's'}
+              · ${formatAnalyticsMinutes(consultationMinutes)} avg consultation
+            </p>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 function renderAnalyticsClinicRows() {
@@ -1288,6 +1628,11 @@ function renderAnalyticsClinicRows() {
     clinicTableBody.innerHTML = `
       <article class="px-5 py-6 text-sm text-[#a9b1d6]">Loading clinic analytics...</article>
     `;
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    clinicTableBody.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
     return;
   }
 
@@ -1338,6 +1683,11 @@ function renderAnalyticsHourBars() {
     return;
   }
 
+  if (adminState.analyticsError) {
+    hourBars.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    return;
+  }
+
   if (rows.length === 0) {
     hourBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">No hourly rows match the selected filters.</p>';
     return;
@@ -1374,6 +1724,11 @@ function renderNoShowClinicRows() {
     noShowClinicTableBody.innerHTML = `
       <article class="px-5 py-6 text-sm text-[#a9b1d6]">Loading no-show clinic comparisons...</article>
     `;
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    noShowClinicTableBody.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
     return;
   }
 
@@ -1417,6 +1772,11 @@ function renderNoShowTrendBars() {
 
   if (adminState.isAnalyticsLoading) {
     noShowTrendBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">Loading no-show trends...</p>';
+    return;
+  }
+
+  if (adminState.analyticsError) {
+    noShowTrendBars.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
     return;
   }
 
@@ -1467,6 +1827,12 @@ function refreshAnalyticsDashboard() {
   renderAnalyticsFilters();
   renderAnalyticsSummary();
   renderNoShowSummaryCards();
+
+  // Sprint 4 chart renderers.
+  renderBusiestClinicHoursChart();
+  renderQueueTrendChart();
+  renderWaitTimeComparisonChart();
+
   renderAnalyticsClinicRows();
   renderAnalyticsHourBars();
   renderNoShowClinicRows();
@@ -2188,8 +2554,16 @@ function initialiseClinicManagementActions() {
   }
 }
 
+async function retryAnalyticsLoad() {
+  if (adminState.isAnalyticsLoading || !adminState.accessToken) {
+    return;
+  }
+
+  await loadAdminAnalytics(adminState.analyticsFilters);
+}
+
 function initialiseAnalyticsActions() {
-  const { form } = getAnalyticsElements();
+  const { form, feedback } = getAnalyticsElements();
   const {
     modal,
     form: reportExportForm,
@@ -2200,6 +2574,18 @@ function initialiseAnalyticsActions() {
 
   if (form) {
     form.addEventListener('submit', handleAnalyticsFilterSubmit);
+  }
+
+  if (feedback) {
+    feedback.addEventListener('click', async function (event) {
+      const retryButton = event.target.closest('button[data-analytics-retry]');
+
+      if (!retryButton) {
+        return;
+      }
+
+      await retryAnalyticsLoad();
+    });
   }
 
   if (openButton) {

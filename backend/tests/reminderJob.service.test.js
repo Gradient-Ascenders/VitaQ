@@ -359,6 +359,41 @@ describe('reminderJob.service', () => {
       });
     });
 
+    test('does not count a retried failed reminder as a newly created notification', async () => {
+      const now = new Date('2026-05-10T08:00:00.000Z');
+
+      const appointmentQuery = createAppointmentQuery({
+        data: [
+          appointmentRow({
+            id: 'appointment-retry',
+            slot: {
+              id: 'slot-1',
+              date: '2026-05-10',
+              start_time: '10:05:00',
+              end_time: '10:35:00'
+            }
+          })
+        ],
+        error: null
+      });
+
+      supabase.from.mockReturnValueOnce(appointmentQuery);
+      sendAppointmentReminder.mockResolvedValueOnce({
+        sent: true,
+        skipped: false,
+        created: false
+      });
+
+      const result = await processAppointmentReminderJob({ now });
+
+      expect(result).toEqual({
+        eligible: 1,
+        created: 0,
+        sent: 1,
+        failed: 0
+      });
+    });
+
     test('returns zero counts when no appointments are eligible', async () => {
       const now = new Date('2026-05-10T08:00:00.000Z');
 

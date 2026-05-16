@@ -23,32 +23,36 @@ async function sendEmail({ to, subject, html, text, idempotencyKey }) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS;
+  const fromEmail = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_EMAIL;
+  const replyTo = process.env.EMAIL_REPLY_TO;
 
   if (!apiKey) {
     throw new Error('RESEND_API_KEY is required when EMAIL_ENABLED=true.');
   }
 
   if (!fromEmail) {
-    throw new Error('RESEND_FROM_EMAIL is required when EMAIL_ENABLED=true.');
+    throw new Error('EMAIL_FROM_ADDRESS is required when EMAIL_ENABLED=true.');
   }
 
   // Require Resend only when emails are enabled so tests do not need the provider.
   const { Resend } = require('resend');
   const resend = new Resend(apiKey);
 
-  const response = await resend.emails.send({
+  const emailPayload = {
     from: fromEmail,
     to,
     subject,
     html,
     text,
+    replyTo: replyTo || undefined,
     headers: idempotencyKey
       ? {
           'Idempotency-Key': idempotencyKey
         }
       : undefined
-  });
+  };
+
+  const response = await resend.emails.send(emailPayload);
 
   if (response.error) {
     throw new Error(response.error.message || 'Resend failed to send the email.');

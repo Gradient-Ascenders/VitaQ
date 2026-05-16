@@ -294,6 +294,46 @@ function buildAnalyticsErrorBlock(message = 'Unable to load this analytics secti
   `;
 }
 
+// No-show specific loading block used in the clinic and trend sections.
+// This makes the no-show area show a proper skeleton state instead of plain text.
+function buildNoShowLoadingBlock(message = 'Loading no-show analytics...') {
+  return `
+    <article class="space-y-4 px-5 py-6">
+      <div class="flex items-center gap-3">
+        <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#bb9af7]/30 border-t-[#f7768e]"></span>
+        <p class="text-sm font-medium text-[#a9b1d6]">${escapeHtml(message)}</p>
+      </div>
+
+      <div class="space-y-3">
+        <div class="h-3 w-5/6 animate-pulse rounded-full bg-[#414868]/70"></div>
+        <div class="h-3 w-2/3 animate-pulse rounded-full bg-[#414868]/60"></div>
+        <div class="h-3 w-3/4 animate-pulse rounded-full bg-[#414868]/50"></div>
+      </div>
+    </article>
+  `;
+}
+
+// No-show specific error block used when the no-show endpoint fails.
+// The Retry button already exists in the main analytics error banner.
+function buildNoShowErrorBlock(message = 'Unable to load no-show analytics.') {
+  return `
+    <article class="rounded-2xl border border-[#f7768e]/20 bg-[#f7768e]/10 px-5 py-6 text-sm leading-7 text-[#f4b5c0]">
+      <p class="font-semibold">No-show analytics unavailable</p>
+      <p class="mt-1">${escapeHtml(message)}</p>
+      <p class="mt-2 text-[#f4b5c0]/85">Use Retry above or apply the filters again.</p>
+    </article>
+  `;
+}
+
+// No-show specific empty block used when filters return no matching records.
+function buildNoShowEmptyBlock(message = 'No no-show rows match the selected filters.') {
+  return `
+    <article class="rounded-2xl border border-dashed border-[#414868] bg-[#1a1b26]/60 px-5 py-6 text-sm leading-7 text-[#a9b1d6]">
+      ${escapeHtml(message)}
+    </article>
+  `;
+}
+
 function setMetricLoadingState(element, isLoading) {
   if (!element) {
     return;
@@ -1721,21 +1761,17 @@ function renderNoShowClinicRows() {
   }
 
   if (adminState.isAnalyticsLoading) {
-    noShowClinicTableBody.innerHTML = `
-      <article class="px-5 py-6 text-sm text-[#a9b1d6]">Loading no-show clinic comparisons...</article>
-    `;
+    noShowClinicTableBody.innerHTML = buildNoShowLoadingBlock('Loading no-show clinic comparisons...');
     return;
   }
 
   if (adminState.analyticsError) {
-    noShowClinicTableBody.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    noShowClinicTableBody.innerHTML = buildNoShowErrorBlock(adminState.analyticsError);
     return;
   }
 
   if (rows.length === 0) {
-    noShowClinicTableBody.innerHTML = `
-      <article class="px-5 py-6 text-sm text-[#a9b1d6]">No no-show rows match the selected filters.</article>
-    `;
+    noShowClinicTableBody.innerHTML = buildNoShowEmptyBlock('No no-show clinic rows match the selected filters.');
     return;
   }
 
@@ -1771,23 +1807,24 @@ function renderNoShowTrendBars() {
   }
 
   if (adminState.isAnalyticsLoading) {
-    noShowTrendBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">Loading no-show trends...</p>';
+    noShowTrendBars.innerHTML = buildNoShowLoadingBlock('Loading no-show trends...');
     return;
   }
 
   if (adminState.analyticsError) {
-    noShowTrendBars.innerHTML = buildAnalyticsErrorBlock(adminState.analyticsError);
+    noShowTrendBars.innerHTML = buildNoShowErrorBlock(adminState.analyticsError);
     return;
   }
 
   if (rows.length === 0) {
-    noShowTrendBars.innerHTML = '<p class="text-sm text-[#a9b1d6]">No trend rows match the selected filters.</p>';
+    noShowTrendBars.innerHTML = buildNoShowEmptyBlock('No no-show trend rows match the selected filters.');
     return;
   }
 
   noShowTrendBars.innerHTML = rows.map((row) => {
     const noShowCount = Number(row.noShowCount || 0);
     const noShowRate = Number(row.noShowRate || 0);
+    const totalAppointments = Number(row.totalAppointments || 0);
     const barWidth =
       noShowCount > 0 && Number.isFinite(noShowRate)
         ? Math.min(Math.max(noShowRate, 0), 100)
@@ -1797,12 +1834,20 @@ function renderNoShowTrendBars() {
       <div class="space-y-2">
         <div class="flex items-center justify-between gap-4 text-sm">
           <span class="font-semibold text-[#e0e5ff]">${escapeHtml(row.date || 'Unknown date')}</span>
-          <span class="text-[#a9b1d6]">${formatAnalyticsPercent(row.noShowRate)} · ${formatAnalyticsNumber(noShowCount)} missed</span>
+          <span class="text-[#a9b1d6]">${formatAnalyticsPercent(noShowRate)} · ${formatAnalyticsNumber(noShowCount)} missed</span>
         </div>
+
         <div class="h-3 overflow-hidden rounded-full bg-[#16161e]">
-          <div class="h-full rounded-full bg-gradient-to-r from-[#f7768e] to-[#bb9af7]" style="width: ${barWidth}%"></div>
+          <div
+            class="h-full rounded-full bg-gradient-to-r from-[#f7768e] to-[#bb9af7]"
+            style="width: ${barWidth}%"
+            title="${escapeHtml(row.date || 'Unknown date')}: ${formatAnalyticsPercent(noShowRate)} no-show rate"
+          ></div>
         </div>
-        <p class="text-xs text-[#8b93b8]">${formatAnalyticsNumber(row.totalAppointments)} tracked appointment${Number(row.totalAppointments || 0) === 1 ? '' : 's'}</p>
+
+        <p class="text-xs text-[#8b93b8]">
+          ${formatAnalyticsNumber(totalAppointments)} tracked appointment${totalAppointments === 1 ? '' : 's'}
+        </p>
       </div>
     `;
   }).join('');

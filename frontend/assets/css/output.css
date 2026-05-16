@@ -1012,6 +1012,9 @@
   .border-t-\[\#7dcfff\] {
     border-top-color: #7dcfff;
   }
+  .border-t-\[\#f7768e\] {
+    border-top-color: #f7768e;
+  }
   .bg-\[\#0a2540\] {
     background-color: #0a2540;
   }
@@ -1556,6 +1559,9 @@
   }
   .text-\[\#f4b5c0\] {
     color: #f4b5c0;
+  }
+  .text-\[\#f4b5c0\]\/85 {
+    color: color-mix(in oklab, #f4b5c0 85%, transparent);
   }
   .text-\[\#f4b5c0\]\/90 {
     color: color-mix(in oklab, #f4b5c0 90%, transparent);

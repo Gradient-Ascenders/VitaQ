@@ -219,7 +219,7 @@ describe('reports service', () => {
           {
             report_type: 'summary',
             clinic_id: 'clinic-1',
-            clinic_name: 'Rosebank Med Dental Centre',
+            clinic_name: 'Very Long Clinic Name That Should Be Truncated In PDF',
             completed_queue_count: 1,
             average_wait_minutes: 25,
             average_consultation_minutes: 20,
@@ -241,5 +241,11 @@ describe('reports service', () => {
     expect(result.rowCount).toBe(1);
     expect(Buffer.isBuffer(result.content)).toBe(true);
     expect(result.content.toString('ascii', 0, 8)).toBe('%PDF-1.4');
+    const pdfText = result.content.toString('ascii');
+
+    expect(pdfText).toContain('Clinic');
+    expect(pdfText).toContain('Avg Wait');
+    expect(pdfText).toContain('--------');
+    expect(pdfText).toContain('Very Long Clinic Name...');
   });
 });

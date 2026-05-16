@@ -402,6 +402,7 @@ describe('notifications.service', () => {
 
       expect(result.sent).toBe(true);
       expect(result.skipped).toBe(false);
+      expect(result.created).toBe(true);
       expect(result.notification.status).toBe('sent');
 
       expect(sendEmail).toHaveBeenCalledWith(
@@ -541,6 +542,7 @@ describe('notifications.service', () => {
 
       expect(result.sent).toBe(true);
       expect(result.skipped).toBe(false);
+      expect(result.created).toBe(false);
       expect(result.notification.status).toBe('sent');
       expect(sendEmail).toHaveBeenCalledWith(
         expect.objectContaining({

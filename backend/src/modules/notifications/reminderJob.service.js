@@ -152,7 +152,9 @@ async function processAppointmentReminderJob({ now = new Date() } = {}) {
         continue;
       }
 
-      summary.created += 1;
+      if (result.created !== false) {
+        summary.created += 1;
+      }
 
       if (result.sent) {
         summary.sent += 1;

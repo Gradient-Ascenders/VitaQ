@@ -367,7 +367,8 @@ async function deliverNotificationEmail({
   notification,
   recipientEmail,
   emailContent,
-  idempotencyKey
+  idempotencyKey,
+  created = true
 }) {
   try {
     const providerResult = await sendEmail({
@@ -387,6 +388,7 @@ async function deliverNotificationEmail({
     return {
       sent: true,
       skipped: false,
+      created,
       notification: sentNotification,
       provider: providerResult
     };
@@ -400,6 +402,7 @@ async function deliverNotificationEmail({
     return {
       sent: false,
       skipped: false,
+      created,
       failed: true,
       notification: failedNotification,
       error: error.message
@@ -442,7 +445,8 @@ async function sendAppointmentReminder(appointment) {
         notification: notificationResult.notification,
         recipientEmail,
         emailContent,
-        idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`
+        idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`,
+        created: false
       });
     }
 
@@ -503,7 +507,8 @@ async function sendStaffDecisionNotification(staffRequest) {
         notification: notificationResult.notification,
         recipientEmail,
         emailContent,
-        idempotencyKey: `${notificationType}:${staffRequest.id}`
+        idempotencyKey: `${notificationType}:${staffRequest.id}`,
+        created: false
       });
     }
 

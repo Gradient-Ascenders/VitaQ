@@ -13,7 +13,6 @@ const NOTIFICATION_SELECT_FIELDS = `
   user_id,
   appointment_id,
   staff_request_id,
-  slot_occurrence_key,
   recipient_email,
   subject,
   status,
@@ -53,18 +52,6 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function buildSlotOccurrenceKey(appointment) {
-  const appointmentId = String(appointment?.id || '').trim();
-  const slotDate = String(appointment?.slot?.date || '').trim();
-  const slotStartTime = String(appointment?.slot?.start_time || '').trim();
-
-  if (!appointmentId || !slotDate || !slotStartTime) {
-    return null;
-  }
-
-  return `${appointmentId}:${slotDate}:${slotStartTime}`;
-}
-
 function canRetryNotification(notification) {
   return notification?.status === 'failed';
 }
@@ -100,17 +87,12 @@ async function fetchUserEmail(userId) {
 async function findExistingNotification({
   notificationType,
   appointmentId,
-  staffRequestId,
-  slotOccurrenceKey
+  staffRequestId
 }) {
   let query = supabase
     .from('email_notifications')
     .select(NOTIFICATION_SELECT_FIELDS)
     .eq('notification_type', notificationType);
-
-  if (slotOccurrenceKey) {
-    query = query.eq('slot_occurrence_key', slotOccurrenceKey);
-  }
 
   if (appointmentId) {
     query = query.eq('appointment_id', appointmentId);
@@ -138,7 +120,6 @@ async function createNotification({
   userId,
   appointmentId = null,
   staffRequestId = null,
-  slotOccurrenceKey = null,
   recipientEmail,
   subject,
   scheduledFor = null,
@@ -176,10 +157,6 @@ async function createNotification({
     metadata
   };
 
-  if (slotOccurrenceKey) {
-    notificationPayload.slot_occurrence_key = slotOccurrenceKey;
-  }
-
   const { data, error } = await supabase
     .from('email_notifications')
     .insert([notificationPayload])
@@ -191,8 +168,7 @@ async function createNotification({
     const existingNotification = await findExistingNotification({
       notificationType,
       appointmentId,
-      staffRequestId,
-      slotOccurrenceKey
+      staffRequestId
     });
 
     return {
@@ -424,13 +400,11 @@ async function sendAppointmentReminder(appointment) {
 
   const recipientEmail = await fetchUserEmail(appointment.patient_id);
   const emailContent = buildAppointmentReminderEmail(appointment);
-  const slotOccurrenceKey = buildSlotOccurrenceKey(appointment);
 
   const notificationResult = await createNotification({
     notificationType: NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M,
     userId: appointment.patient_id,
     appointmentId: appointment.id,
-    slotOccurrenceKey,
     recipientEmail,
     subject: emailContent.subject,
     scheduledFor: appointment.appointment_start_at || null,
@@ -448,7 +422,7 @@ async function sendAppointmentReminder(appointment) {
         notification: notificationResult.notification,
         recipientEmail,
         emailContent,
-        idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`,
+        idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${appointment.id}`,
         created: false
       });
     }
@@ -467,7 +441,7 @@ async function sendAppointmentReminder(appointment) {
     notification,
     recipientEmail,
     emailContent,
-    idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${slotOccurrenceKey || appointment.id}`
+    idempotencyKey: `${NOTIFICATION_TYPES.APPOINTMENT_REMINDER_30M}:${appointment.id}`
   });
 }
 
@@ -534,7 +508,6 @@ async function sendStaffDecisionNotification(staffRequest) {
 module.exports = {
   NOTIFICATION_TYPES,
   createServiceError,
-  buildSlotOccurrenceKey,
   fetchUserEmail,
   createNotification,
   markNotificationSent,

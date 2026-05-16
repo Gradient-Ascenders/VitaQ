@@ -756,6 +756,35 @@
           <form id="reportExportForm" class="space-y-5 px-6 py-6">
             <div id="reportExportFeedback" class="hidden" aria-live="polite"></div>
 
+              <!-- Sprint 4 export summary cards.
+                These cards show the admin which report will be exported, which filters are being used,
+                and whether the export is ready, loading, successful, or failed. -->
+              <section
+                class="grid gap-3 md:grid-cols-3"
+                aria-label="Report export summary"
+              >
+                <article class="rounded-2xl border border-[#414868] bg-[#24283b]/72 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Report type</p>
+                  <p id="reportExportSummaryType" class="mt-3 text-sm font-semibold text-[#e0e5ff]">
+                    Summary report
+                  </p>
+                </article>
+
+                <article class="rounded-2xl border border-[#414868] bg-[#24283b]/72 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Filter scope</p>
+                  <p id="reportExportSummaryFilters" class="mt-3 text-sm font-semibold leading-6 text-[#e0e5ff]">
+                    All clinics · All dates
+                  </p>
+                </article>
+
+                <article class="rounded-2xl border border-[#414868] bg-[#24283b]/72 p-4">
+                  <p class="text-xs uppercase tracking-[0.2em] text-[#8b93b8]">Export status</p>
+                  <p id="reportExportSummaryStatus" class="mt-3 text-sm font-semibold text-[#e0e5ff]">
+                    Ready to export
+                  </p>
+                </article>
+              </section>
+
             <div class="grid gap-4 md:grid-cols-2">
               <div class="space-y-2">
                 <label for="reportExportTypeSelect" class="text-sm font-semibold text-[#e0e5ff]">Report type</label>

@@ -408,6 +408,9 @@
   .my-8 {
     margin-block: calc(var(--spacing) * 8);
   }
+  .mt-0\.5 {
+    margin-top: calc(var(--spacing) * 0.5);
+  }
   .mt-1 {
     margin-top: calc(var(--spacing) * 1);
   }
@@ -1003,6 +1006,9 @@
   .border-\[\#f7768e\]\/40 {
     border-color: color-mix(in oklab, #f7768e 40%, transparent);
   }
+  .border-current {
+    border-color: currentcolor;
+  }
   .border-white\/10 {
     border-color: color-mix(in srgb, #fff 10%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1426,6 +1432,9 @@
   }
   .text-\[1\.05rem\] {
     font-size: 1.05rem;
+  }
+  .text-\[10px\] {
+    font-size: 10px;
   }
   .leading-5 {
     --tw-leading: calc(var(--spacing) * 5);

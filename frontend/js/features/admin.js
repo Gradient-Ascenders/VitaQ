@@ -1894,12 +1894,102 @@ function getReportExportElements() {
     closeButton: document.getElementById('reportExportCloseButton'),
     cancelButton: document.getElementById('reportExportCancelButton'),
     feedback: document.getElementById('reportExportFeedback'),
+    summaryType: document.getElementById('reportExportSummaryType'),
+    summaryFilters: document.getElementById('reportExportSummaryFilters'),
+    summaryStatus: document.getElementById('reportExportSummaryStatus'),
     typeSelect: document.getElementById('reportExportTypeSelect'),
     clinicSelect: document.getElementById('reportExportClinicSelect'),
     startDateInput: document.getElementById('reportExportStartDateInput'),
     endDateInput: document.getElementById('reportExportEndDateInput'),
     submitButtons: Array.from(document.querySelectorAll('[data-report-export-format]'))
   };
+}
+
+// Converts report type values into labels that are easier to read in the export modal.
+function formatReportExportTypeLabel(reportType) {
+  switch (reportType) {
+    case 'wait-times':
+      return 'Wait-time report';
+    case 'no-shows':
+      return 'No-show report';
+    case 'summary':
+    default:
+      return 'Summary report';
+  }
+}
+
+// Shows the selected clinic name in the export summary card.
+function getReportExportClinicLabel(clinicId) {
+  if (!clinicId) {
+    return 'All clinics';
+  }
+
+  const clinic = adminState.clinics.find((entry) => entry.id === clinicId);
+
+  return clinic?.name || 'Selected clinic';
+}
+
+// Builds the date-range label shown in the export summary card.
+function getReportExportDateLabel(filters) {
+  if (filters.startDate && filters.endDate) {
+    return `${filters.startDate} to ${filters.endDate}`;
+  }
+
+  if (filters.startDate) {
+    return `From ${filters.startDate}`;
+  }
+
+  if (filters.endDate) {
+    return `Until ${filters.endDate}`;
+  }
+
+  return 'All dates';
+}
+
+// Builds the full filter summary shown before the admin downloads the report.
+function getReportExportFilterSummary(filters) {
+  return `${getReportExportClinicLabel(filters.clinicId)} · ${getReportExportDateLabel(filters)}`;
+}
+
+// Shows the current export status in a compact summary card.
+function getReportExportStatusLabel() {
+  if (adminState.isReportExportLoading) {
+    return 'Preparing download...';
+  }
+
+  if (adminState.reportExportFeedback?.type === 'success') {
+    return 'Download complete';
+  }
+
+  if (adminState.reportExportFeedback?.type === 'error') {
+    return 'Export failed';
+  }
+
+  return 'Ready to export';
+}
+
+// Renders the report type, filter scope, and export status cards in the modal.
+function renderReportExportSummaryCards() {
+  const {
+    summaryType,
+    summaryFilters,
+    summaryStatus
+  } = getReportExportElements();
+  const filters = adminState.reportExportFilters;
+
+  if (summaryType) {
+    summaryType.textContent = formatReportExportTypeLabel(filters.reportType);
+  }
+
+  if (summaryFilters) {
+    summaryFilters.textContent = getReportExportFilterSummary(filters);
+  }
+
+  if (summaryStatus) {
+    summaryStatus.textContent = getReportExportStatusLabel();
+    summaryStatus.classList.toggle('animate-pulse', adminState.isReportExportLoading);
+    summaryStatus.classList.toggle('text-[#7dcfff]', adminState.isReportExportLoading);
+  }
 }
 
 function renderReportExportFeedback() {
@@ -1911,7 +2001,7 @@ function renderReportExportFeedback() {
 
   if (!adminState.reportExportFeedback) {
     feedback.className = 'hidden';
-    feedback.textContent = '';
+    feedback.innerHTML = '';
     return;
   }
 
@@ -1920,11 +2010,37 @@ function renderReportExportFeedback() {
     success: 'border-[#9ece6a]/20 bg-[#9ece6a]/10 text-[#d6f3b8]',
     error: 'border-[#f7768e]/20 bg-[#f7768e]/10 text-[#f4b5c0]'
   };
+  const feedbackType = adminState.reportExportFeedback.type || 'error';
+  const isLoading = feedbackType === 'loading';
 
-  feedback.className = `rounded-2xl border px-4 py-3 text-sm font-medium ${
-    feedbackClasses[adminState.reportExportFeedback.type] || feedbackClasses.error
+  feedback.className = `rounded-2xl border px-4 py-4 text-sm font-medium ${
+    feedbackClasses[feedbackType] || feedbackClasses.error
   }`;
-  feedback.textContent = adminState.reportExportFeedback.message;
+
+  feedback.innerHTML = `
+    <div class="flex items-start gap-3">
+      ${
+        isLoading
+          ? '<span class="mt-0.5 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#7aa2f7]/30 border-t-[#7dcfff]"></span>'
+          : '<span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-current text-[10px]">!</span>'
+      }
+
+      <div>
+        <p class="font-semibold">
+          ${
+            feedbackType === 'loading'
+              ? 'Preparing export'
+              : feedbackType === 'success'
+                ? 'Export complete'
+                : 'Export failed'
+          }
+        </p>
+        <p class="mt-1 leading-6">
+          ${escapeHtml(adminState.reportExportFeedback.message)}
+        </p>
+      </div>
+    </div>
+  `;
 }
 
 function renderReportExportControls() {
@@ -2012,6 +2128,7 @@ function renderReportExportControls() {
     button.textContent = isActiveFormat ? `Preparing ${formatLabel}...` : `Download ${formatLabel}`;
   });
 
+  renderReportExportSummaryCards();
   renderReportExportFeedback();
 }
 
@@ -2107,7 +2224,7 @@ async function handleReportExportSubmit(event) {
   adminState.isReportExportLoading = true;
   adminState.reportExportFeedback = {
     type: 'loading',
-    message: `Preparing ${filters.format.toUpperCase()} report...`
+    message: `Preparing ${formatReportExportTypeLabel(filters.reportType)} as ${filters.format.toUpperCase()} using the selected filters.`
   };
   refreshReportExport();
 
@@ -2136,7 +2253,7 @@ async function handleReportExportSubmit(event) {
 
     adminState.reportExportFeedback = {
       type: 'success',
-      message: `${filters.format.toUpperCase()} report downloaded.`
+      message: `${filters.format.toUpperCase()} report downloaded as ${filename}.`
     };
   } catch (error) {
     console.error('Failed to export admin report:', error);

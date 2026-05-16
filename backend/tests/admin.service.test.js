@@ -4,7 +4,14 @@ jest.mock('../src/lib/supabaseClient', () => ({
   from: jest.fn()
 }));
 
+jest.mock('../src/modules/notifications/notifications.service', () => ({
+  sendStaffDecisionNotification: jest.fn()
+}));
+
 const supabase = require('../src/lib/supabaseClient');
+const {
+  sendStaffDecisionNotification
+} = require('../src/modules/notifications/notifications.service');
 
 const {
   fetchPendingStaffRequests,
@@ -229,6 +236,7 @@ describe('reviewStaffRequest', () => {
     expect(supabase.from).toHaveBeenCalledWith('staff_requests');
     expect(supabase.from).toHaveBeenCalledWith('profiles');
     expect(supabase.from).toHaveBeenCalledTimes(3);
+    expect(sendStaffDecisionNotification).toHaveBeenCalledWith(approvedRequest);
   });
 
   test('rejects a pending request without updating the user profile', async () => {
@@ -269,6 +277,112 @@ describe('reviewStaffRequest', () => {
     expect(result.profile).toBeNull();
     expect(supabase.from).not.toHaveBeenCalledWith('profiles');
     expect(supabase.from).toHaveBeenCalledTimes(2);
+    expect(sendStaffDecisionNotification).toHaveBeenCalledWith(rejectedRequest);
+  });
+
+  test('approval still succeeds if the decision email fails', async () => {
+    const pendingRequest = {
+      id: 'request-1',
+      user_id: 'user-1',
+      full_name: 'Tyron Test',
+      clinic_id: 'clinic-1',
+      staff_id: 'STAFF-001',
+      status: 'pending'
+    };
+
+    const approvedRequest = {
+      ...pendingRequest,
+      status: 'approved',
+      reviewed_by: 'admin-1',
+      reviewed_at: '2026-04-16T10:00:00Z'
+    };
+
+    const approvedProfile = {
+      user_id: 'user-1',
+      role: 'staff',
+      clinic_id: 'clinic-1'
+    };
+
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    sendStaffDecisionNotification.mockRejectedValueOnce(
+      new Error('Email provider failed')
+    );
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedProfile, error: null }));
+
+    const result = await reviewStaffRequest({
+      requestId: 'request-1',
+      adminId: 'admin-1',
+      status: 'approved'
+    });
+
+    expect(result.staff_request).toMatchObject({
+      id: 'request-1',
+      status: 'approved'
+    });
+    expect(result.profile).toEqual(approvedProfile);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Staff decision email failed:', {
+      staffRequestId: 'request-1',
+      status: 'approved',
+      message: 'Email provider failed'
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('rejection still succeeds if the decision email fails', async () => {
+    const pendingRequest = {
+      id: 'request-2',
+      user_id: 'user-2',
+      full_name: 'Rejected User',
+      clinic_id: 'clinic-1',
+      staff_id: 'STAFF-002',
+      status: 'pending'
+    };
+
+    const rejectedRequest = {
+      ...pendingRequest,
+      status: 'rejected',
+      reviewed_by: 'admin-1',
+      reviewed_at: '2026-04-16T10:00:00Z'
+    };
+
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    sendStaffDecisionNotification.mockRejectedValueOnce(
+      new Error('Email provider failed')
+    );
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: pendingRequest, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: rejectedRequest, error: null }));
+
+    const result = await reviewStaffRequest({
+      requestId: 'request-2',
+      adminId: 'admin-1',
+      status: 'rejected'
+    });
+
+    expect(result.staff_request).toMatchObject({
+      id: 'request-2',
+      status: 'rejected'
+    });
+    expect(result.profile).toBeNull();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Staff decision email failed:', {
+      staffRequestId: 'request-2',
+      status: 'rejected',
+      message: 'Email provider failed'
+    });
+
+    consoleErrorSpy.mockRestore();
   });
 
   test('throws an error when approval profile update fails', async () => {

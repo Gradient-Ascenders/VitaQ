@@ -1,4 +1,7 @@
 const supabase = require('../../lib/supabaseClient');
+const {
+  sendStaffDecisionNotification
+} = require('../notifications/notifications.service');
 
 const STAFF_REQUEST_STATUSES = ['approved', 'rejected'];
 const ADMIN_CLINIC_LIST_FIELDS = `
@@ -344,6 +347,18 @@ async function rollbackStaffRequestToPending(requestId) {
   }
 }
 
+async function notifyStaffRequestDecision(staffRequest) {
+  try {
+    await sendStaffDecisionNotification(staffRequest);
+  } catch (error) {
+    console.error('Staff decision email failed:', {
+      staffRequestId: staffRequest.id,
+      status: staffRequest.status,
+      message: error.message
+    });
+  }
+}
+
 /**
  * Approves or rejects a staff registration request.
  *
@@ -381,6 +396,8 @@ async function reviewStaffRequest({ requestId, adminId, status }) {
       reviewedAt
     });
 
+    await notifyStaffRequestDecision(rejectedRequest);
+
     return {
       staff_request: rejectedRequest,
       profile: null
@@ -409,6 +426,8 @@ async function reviewStaffRequest({ requestId, adminId, status }) {
 
     throw error;
   }
+
+  await notifyStaffRequestDecision(approvedRequest);
 
   return {
     staff_request: approvedRequest,

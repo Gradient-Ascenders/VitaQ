@@ -164,22 +164,25 @@ async function createNotification({
     throw createServiceError('recipient_email is invalid.', 400);
   }
 
+  const notificationPayload = {
+    notification_type: notificationType,
+    user_id: userId,
+    appointment_id: appointmentId,
+    staff_request_id: staffRequestId,
+    recipient_email: normalizedRecipientEmail,
+    subject,
+    status: 'pending',
+    scheduled_for: scheduledFor,
+    metadata
+  };
+
+  if (slotOccurrenceKey) {
+    notificationPayload.slot_occurrence_key = slotOccurrenceKey;
+  }
+
   const { data, error } = await supabase
     .from('email_notifications')
-    .insert([
-      {
-        notification_type: notificationType,
-        user_id: userId,
-        appointment_id: appointmentId,
-        staff_request_id: staffRequestId,
-        slot_occurrence_key: slotOccurrenceKey,
-        recipient_email: normalizedRecipientEmail,
-        subject,
-        status: 'pending',
-        scheduled_for: scheduledFor,
-        metadata
-      }
-    ])
+    .insert([notificationPayload])
     .select(NOTIFICATION_SELECT_FIELDS)
     .single();
 

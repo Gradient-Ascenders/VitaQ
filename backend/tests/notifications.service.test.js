@@ -269,6 +269,49 @@ describe('notifications.service', () => {
       expect(supabase.from).not.toHaveBeenCalled();
     });
 
+    test('omits slot_occurrence_key when creating a staff request notification', async () => {
+      const createdNotification = {
+        id: 'notification-staff',
+        notification_type: 'staff_request_approved',
+        user_id: 'staff-user-1',
+        appointment_id: null,
+        staff_request_id: 'staff-request-1',
+        recipient_email: 'staff@example.com',
+        subject: 'VitaQ staff application approved',
+        status: 'pending',
+        attempt_count: 0
+      };
+
+      const insertQuery = createInsertQuery({
+        data: createdNotification,
+        error: null
+      });
+
+      supabase.from.mockReturnValueOnce(insertQuery);
+
+      const result = await createNotification({
+        notificationType: 'staff_request_approved',
+        userId: 'staff-user-1',
+        staffRequestId: 'staff-request-1',
+        recipientEmail: 'staff@example.com',
+        subject: 'VitaQ staff application approved',
+        metadata: {
+          clinic_id: 'clinic-1'
+        }
+      });
+
+      expect(result).toEqual({
+        created: true,
+        duplicate: false,
+        notification: createdNotification
+      });
+      expect(insertQuery.insert).toHaveBeenCalledWith([
+        expect.not.objectContaining({
+          slot_occurrence_key: expect.anything()
+        })
+      ]);
+    });
+
     test('returns an existing notification when duplicate insert is blocked', async () => {
       const existingNotification = {
         id: 'notification-existing',

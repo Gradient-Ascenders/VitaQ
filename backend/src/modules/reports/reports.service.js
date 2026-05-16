@@ -392,6 +392,115 @@ function buildPdfSummaryLines(rows, reportType) {
   ];
 }
 
+const PDF_TABLE_COLUMNS = {
+  summary: [
+    { field: 'clinic_name', heading: 'Clinic', width: 24, align: 'left' },
+    { field: 'completed_queue_count', heading: 'Queues', width: 7, align: 'right' },
+    { field: 'average_wait_minutes', heading: 'Avg Wait', width: 9, align: 'right' },
+    { field: 'average_consultation_minutes', heading: 'Avg Cons', width: 9, align: 'right' },
+    { field: 'total_tracked_appointments', heading: 'Tracked', width: 8, align: 'right' },
+    { field: 'no_show_count', heading: 'No-show', width: 8, align: 'right' },
+    { field: 'no_show_rate_percentage', heading: 'Rate %', width: 7, align: 'right' }
+  ],
+
+  'wait-times': [
+    { field: 'clinic_name', heading: 'Clinic', width: 24, align: 'left' },
+    { field: 'report_date', heading: 'Date', width: 10, align: 'left' },
+    { field: 'joined_hour', heading: 'Hour', width: 5, align: 'right' },
+    { field: 'queue_number', heading: 'Queue', width: 6, align: 'right' },
+    { field: 'wait_minutes', heading: 'Wait', width: 7, align: 'right' },
+    { field: 'consultation_minutes', heading: 'Consult', width: 8, align: 'right' }
+  ],
+
+  'no-shows': [
+    { field: 'clinic_name', heading: 'Clinic', width: 24, align: 'left' },
+    { field: 'report_date', heading: 'Date', width: 10, align: 'left' },
+    { field: 'start_time', heading: 'Start', width: 8, align: 'left' },
+    { field: 'appointment_status', heading: 'Status', width: 10, align: 'left' },
+    { field: 'has_queue_entry', heading: 'Queued', width: 7, align: 'left' },
+    { field: 'is_no_show', heading: 'No-show', width: 8, align: 'left' }
+  ]
+};
+
+/**
+ * Shortens long PDF table values so they do not wrap and break alignment.
+ */
+function truncatePdfCell(value, width) {
+  const stringValue = String(value ?? '');
+
+  if (stringValue.length <= width) {
+    return stringValue;
+  }
+
+  if (width <= 3) {
+    return '.'.repeat(width);
+  }
+
+  return `${stringValue.slice(0, width - 3)}...`;
+}
+
+/**
+ * Formats booleans and empty values into readable PDF table cells.
+ */
+function formatPdfTableValue(field, value) {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  if (field === 'has_queue_entry' || field === 'is_no_show') {
+    return value === true || String(value).toLowerCase() === 'true' ? 'Yes' : 'No';
+  }
+
+  return String(value);
+}
+
+/**
+ * Pads a PDF table cell to a fixed width so columns line up consistently.
+ */
+function padPdfCell(value, width, align = 'left') {
+  const truncatedValue = truncatePdfCell(value, width);
+
+  if (align === 'right') {
+    return truncatedValue.padStart(width, ' ');
+  }
+
+  return truncatedValue.padEnd(width, ' ');
+}
+
+/**
+ * Builds a fixed-width PDF preview table.
+ * This avoids pipe-separated text that becomes unreadable when values are long.
+ */
+function buildPdfPreviewTableRows(rows, reportType) {
+  const columns = PDF_TABLE_COLUMNS[reportType] || PDF_TABLE_COLUMNS.summary;
+
+  const headerRow = columns
+    .map((column) => padPdfCell(column.heading, column.width, column.align))
+    .join(' ');
+
+  const separatorRow = columns
+    .map((column) => '-'.repeat(column.width))
+    .join(' ');
+
+  const dataRows = rows.slice(0, 25).map((row) =>
+    columns
+      .map((column) =>
+        padPdfCell(
+          formatPdfTableValue(column.field, row[column.field]),
+          column.width,
+          column.align
+        )
+      )
+      .join(' ')
+  );
+
+  return [headerRow, separatorRow, ...dataRows];
+}
+
 /**
  * Keeps PDF text simple and ASCII-safe for the lightweight PDF generator.
  */
@@ -411,9 +520,9 @@ function escapePdfText(value) {
 function createSimplePdfBuffer(lines) {
   const textCommands = [
     'BT',
-    '/F1 10 Tf',
-    '14 TL',
-    '50 790 Td',
+    '/F1 9 Tf',
+    '12 TL',
+    '40 790 Td',
     ...lines.map((line, index) => {
       const text = `(${escapePdfText(line).slice(0, 110)}) Tj`;
       return index === 0 ? text : `T* ${text}`;
@@ -427,7 +536,7 @@ function createSimplePdfBuffer(lines) {
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>',
     `<< /Length ${contentLength} >>\nstream\n${textCommands}\nendstream`
   ];
 
@@ -458,10 +567,7 @@ function createSimplePdfBuffer(lines) {
  * Builds the PDF lines shown in the exported report.
  */
 function buildPdfLines(reportData) {
-  const { rows, config, filters, generatedAt } = reportData;
-  const previewFields = config.fields
-    .filter((field) => !['generated_at', 'date_range', 'clinic_filter'].includes(field))
-    .slice(0, 6);
+  const { rows, filters, generatedAt } = reportData;
 
   const lines = [
     'VitaQ Report',
@@ -475,12 +581,8 @@ function buildPdfLines(reportData) {
     ...buildPdfSummaryLines(rows, filters.reportType),
     '',
     'Preview table:',
-    previewFields.map(formatHeading).join(' | ')
+    ...buildPdfPreviewTableRows(rows, filters.reportType)
   ];
-
-  rows.slice(0, 25).forEach((row) => {
-    lines.push(previewFields.map((field) => String(row[field] ?? '')).join(' | '));
-  });
 
   if (rows.length > 25) {
     lines.push(`Showing first 25 of ${rows.length} rows. Use CSV for full row-level export.`);

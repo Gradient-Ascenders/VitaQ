@@ -23,6 +23,89 @@ function logBookingQueueFailure({ queueError, patientId, clinicId, slotId, appoi
   });
 }
 
+const APPOINTMENT_REMINDER_NOTIFICATION_TYPE = 'appointment_reminder_30m';
+
+const REMINDER_NOTIFICATION_SELECT = `
+  appointment_id,
+  status,
+  sent_at,
+  error_message,
+  scheduled_for,
+  updated_at,
+  created_at
+`;
+
+/**
+ * Loads reminder notification rows for the appointment cards.
+ * This lets the frontend show pending, sent, and failed reminder states.
+ */
+async function fetchAppointmentReminderStatusMap(appointmentIds) {
+  const cleanedAppointmentIds = [...new Set(
+    appointmentIds
+      .map((appointmentId) => String(appointmentId || '').trim())
+      .filter(Boolean)
+  )];
+
+  if (cleanedAppointmentIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from('email_notifications')
+    .select(REMINDER_NOTIFICATION_SELECT)
+    .eq('notification_type', APPOINTMENT_REMINDER_NOTIFICATION_TYPE)
+    .in('appointment_id', cleanedAppointmentIds)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw createServiceError('Failed to fetch appointment reminder status.', 500);
+  }
+
+  const reminderStatusMap = new Map();
+
+  (data || []).forEach((notification) => {
+    const appointmentId = String(notification.appointment_id || '');
+
+    // Keep the newest notification row if duplicates ever exist.
+    if (appointmentId && !reminderStatusMap.has(appointmentId)) {
+      reminderStatusMap.set(appointmentId, notification);
+    }
+  });
+
+  return reminderStatusMap;
+}
+
+/**
+ * Adds reminder status fields to appointment rows before sending them to the frontend.
+ */
+function attachReminderStatusesToAppointments(appointments, reminderStatusMap) {
+  return appointments.map((appointment) => {
+    const notification = reminderStatusMap.get(String(appointment.id));
+    const computedReminderStatus =
+      notification?.status ||
+      (appointment.status === 'booked' ? 'pending' : '');
+
+    return {
+      ...appointment,
+      reminder_status: computedReminderStatus,
+      email_reminder_status: computedReminderStatus,
+      reminder: notification
+        ? {
+            status: notification.status,
+            sent_at: notification.sent_at,
+            scheduled_for: notification.scheduled_for,
+            error_message: notification.error_message
+          }
+        : {
+            status: computedReminderStatus,
+            sent_at: null,
+            scheduled_for: null,
+            error_message: null
+          }
+    };
+  });
+}
+
 /**
  * Checks whether a slot has already passed.
  */
@@ -223,7 +306,11 @@ async function fetchAppointmentsByPatientId(patientId) {
     throw createServiceError('Failed to fetch patient appointments.', 500);
   }
 
-  return data || [];
+  const appointments = data || [];
+  const appointmentIds = appointments.map((appointment) => appointment.id);
+  const reminderStatusMap = await fetchAppointmentReminderStatusMap(appointmentIds);
+
+  return attachReminderStatusesToAppointments(appointments, reminderStatusMap);
 }
 
 const APPOINTMENT_CHANGE_SELECT = `

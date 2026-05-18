@@ -56,7 +56,14 @@ const queuePageContext = {
   start: '',
   end: '',
   session: null,
-  joinQueueLoading: false
+  joinQueueLoading: false,
+
+  // Reminder status comes from the appointment record.
+  // The queue page falls back to time-based messages only if the backend status is unavailable.
+  reminderLoading: false,
+  reminderError: '',
+  reminderStatus: '',
+  reminderRecord: null
 };
 
 function getQueueBadgeClasses(state) {
@@ -473,21 +480,177 @@ function renderQueueEstimate(queueState, waitEstimateMinutes) {
   footnote.textContent = config.footnote;
 }
 
+// Normalises reminder status values returned from the appointment endpoint.
+function normaliseReminderStatus(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
+// Reads the reminder status fields that may be attached to an appointment.
+function getAppointmentReminderStatus(appointment) {
+  const candidates = [
+    appointment?.reminder_status,
+    appointment?.email_reminder_status,
+    appointment?.notification_status,
+    appointment?.reminder?.status
+  ];
+
+  return normaliseReminderStatus(
+    candidates.find((status) => typeof status === 'string' && status.trim()) || ''
+  );
+}
+
+// Formats reminder timestamps for the queue reminder panel.
+function formatReminderRecordDateTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString('en-ZA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Loads the real reminder status for the current appointment.
+// Without this, the queue page can only guess based on the appointment time.
+async function loadQueueAppointmentReminderStatus() {
+  if (!queuePageContext.session?.access_token || !queuePageContext.appointmentId) {
+    return;
+  }
+
+  queuePageContext.reminderLoading = true;
+  queuePageContext.reminderError = '';
+  renderQueueReminderStatus();
+
+  try {
+    const response = await fetch('/api/appointments', {
+      headers: {
+        Authorization: `Bearer ${queuePageContext.session.access_token}`
+      }
+    });
+
+    const payload = await response.json();
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.message || 'Failed to load appointment reminder status.');
+    }
+
+    const appointments = Array.isArray(payload.data) ? payload.data : [];
+    const appointment = appointments.find((entry) =>
+      String(entry.id) === String(queuePageContext.appointmentId)
+    );
+
+    if (!appointment) {
+      queuePageContext.reminderStatus = '';
+      queuePageContext.reminderRecord = null;
+      return;
+    }
+
+    queuePageContext.reminderStatus = getAppointmentReminderStatus(appointment);
+    queuePageContext.reminderRecord =
+      appointment.reminder && typeof appointment.reminder === 'object'
+        ? appointment.reminder
+        : null;
+  } catch (error) {
+    console.error(error);
+    queuePageContext.reminderError =
+      error.message || 'Reminder status could not be checked right now.';
+  } finally {
+    queuePageContext.reminderLoading = false;
+    renderQueueReminderStatus();
+  }
+}
+
 function getQueueReminderStatusConfig() {
+  if (queuePageContext.reminderLoading) {
+    return {
+      title: 'Checking reminder status',
+      badge: 'Loading',
+      badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
+      message: 'Checking whether your appointment reminder is pending, sent, or failed.'
+    };
+  }
+
+  if (queuePageContext.reminderError) {
+    return {
+      title: 'Reminder status unavailable',
+      badge: 'Check failed',
+      badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
+      panelClass: 'border-[#f7768e]/20 bg-[#f7768e]/10',
+      message: queuePageContext.reminderError
+    };
+  }
+
+  if (queuePageContext.reminderStatus === 'sent') {
+    const sentAt = formatReminderRecordDateTime(queuePageContext.reminderRecord?.sent_at);
+
+    return {
+      title: 'Reminder sent',
+      badge: 'Sent',
+      badgeClass: 'border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]',
+      panelClass: 'border-[#9ece6a]/20 bg-[#9ece6a]/10',
+      message: sentAt
+        ? `Your 30-minute appointment reminder was sent at ${sentAt}.`
+        : 'Your 30-minute appointment reminder has been sent to your account email address.'
+    };
+  }
+
+  if (queuePageContext.reminderStatus === 'failed') {
+    return {
+      title: 'Reminder failed',
+      badge: 'Failed',
+      badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
+      panelClass: 'border-[#f7768e]/20 bg-[#f7768e]/10',
+      message: queuePageContext.reminderRecord?.error_message ||
+        'The reminder could not be sent. Please still use the appointment time shown on this page.'
+    };
+  }
+
+  if (queuePageContext.reminderStatus === 'pending') {
+    const scheduledFor = formatReminderRecordDateTime(queuePageContext.reminderRecord?.scheduled_for);
+
+    return {
+      title: 'Reminder pending',
+      badge: 'Pending',
+      badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
+      message: scheduledFor
+        ? `Your reminder is scheduled for ${scheduledFor}.`
+        : 'Your reminder is scheduled and will be sent before your visit.'
+    };
+  }
+
   if (!queuePageContext.appointmentId) {
     return {
       title: 'Appointment reminder unavailable',
       badge: 'No appointment',
       badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+      panelClass: 'border-[#414868] bg-[#1f2335]/85',
       message: 'This queue page is not linked to a booked appointment, so appointment reminder status cannot be shown.'
     };
   }
 
   if (!queuePageContext.date || !queuePageContext.start) {
     return {
-      title: 'Email reminder enabled',
-      badge: 'Time unavailable',
+      title: 'Reminder time unavailable',
+      badge: 'Check time',
       badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
+      panelClass: 'border-[#e0af68]/20 bg-[#e0af68]/10',
       message: 'Your reminder is enabled, but the appointment start time is not available on this queue page.'
     };
   }
@@ -496,9 +659,10 @@ function getQueueReminderStatusConfig() {
 
   if (Number.isNaN(appointmentStart.getTime())) {
     return {
-      title: 'Email reminder enabled',
-      badge: 'Time unavailable',
+      title: 'Reminder time unavailable',
+      badge: 'Check time',
       badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
+      panelClass: 'border-[#e0af68]/20 bg-[#e0af68]/10',
       message: 'Your reminder is enabled, but the appointment start time could not be read from this queue page.'
     };
   }
@@ -508,9 +672,10 @@ function getQueueReminderStatusConfig() {
 
   if (minutesUntilStart > 30) {
     return {
-      title: 'Email reminder enabled',
-      badge: 'Enabled',
+      title: 'Reminder pending',
+      badge: 'Pending',
       badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
       message: `A reminder is scheduled for ${formatReminderDateTime(reminderTime)}, 30 minutes before your appointment.`
     };
   }
@@ -520,6 +685,7 @@ function getQueueReminderStatusConfig() {
       title: 'Reminder window active',
       badge: 'Due soon',
       badgeClass: 'border-[#bb9af7]/25 bg-[#bb9af7]/10 text-[#dfcbff]',
+      panelClass: 'border-[#bb9af7]/20 bg-[#bb9af7]/10',
       message: 'Your appointment starts in less than 30 minutes. Check your email and keep following this queue page.'
     };
   }
@@ -528,11 +694,13 @@ function getQueueReminderStatusConfig() {
     title: 'Reminder window passed',
     badge: 'Processed',
     badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
+    panelClass: 'border-[#414868] bg-[#1f2335]/85',
     message: 'If email reminders are enabled for your account, the 30-minute reminder window for this appointment has already passed.'
   };
 }
 
 function renderQueueReminderStatus() {
+  const panel = document.getElementById('queueReminderPanel');
   const title = document.getElementById('queueReminderTitle');
   const message = document.getElementById('queueReminderMessage');
   const badge = document.getElementById('queueReminderBadge');
@@ -543,10 +711,17 @@ function renderQueueReminderStatus() {
 
   const config = getQueueReminderStatusConfig();
 
+  if (panel) {
+    panel.className = `mt-6 rounded-[1.5rem] border px-5 py-5 shadow-lg shadow-black/10 ${config.panelClass}`;
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    panel.setAttribute('aria-atomic', 'true');
+  }
+
   title.textContent = config.title;
   message.textContent = config.message;
   badge.textContent = config.badge;
-  badge.className = `inline-flex w-fit rounded-full border px-3 py-1.5 text-sm font-semibold ${config.badgeClass}`;
+  badge.className = `inline-flex w-fit shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold ${config.badgeClass}`;
 }
 
 function renderQueueMetrics(queueEntry, position, queueState) {
@@ -789,7 +964,13 @@ async function loadQueuePage() {
   }
 
   queuePageContext.session = session;
-  await loadQueueStatus();
+
+  // Load the real reminder status and queue status together.
+  // This keeps the queue page reminder panel consistent with the appointments page.
+  await Promise.all([
+    loadQueueAppointmentReminderStatus(),
+    loadQueueStatus()
+  ]);
 }
 
 document.addEventListener('DOMContentLoaded', loadQueuePage);

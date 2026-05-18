@@ -760,20 +760,35 @@ async function joinQueueFromAppointment({ patientId, appointmentId }) {
     .single();
 
   if (queueError || !queueEntry) {
-    logQueueStageFailure('queue_entry_insert', {
-      patientId,
-      appointmentId,
-      clinicId: appointment.clinic_id,
-      queueDate,
-      queueNumber,
-      supabaseError: formatSupabaseError(queueError)
-    });
+  const formattedQueueError = formatSupabaseError(queueError);
 
-    throw createServiceError('Failed to join the queue.', 500, {
-      stage: 'queue_entry_insert',
-      supabaseError: formatSupabaseError(queueError)
-    });
-  }
+  logQueueStageFailure('queue_entry_insert', {
+    patientId,
+    appointmentId,
+    clinicId: appointment.clinic_id,
+    queueDate,
+    queueNumber,
+    insertPayload: {
+      clinic_id: appointment.clinic_id,
+      patient_id: patientId,
+      appointment_id: appointmentId,
+      queue_number: queueNumber,
+      queue_date: queueDate,
+      source: 'appointment',
+      status: 'waiting',
+      estimated_wait_minutes: estimatedWaitMinutes
+    },
+    supabaseError: formattedQueueError,
+    missingQueueEntry: !queueEntry
+  });
+
+  // Keep the public error message stable so existing tests keep passing.
+  // Detailed Supabase diagnostics stay in the metadata/logs above.
+  throw createServiceError('Failed to join the queue.', 500, {
+    stage: 'queue_entry_insert',
+    supabaseError: formattedQueueError
+  });
+}
 
   // Return enough information for the controller/frontend to show
   // the queue result together with appointment and clinic details.

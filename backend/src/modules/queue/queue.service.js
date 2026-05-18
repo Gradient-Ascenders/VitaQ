@@ -1115,6 +1115,46 @@ async function cancelLinkedAppointmentForQueueEntry(queueEntry, cancelledAt) {
 }
 
 /**
+ * Keeps appointment state aligned when staff complete an appointment-backed queue entry.
+ * Queue entries use "complete"; appointments use the existing "completed" status.
+ */
+async function completeLinkedAppointmentForQueueEntry(queueEntry, completedAt) {
+  if (queueEntry.source !== 'appointment' || !queueEntry.appointment_id) {
+    return null;
+  }
+
+  const { data: appointment, error: appointmentError } = await supabase
+    .from('appointments')
+    .select('id, status')
+    .eq('id', queueEntry.appointment_id)
+    .single();
+
+  if (appointmentError || !appointment) {
+    throw createServiceError('Linked appointment not found.', 404);
+  }
+
+  if (appointment.status !== 'booked') {
+    return appointment;
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({
+      status: 'completed',
+      updated_at: completedAt
+    })
+    .eq('id', queueEntry.appointment_id)
+    .select('id, status, updated_at')
+    .single();
+
+  if (error || !data) {
+    throw createServiceError('Failed to complete linked appointment.', 500);
+  }
+
+  return data;
+}
+
+/**
  * Fetches one queue entry before updating it.
  * We need the existing clinic_id and status before deciding whether the update is allowed.
  */
@@ -1175,6 +1215,10 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
       await cancelLinkedAppointmentForQueueEntry(existingEntry, new Date().toISOString());
     }
 
+    if (status === 'complete') {
+      await completeLinkedAppointmentForQueueEntry(existingEntry, new Date().toISOString());
+    }
+
     return existingEntry;
   }
 
@@ -1221,6 +1265,10 @@ async function updateQueueEntryStatus({ entryId, status, staffUserId }) {
 
   if (status === 'cancelled') {
     await cancelLinkedAppointmentForQueueEntry(existingEntry, statusUpdatedAt);
+  }
+
+  if (status === 'complete') {
+    await completeLinkedAppointmentForQueueEntry(existingEntry, statusUpdatedAt);
   }
 
   return data;

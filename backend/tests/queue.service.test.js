@@ -2306,7 +2306,7 @@ describe('updateQueueEntryStatus', () => {
     jest.useRealTimers();
   });
 
-  test('sets completed_at when moving a patient to complete', async () => {
+  test('sets completed_at and completes the linked appointment when moving a patient to complete', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-04-16T08:45:00.000Z').getTime());
 
     const existingEntry = {
@@ -2342,10 +2342,29 @@ describe('updateQueueEntryStatus', () => {
       error: null
     });
 
+    const appointmentFetchQuery = createMockQuery({
+      data: {
+        id: 'appointment-1',
+        status: 'booked'
+      },
+      error: null
+    });
+
+    const appointmentUpdateQuery = createMockQuery({
+      data: {
+        id: 'appointment-1',
+        status: 'completed',
+        updated_at: '2026-04-16T08:45:00.000Z'
+      },
+      error: null
+    });
+
     supabase.from
       .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
       .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
-      .mockReturnValueOnce(updateQuery);
+      .mockReturnValueOnce(updateQuery)
+      .mockReturnValueOnce(appointmentFetchQuery)
+      .mockReturnValueOnce(appointmentUpdateQuery);
 
     const result = await updateQueueEntryStatus({
       entryId: 'queue-1',
@@ -2359,8 +2378,56 @@ describe('updateQueueEntryStatus', () => {
       completed_at: '2026-04-16T08:45:00.000Z',
       updated_at: '2026-04-16T08:45:00.000Z'
     });
+    expect(appointmentFetchQuery.select).toHaveBeenCalledWith('id, status');
+    expect(appointmentFetchQuery.eq).toHaveBeenCalledWith('id', 'appointment-1');
+    expect(appointmentUpdateQuery.update).toHaveBeenCalledWith({
+      status: 'completed',
+      updated_at: '2026-04-16T08:45:00.000Z'
+    });
+    expect(appointmentUpdateQuery.eq).toHaveBeenCalledWith('id', 'appointment-1');
 
     jest.useRealTimers();
+  });
+
+  test('does not update appointments when staff completes a walk-in queue entry', async () => {
+    const existingEntry = {
+      id: 'queue-1',
+      clinic_id: 'clinic-1',
+      patient_id: null,
+      appointment_id: null,
+      queue_number: 1,
+      queue_date: '2026-04-16',
+      source: 'walk_in',
+      status: 'in_consultation',
+      estimated_wait_minutes: 0,
+      created_at: '2026-04-16T08:00:00Z',
+      updated_at: '2026-04-16T08:00:00Z'
+    };
+
+    const approvedStaffProfile = {
+      user_id: 'staff-1',
+      role: 'staff',
+      clinic_id: 'clinic-1',
+    };
+
+    const updatedEntry = {
+      ...existingEntry,
+      status: 'complete'
+    };
+
+    supabase.from
+      .mockReturnValueOnce(createMockQuery({ data: existingEntry, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: approvedStaffProfile, error: null }))
+      .mockReturnValueOnce(createMockQuery({ data: updatedEntry, error: null }));
+
+    const result = await updateQueueEntryStatus({
+      entryId: 'queue-1',
+      status: 'complete',
+      staffUserId: 'staff-1'
+    });
+
+    expect(result).toEqual(updatedEntry);
+    expect(supabase.from).not.toHaveBeenCalledWith('appointments');
   });
 
   test('cancels the linked appointment when staff cancels an appointment queue entry', async () => {

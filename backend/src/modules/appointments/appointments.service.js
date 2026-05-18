@@ -306,9 +306,19 @@ async function fetchAppointmentsByPatientId(patientId) {
     throw createServiceError('Failed to fetch patient appointments.', 500);
   }
 
-  const appointments = data || [];
+const appointments = data || [];
+
+let reminderStatusMap = new Map();
+
+try {
   const appointmentIds = appointments.map((appointment) => appointment.id);
-  const reminderStatusMap = await fetchAppointmentReminderStatusMap(appointmentIds);
+  reminderStatusMap = await fetchAppointmentReminderStatusMap(appointmentIds);
+} catch (error) {
+  console.error('Reminder status lookup failed:', {
+    message: error.message,
+    statusCode: error.statusCode
+  });
+}
 
   return attachReminderStatusesToAppointments(appointments, reminderStatusMap);
 }

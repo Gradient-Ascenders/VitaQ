@@ -14,6 +14,8 @@ const ADMIN_REPORT_EXPORT_ENDPOINTS = {
   csv: '/api/admin/reports/export/csv',
   pdf: '/api/admin/reports/export/pdf'
 };
+const ADMIN_REVIEW_SUMMARY_STORAGE_PREFIX = 'vitaq:admin-review-summary';
+const ADMIN_REVIEW_SUMMARY_TIME_ZONE = 'Africa/Johannesburg';
 const REPORT_EXPORT_TYPES = ['summary', 'wait-times', 'no-shows'];
 const REPORT_EXPORT_FORMATS = ['csv', 'pdf'];
 const ADMIN_TABS = {
@@ -52,6 +54,7 @@ const adminState = {
   isLoading: false,
   loadError: null,
   accessToken: null,
+  adminUserId: '',
   clinics: [],
   selectedClinicId: '',
   selectedClinic: null,
@@ -688,6 +691,95 @@ function redirectForAdminApiResponseStatus(status) {
   }
 
   return false;
+}
+
+function getAdminReviewSummaryDateKey(date = new Date()) {
+  const dateParts = new Intl.DateTimeFormat('en-ZA', {
+    timeZone: ADMIN_REVIEW_SUMMARY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const partsByType = dateParts.reduce((parts, part) => {
+    parts[part.type] = part.value;
+    return parts;
+  }, {});
+
+  return `${partsByType.year}-${partsByType.month}-${partsByType.day}`;
+}
+
+function getAdminReviewSummaryStorageKey(userId = adminState.adminUserId) {
+  if (!userId) {
+    return '';
+  }
+
+  return `${ADMIN_REVIEW_SUMMARY_STORAGE_PREFIX}:${userId}:${getAdminReviewSummaryDateKey()}`;
+}
+
+function readStoredAdminReviewSummary(userId) {
+  const storageKey = getAdminReviewSummaryStorageKey(userId);
+
+  if (!storageKey) {
+    return {
+      approvedCount: 0,
+      rejectedCount: 0
+    };
+  }
+
+  try {
+    const savedSummary = window.localStorage.getItem(storageKey);
+
+    if (!savedSummary) {
+      return {
+        approvedCount: 0,
+        rejectedCount: 0
+      };
+    }
+
+    const parsedSummary = JSON.parse(savedSummary);
+
+    return {
+      approvedCount: Number.isInteger(parsedSummary?.approvedCount)
+        ? parsedSummary.approvedCount
+        : 0,
+      rejectedCount: Number.isInteger(parsedSummary?.rejectedCount)
+        ? parsedSummary.rejectedCount
+        : 0
+    };
+  } catch (error) {
+    console.error('Failed to read admin review summary:', error);
+    return {
+      approvedCount: 0,
+      rejectedCount: 0
+    };
+  }
+}
+
+function saveAdminReviewSummary() {
+  const storageKey = getAdminReviewSummaryStorageKey();
+
+  if (!storageKey) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        approvedCount: adminState.approvedCount,
+        rejectedCount: adminState.rejectedCount
+      })
+    );
+  } catch (error) {
+    console.error('Failed to save admin review summary:', error);
+  }
+}
+
+function loadAdminReviewSummary(userId) {
+  const summary = readStoredAdminReviewSummary(userId);
+
+  adminState.approvedCount = summary.approvedCount;
+  adminState.rejectedCount = summary.rejectedCount;
 }
 
 function renderSummary() {
@@ -2345,6 +2437,8 @@ async function handleAdminAction(requestId, nextStatus) {
       adminState.rejectedCount += 1;
     }
 
+    saveAdminReviewSummary();
+
     adminState.feedback = {
       type: 'success',
       message: createSuccessMessage(nextStatus, request.fullName)
@@ -2840,6 +2934,8 @@ async function initialiseAdminPage() {
   const userName = session.user?.user_metadata?.full_name || session.user?.email || 'Admin';
 
   adminState.accessToken = session.access_token;
+  adminState.adminUserId = session.user?.id || '';
+  loadAdminReviewSummary(adminState.adminUserId);
 
   setTextContent('adminName', userName);
   initialiseAdminActions();

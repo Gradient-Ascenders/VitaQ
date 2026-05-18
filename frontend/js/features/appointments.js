@@ -287,28 +287,108 @@ function getExplicitReminderStatus(appointment) {
   return candidates.find((status) => typeof status === 'string' && status.trim()) || '';
 }
 
+// Normalises reminder status values from the backend.
+// The email_notifications table stores statuses as pending, sent, or failed.
+function normaliseReminderStatus(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
+// Safely returns the reminder object attached to an appointment.
+function getReminderRecord(appointment) {
+  return appointment?.reminder && typeof appointment.reminder === 'object'
+    ? appointment.reminder
+    : {};
+}
+
+// Uses the backend scheduled_for value first, then falls back to 30 minutes before the appointment.
+function getScheduledReminderDate(appointment) {
+  const reminder = getReminderRecord(appointment);
+
+  if (reminder.scheduled_for) {
+    const scheduledDate = new Date(reminder.scheduled_for);
+
+    if (!Number.isNaN(scheduledDate.getTime())) {
+      return scheduledDate;
+    }
+  }
+
+  const appointmentStart = getAppointmentStartDate(appointment);
+
+  if (!appointmentStart) {
+    return null;
+  }
+
+  return new Date(appointmentStart.getTime() - 30 * 60000);
+}
+
+// Formats backend reminder timestamps for small status details.
+function formatReminderRecordDateTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString('en-ZA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function getReminderStatusConfig(appointment) {
-  const explicitStatus = getExplicitReminderStatus(appointment);
+  const explicitStatus = normaliseReminderStatus(getExplicitReminderStatus(appointment));
+  const reminderRecord = getReminderRecord(appointment);
+
+  if (explicitStatus === 'pending') {
+    const scheduledDate = getScheduledReminderDate(appointment);
+
+    return {
+      eyebrow: 'Email reminder',
+      title: 'Reminder pending',
+      badge: 'Pending',
+      badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
+      panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
+      message: scheduledDate
+        ? `Your appointment reminder is scheduled for ${formatReminderDateTime(scheduledDate)}, 30 minutes before your visit.`
+        : 'Your appointment reminder is waiting to be processed.',
+      detail: 'This status will update to sent or failed once the reminder job processes the email.'
+    };
+  }
 
   if (explicitStatus === 'sent') {
+    const sentAt = formatReminderRecordDateTime(reminderRecord.sent_at);
+
     return {
       eyebrow: 'Email reminder',
       title: 'Reminder sent',
       badge: 'Sent',
       badgeClass: 'border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]',
       panelClass: 'border-[#9ece6a]/20 bg-[#9ece6a]/10',
-      message: 'Your 30-minute appointment reminder has been sent to your account email address.'
+      message: 'Your 30-minute appointment reminder has been sent to your account email address.',
+      detail: sentAt
+        ? `Sent at ${sentAt}.`
+        : 'The reminder job marked this email as sent successfully.'
     };
   }
 
   if (explicitStatus === 'failed') {
+    const failureDetail = reminderRecord.error_message || 'No provider error message was returned.';
+
     return {
       eyebrow: 'Email reminder',
       title: 'Reminder failed',
       badge: 'Failed',
       badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
       panelClass: 'border-[#f7768e]/20 bg-[#f7768e]/10',
-      message: 'The reminder could not be sent. Please still use the appointment time shown on this page.'
+      message: 'The reminder could not be sent. Please still use the appointment time shown on this page.',
+      detail: `Failure detail: ${failureDetail}`
     };
   }
 
@@ -319,7 +399,8 @@ function getReminderStatusConfig(appointment) {
       badge: 'Cancelled',
       badgeClass: 'border-[#f7768e]/25 bg-[#f7768e]/10 text-[#f4b5c0]',
       panelClass: 'border-[#414868] bg-[#1f2335]/85',
-      message: 'Cancelled appointments do not receive appointment reminder emails.'
+      message: 'Cancelled appointments do not receive appointment reminder emails.',
+      detail: 'Book another appointment if you still need a clinic visit.'
     };
   }
 
@@ -330,7 +411,8 @@ function getReminderStatusConfig(appointment) {
       badge: 'Complete',
       badgeClass: 'border-[#9ece6a]/25 bg-[#9ece6a]/10 text-[#d6f3b8]',
       panelClass: 'border-[#414868] bg-[#1f2335]/85',
-      message: 'This visit is complete, so no further reminder is needed for this appointment.'
+      message: 'This visit is complete, so no further reminder is needed for this appointment.',
+      detail: 'Reminder tracking is only active for upcoming booked appointments.'
     };
   }
 
@@ -343,7 +425,8 @@ function getReminderStatusConfig(appointment) {
       badge: 'Time unavailable',
       badgeClass: 'border-[#e0af68]/25 bg-[#e0af68]/10 text-[#f6d8a8]',
       panelClass: 'border-[#e0af68]/20 bg-[#e0af68]/10',
-      message: 'Your reminder is enabled, but the appointment start time is not available on this page.'
+      message: 'Your reminder is enabled, but the appointment start time is not available on this page.',
+      detail: 'Check the appointment date and time before visiting the clinic.'
     };
   }
 
@@ -353,11 +436,12 @@ function getReminderStatusConfig(appointment) {
   if (minutesUntilStart > 30) {
     return {
       eyebrow: 'Email reminder',
-      title: 'Email reminder enabled',
-      badge: 'Enabled',
+      title: 'Reminder pending',
+      badge: 'Pending',
       badgeClass: 'border-[#7dcfff]/25 bg-[#7dcfff]/10 text-[#b8ecff]',
       panelClass: 'border-[#7dcfff]/20 bg-[#7dcfff]/10',
-      message: `A reminder is scheduled for ${formatReminderDateTime(reminderTime)}, 30 minutes before your appointment.`
+      message: `A reminder is scheduled for ${formatReminderDateTime(reminderTime)}, 30 minutes before your appointment.`,
+      detail: 'Keep your appointment details available in case the email is delayed.'
     };
   }
 
@@ -368,7 +452,8 @@ function getReminderStatusConfig(appointment) {
       badge: 'Due soon',
       badgeClass: 'border-[#bb9af7]/25 bg-[#bb9af7]/10 text-[#dfcbff]',
       panelClass: 'border-[#bb9af7]/20 bg-[#bb9af7]/10',
-      message: 'Your appointment starts in less than 30 minutes. Check your email and keep this appointment time ready.'
+      message: 'Your appointment starts in less than 30 minutes. Check your email and keep this appointment time ready.',
+      detail: 'You can also open the queue page from this appointment when you arrive.'
     };
   }
 
@@ -378,17 +463,31 @@ function getReminderStatusConfig(appointment) {
     badge: 'Processed',
     badgeClass: 'border-[#414868] bg-[#24283b]/80 text-[#c0caf5]',
     panelClass: 'border-[#414868] bg-[#1f2335]/85',
-    message: 'If email reminders are enabled for your account, the 30-minute reminder window for this appointment has already passed.'
+    message: 'If email reminders are enabled for your account, the 30-minute reminder window for this appointment has already passed.',
+    detail: 'Use the appointment status above to confirm whether this visit is still active.'
   };
 }
 
 function buildReminderStatusMarkup(appointment) {
   const reminder = getReminderStatusConfig(appointment);
+  const detailMarkup = reminder.detail
+    ? `
+      <p class="mt-3 rounded-2xl border border-[#414868]/70 bg-[#1a1b26]/45 px-4 py-3 text-xs leading-6 text-[#8b93b8]">
+        ${escapeHtml(reminder.detail)}
+      </p>
+    `
+    : '';
 
   return `
-    <section class="mt-4 rounded-[1.5rem] border px-5 py-5 ${reminder.panelClass}" aria-label="Appointment email reminder status">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="max-w-3xl">
+    <section
+      class="mt-4 rounded-[1.5rem] border px-5 py-5 ${reminder.panelClass}"
+      aria-label="Appointment email reminder status"
+      aria-live="polite"
+      aria-atomic="true"
+      role="status"
+    >
+      <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <section class="min-w-0 max-w-3xl">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#7dcfff]">
             ${escapeHtml(reminder.eyebrow)}
           </p>
@@ -398,12 +497,14 @@ function buildReminderStatusMarkup(appointment) {
           <p class="mt-2 text-sm leading-7 text-[#a9b1d6]">
             ${escapeHtml(reminder.message)}
           </p>
-        </div>
+        </section>
 
-        <p class="inline-flex w-fit rounded-full border px-3 py-1.5 text-sm font-semibold ${reminder.badgeClass}">
+        <p class="inline-flex w-fit shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold ${reminder.badgeClass}">
           ${escapeHtml(reminder.badge)}
         </p>
-      </div>
+      </header>
+
+      ${detailMarkup}
     </section>
   `;
 }
@@ -689,22 +790,57 @@ function renderPageScaffolding() {
 
   const isInitialLoading = pageState.loadingAppointments && pageState.appointments.length === 0 && !pageState.appointmentsError;
 
-  loadingState.classList.toggle('hidden', !isInitialLoading);
+  if (isInitialLoading) {
+    loadingState.className = 'mt-6 rounded-3xl border border-[#7dcfff]/20 bg-[#7dcfff]/10 px-6 py-5 text-[#b8ecff]';
+    loadingState.innerHTML = `
+      <section class="flex items-start gap-3">
+        <span class="mt-1 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#7dcfff]/30 border-t-[#7dcfff]"></span>
+        <section>
+          <p class="font-semibold">Loading appointments</p>
+          <p class="mt-1 text-sm leading-6">
+            Fetching your appointments and checking reminder notification statuses.
+          </p>
+        </section>
+      </section>
+    `;
+    loadingState.classList.remove('hidden');
+  } else {
+    loadingState.innerHTML = '';
+    loadingState.classList.add('hidden');
+  }
 
   if (pageState.appointmentsError) {
-    errorState.textContent = pageState.appointmentsError;
+    errorState.innerHTML = `
+      <p class="font-semibold">Appointments unavailable</p>
+      <p class="mt-1 text-sm leading-6">
+        ${escapeHtml(pageState.appointmentsError)}
+      </p>
+      <p class="mt-2 text-sm leading-6 text-[#f4b5c0]/85">
+        Appointment reminders could not be checked because the appointment list did not load.
+      </p>
+    `;
     errorState.classList.remove('hidden');
   } else {
-    errorState.textContent = '';
+    errorState.innerHTML = '';
     errorState.classList.add('hidden');
   }
 
   if (pageState.feedback?.message) {
+    const feedbackTitle =
+      pageState.feedback.type === 'success'
+        ? 'Appointment updated'
+        : pageState.feedback.type === 'error'
+          ? 'Action failed'
+          : 'Working on request';
+
     pageActionFeedback.className = `mt-6 rounded-3xl px-6 py-5 ${getPageFeedbackClasses(pageState.feedback.type)}`;
-    pageActionFeedback.textContent = pageState.feedback.message;
+    pageActionFeedback.innerHTML = `
+      <p class="font-semibold">${feedbackTitle}</p>
+      <p class="mt-1 text-sm leading-6">${escapeHtml(pageState.feedback.message)}</p>
+    `;
     pageActionFeedback.classList.remove('hidden');
   } else {
-    pageActionFeedback.textContent = '';
+    pageActionFeedback.innerHTML = '';
     pageActionFeedback.className = 'mt-6 hidden rounded-3xl px-6 py-5';
   }
 
